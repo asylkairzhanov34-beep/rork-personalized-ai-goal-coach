@@ -1,0 +1,24 @@
+# Google OAuth Client IDs
+# Получите эти значения из Google Cloud Console
+# См. инструкции в GOOGLE_AUTH_SETUP.md
+
+# ВАЖНО: Для iOS и Android необходимо создать отдельные Client IDs в Google Cloud Console
+# Текущий ID выглядит как Web Client ID - его можно использовать для web-версии
+# Для полной функциональности на iOS и Android, создайте дополнительные Client IDs
+
+# iOS Client ID
+# Bundle identifier: app.rork.personalized-ai-goal-coach
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=769966215817-4046hqojj6j5o395tk9n50pq6b19102t.apps.googleusercontent.com
+
+# Для Android: создайте Android Client ID в Google Cloud Console
+# Используйте package name: app.rork.personalized-ai-goal-coach
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=769966215817-92j42af735k7005djr2aes0vuvs1m9h1.apps.googleusercontent.com
+
+# Web Client ID (основной для web и OAuth flow)
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=769966215817-92j42af735k7005djr2aes0vuvs1m9h1.apps.googleusercontent.com
+
+# RevenueCat API Keys
+# Получите их из RevenueCat Dashboard -> Project Settings -> API Keys
+# См. инструкции в REVENUECAT_SETUP.md
+EXPO_PUBLIC_REVENUECAT_IOS_KEY=
+EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
