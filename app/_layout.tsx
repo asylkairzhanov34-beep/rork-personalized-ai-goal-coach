@@ -12,6 +12,7 @@ import { ChatProvider } from '@/hooks/use-chat-store';
 import { ManifestationProvider } from '@/hooks/use-manifestation-store';
 import { FirstTimeSetupProvider } from '@/hooks/use-first-time-setup';
 import { SubscriptionProvider } from '@/hooks/use-subscription-store';
+import { trpc, trpcClient } from '@/lib/trpc';
 
 // Error Boundary to catch inspector and other development errors
 class ErrorBoundary extends Component<
@@ -264,25 +265,27 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <SubscriptionProvider>
-          <AuthProvider>
-            <FirstTimeSetupProvider>
-              <GoalProvider>
-                <TimerProvider>
-                  <ChatProvider>
-                    <ManifestationProvider>
-                      <GestureHandlerRootView style={styles.container}>
-                        <RootLayoutNav />
-                      </GestureHandlerRootView>
-                    </ManifestationProvider>
-                  </ChatProvider>
-                </TimerProvider>
-              </GoalProvider>
-            </FirstTimeSetupProvider>
-          </AuthProvider>
-        </SubscriptionProvider>
-      </QueryClientProvider>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <SubscriptionProvider>
+            <AuthProvider>
+              <FirstTimeSetupProvider>
+                <GoalProvider>
+                  <TimerProvider>
+                    <ChatProvider>
+                      <ManifestationProvider>
+                        <GestureHandlerRootView style={styles.container}>
+                          <RootLayoutNav />
+                        </GestureHandlerRootView>
+                      </ManifestationProvider>
+                    </ChatProvider>
+                  </TimerProvider>
+                </GoalProvider>
+              </FirstTimeSetupProvider>
+            </AuthProvider>
+          </SubscriptionProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
     </ErrorBoundary>
   );
 }
