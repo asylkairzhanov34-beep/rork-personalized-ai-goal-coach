@@ -231,6 +231,12 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       }
     }
 
+    if (!isInitialized) {
+      console.log('RevenueCat not initialized yet');
+      Alert.alert('Ошибка', 'Система оплаты еще не готова. Попробуйте позже.');
+      return false;
+    }
+
     setIsPurchasing(true);
 
     try {
@@ -314,6 +320,11 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       }
     }
 
+    if (!isInitialized) {
+      console.log('RevenueCat not initialized yet');
+      return false;
+    }
+
     setIsRestoring(true);
 
     try {
@@ -335,13 +346,18 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const checkSubscriptionStatus = useCallback(async () => {
     if (Platform.OS === 'web') return;
 
+    if (!isInitialized) {
+      console.log('RevenueCat not initialized yet');
+      return;
+    }
+
     try {
       const info = await Purchases.getCustomerInfo();
       updateCustomerInfo(info);
     } catch (error) {
       console.error('Failed to check subscription status:', error);
     }
-  }, []);
+  }, [isInitialized]);
 
   const isPremium = status === 'premium';
 
