@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import Purchases, { PurchasesPackage, CustomerInfo as RCCustomerInfo } from 'react-native-purchases';
 import createContextHook from '@nkzw/create-context-hook';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CustomerInfo, SubscriptionPackage, SubscriptionStatus } from '@/types/subscription';
 
 const REVENUECAT_API_KEY = {
@@ -9,6 +10,33 @@ const REVENUECAT_API_KEY = {
   android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '',
   web: process.env.EXPO_PUBLIC_REVENUECAT_WEB_KEY || '',
 };
+
+const WEB_MOCK_PACKAGES: SubscriptionPackage[] = [
+  {
+    identifier: 'monthly',
+    product: {
+      identifier: 'premium_monthly',
+      title: 'Месячная подписка',
+      description: 'Premium доступ на 1 месяц',
+      price: 299,
+      priceString: '299 ₽',
+      currencyCode: 'RUB',
+    },
+  },
+  {
+    identifier: 'yearly',
+    product: {
+      identifier: 'premium_yearly',
+      title: 'Годовая подписка',
+      description: 'Premium доступ на 12 месяцев (выгода 40%)',
+      price: 1990,
+      priceString: '1 990 ₽',
+      currencyCode: 'RUB',
+    },
+  },
+];
+
+const SUBSCRIPTION_STORAGE_KEY = '@subscription_status';
 
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -21,8 +49,41 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   useEffect(() => {
     const initializePurchases = async () => {
       if (Platform.OS === 'web') {
-        console.log('RevenueCat not supported on web');
-        setStatus('free');
+        console.log('Web platform: using mock subscription system');
+        
+        try {
+          const stored = await AsyncStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
+          if (stored) {
+            const data = JSON.parse(stored);
+            
+            if (data.expiryDate && new Date(data.expiryDate) > new Date()) {
+              setStatus('premium');
+              setCustomerInfo({
+                activeSubscriptions: [data.packageId],
+                allPurchasedProductIdentifiers: [data.packageId],
+                entitlements: {
+                  active: {
+                    premium: {
+                      identifier: 'premium',
+                      productIdentifier: data.packageId,
+                      isActive: true,
+                    },
+                  },
+                },
+              });
+            } else {
+              setStatus('free');
+              await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
+            }
+          } else {
+            setStatus('free');
+          }
+        } catch (error) {
+          console.error('Failed to load web subscription status:', error);
+          setStatus('free');
+        }
+        
+        setPackages(WEB_MOCK_PACKAGES);
         setIsInitialized(true);
         return;
       }
@@ -114,8 +175,60 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   const purchasePackage = async (packageIdentifier: string): Promise<boolean> => {
     if (Platform.OS === 'web') {
-      console.log('Purchases not supported on web');
-      return false;
+      console.log('Web purchase:', packageIdentifier);
+      
+      setIsPurchasing(true);
+      
+      try {
+        const pkg = packages.find(p => p.identifier === packageIdentifier);
+        
+        if (!pkg) {
+          Alert.alert('Ошибка', 'Пакет не найден');
+          return false;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        let expiryDate = new Date();
+        if (packageIdentifier === 'monthly') {
+          expiryDate.setMonth(expiryDate.getMonth() + 1);
+        } else if (packageIdentifier === 'yearly') {
+          expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+        }
+        
+        const subscriptionData = {
+          packageId: pkg.product.identifier,
+          identifier: packageIdentifier,
+          purchaseDate: new Date().toISOString(),
+          expiryDate: expiryDate.toISOString(),
+        };
+        
+        await AsyncStorage.setItem(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(subscriptionData));
+        
+        setStatus('premium');
+        setCustomerInfo({
+          activeSubscriptions: [pkg.product.identifier],
+          allPurchasedProductIdentifiers: [pkg.product.identifier],
+          entitlements: {
+            active: {
+              premium: {
+                identifier: 'premium',
+                productIdentifier: pkg.product.identifier,
+                isActive: true,
+              },
+            },
+          },
+        });
+        
+        console.log('Web purchase successful');
+        return true;
+      } catch (error) {
+        console.error('Web purchase failed:', error);
+        Alert.alert('Ошибка', 'Не удалось оформить подписку');
+        return false;
+      } finally {
+        setIsPurchasing(false);
+      }
     }
 
     setIsPurchasing(true);
@@ -159,8 +272,46 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   const restorePurchases = async (): Promise<boolean> => {
     if (Platform.OS === 'web') {
-      console.log('Restore not supported on web');
-      return false;
+      console.log('Web restore purchases');
+      
+      setIsRestoring(true);
+      
+      try {
+        const stored = await AsyncStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
+        
+        if (!stored) {
+          return false;
+        }
+        
+        const data = JSON.parse(stored);
+        
+        if (data.expiryDate && new Date(data.expiryDate) > new Date()) {
+          setStatus('premium');
+          setCustomerInfo({
+            activeSubscriptions: [data.packageId],
+            allPurchasedProductIdentifiers: [data.packageId],
+            entitlements: {
+              active: {
+                premium: {
+                  identifier: 'premium',
+                  productIdentifier: data.packageId,
+                  isActive: true,
+                },
+              },
+            },
+          });
+          return true;
+        } else {
+          await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
+          setStatus('free');
+          return false;
+        }
+      } catch (error) {
+        console.error('Web restore failed:', error);
+        return false;
+      } finally {
+        setIsRestoring(false);
+      }
     }
 
     setIsRestoring(true);
