@@ -4,11 +4,10 @@ import Purchases, { PurchasesPackage, CustomerInfo as RCCustomerInfo } from 'rea
 import createContextHook from '@nkzw/create-context-hook';
 import { CustomerInfo, SubscriptionPackage, SubscriptionStatus } from '@/types/subscription';
 
-const REVENUECAT_TEST_STORE_KEY = 'test_sZmVdHVlY2F0X3Rlc3Rfc3RvcmU=';
-
 const REVENUECAT_API_KEY = {
   ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || '',
   android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '',
+  web: process.env.EXPO_PUBLIC_REVENUECAT_WEB_KEY || '',
 };
 
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
@@ -35,13 +34,17 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           ? REVENUECAT_API_KEY.ios 
           : REVENUECAT_API_KEY.android;
 
+        if (!apiKey && REVENUECAT_API_KEY.web) {
+          console.log('Using RevenueCat Web Billing API key for testing');
+          apiKey = REVENUECAT_API_KEY.web;
+        }
+
         if (!apiKey) {
-          console.log('Using RevenueCat Test Store (sandbox mode)');
-          apiKey = REVENUECAT_TEST_STORE_KEY;
+          throw new Error('No RevenueCat API key found. Please add EXPO_PUBLIC_REVENUECAT_WEB_KEY to your .env file.');
         }
 
         await Purchases.configure({ apiKey });
-        console.log('RevenueCat configured successfully with Test Store');
+        console.log('RevenueCat configured successfully');
 
         const info = await Purchases.getCustomerInfo();
         updateCustomerInfo(info);

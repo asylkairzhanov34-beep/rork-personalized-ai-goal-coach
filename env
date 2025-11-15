@@ -20,5 +20,10 @@ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=769966215817-92j42af735k7005djr2aes0vuvs1m9h1.a
 # RevenueCat API Keys
 # Получите их из RevenueCat Dashboard -> Project Settings -> API Keys
 # См. инструкции в REVENUECAT_SETUP.md
+
+# ВАЖНО: Для тестирования в Rork используйте Web Billing API Key
+# Найдите его в RevenueCat Dashboard -> Apps -> [Your App] -> API keys -> Web Billing
+EXPO_PUBLIC_REVENUECAT_WEB_KEY=
+
 EXPO_PUBLIC_REVENUECAT_IOS_KEY=
 EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
