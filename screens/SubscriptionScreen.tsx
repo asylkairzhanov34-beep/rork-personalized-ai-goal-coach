@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Check, Sparkles } from 'lucide-react-native';
+import { X, Check, Sparkles, Info } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSubscription } from '@/hooks/use-subscription-store';
@@ -27,9 +27,13 @@ export default function SubscriptionScreen() {
     isPremium,
   } = useSubscription();
 
-  const [selectedPackage, setSelectedPackage] = useState<string | null>(
-    packages.length > 0 ? packages[0].identifier : null
-  );
+  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (packages.length > 0 && !selectedPackage) {
+      setSelectedPackage(packages[0].identifier);
+    }
+  }, [packages, selectedPackage]);
 
   const handlePurchase = async () => {
     if (!selectedPackage) {
@@ -123,6 +127,16 @@ export default function SubscriptionScreen() {
             <Text style={styles.subtitle}>
               Получите максимум от GoalForge
             </Text>
+          </View>
+
+          <View style={styles.testingBanner}>
+            <Info size={20} color="#3B82F6" />
+            <View style={styles.testingBannerContent}>
+              <Text style={styles.testingBannerTitle}>Режим тестирования</Text>
+              <Text style={styles.testingBannerText}>
+                Покупка будет симулирована. Настоящая оплата требует сборки приложения.
+              </Text>
+            </View>
           </View>
 
           <View style={styles.featuresContainer}>
@@ -339,6 +353,30 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
     lineHeight: 18,
+  },
+  testingBanner: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  testingBannerContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  testingBannerTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#60A5FA',
+    marginBottom: 4,
+  },
+  testingBannerText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    lineHeight: 16,
   },
   premiumContainer: {
     flex: 1,
