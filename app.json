@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -56,11 +56,13 @@
       ],
       "expo-apple-authentication",
       [
-       "expo-notifications",
-{
-  "color": "#ffffff",
-  "defaultChannel": "default"
-}
+        "expo-notifications",
+        {
+          "icon": "./local/assets/notification_icon.png",
+          "color": "#ffffff",
+          "defaultChannel": "default",
+          "sounds": [
+            "./local/assets/notification_sound.wav"
           ],
           "enableBackgroundRemoteNotifications": false
         }
