@@ -2,7 +2,7 @@
   "expo": {
     "name": "GoalForge AI Goal Coach",
     "slug": "personalized-ai-goal-coach",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -58,8 +58,13 @@
       [
         "expo-notifications",
         {
-           "color": "#ffffff",
-  "defaultChannel": "default"
+          "icon": "./local/assets/notification_icon.png",
+          "color": "#ffffff",
+          "defaultChannel": "default",
+          "sounds": [
+            "./local/assets/notification_sound.wav"
+          ],
+          "enableBackgroundRemoteNotifications": false
         }
       ],
       [
