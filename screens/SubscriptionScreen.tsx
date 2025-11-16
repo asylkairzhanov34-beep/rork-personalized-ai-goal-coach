@@ -129,15 +129,17 @@ export default function SubscriptionScreen() {
             </Text>
           </View>
 
-          <View style={styles.testingBanner}>
-            <Info size={20} color="#3B82F6" />
-            <View style={styles.testingBannerContent}>
-              <Text style={styles.testingBannerTitle}>Режим тестирования</Text>
-              <Text style={styles.testingBannerText}>
-                Покупка будет симулирована. Настоящая оплата требует сборки приложения.
-              </Text>
+          {Platform.OS === 'web' && (
+            <View style={styles.testingBanner}>
+              <Info size={20} color="#3B82F6" />
+              <View style={styles.testingBannerContent}>
+                <Text style={styles.testingBannerTitle}>Режим предпросмотра</Text>
+                <Text style={styles.testingBannerText}>
+                  Это демо-режим. Для реальных покупок соберите приложение и установите на устройство.
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
 
           <View style={styles.featuresContainer}>
             {features.map((feature, index) => (

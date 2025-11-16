@@ -13,25 +13,25 @@ const REVENUECAT_API_KEY = {
 
 const WEB_MOCK_PACKAGES: SubscriptionPackage[] = [
   {
-    identifier: 'monthly',
+    identifier: '$rc_monthly',
     product: {
       identifier: 'premium_monthly',
       title: 'Месячная подписка',
       description: 'Premium доступ на 1 месяц',
-      price: 299,
-      priceString: '299 ₽',
-      currencyCode: 'RUB',
+      price: 9.99,
+      priceString: '$9.99',
+      currencyCode: 'USD',
     },
   },
   {
-    identifier: 'yearly',
+    identifier: '$rc_annual',
     product: {
       identifier: 'premium_yearly',
       title: 'Годовая подписка',
-      description: 'Premium доступ на 12 месяцев (выгода 40%)',
-      price: 1990,
-      priceString: '1 990 ₽',
-      currencyCode: 'RUB',
+      description: 'Premium доступ на 12 месяцев (экономия $40.88)',
+      price: 79,
+      priceString: '$79.00',
+      currencyCode: 'USD',
     },
   },
 ];
