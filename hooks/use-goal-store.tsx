@@ -4,8 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { Goal, DailyTask, UserProfile, PomodoroSession, PomodoroStats } from '@/types/goal';
 import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
+import { useAuth } from '@/hooks/use-auth-store';
 
-// Utility function to clear all storage in case of corruption
 const clearAllStorage = async () => {
   try {
     const keys = await AsyncStorage.getAllKeys();
@@ -16,15 +16,16 @@ const clearAllStorage = async () => {
   }
 };
 
-const STORAGE_KEYS = {
-  PROFILE: 'user_profile',
-  GOALS: 'goals',
-  TASKS: 'daily_tasks',
-  ONBOARDING: 'onboarding_answers',
-  POMODORO_SESSIONS: 'pomodoro_sessions',
-};
+const getStorageKeys = (userId: string) => ({
+  PROFILE: `user_profile_${userId}`,
+  GOALS: `goals_${userId}`,
+  TASKS: `daily_tasks_${userId}`,
+  ONBOARDING: `onboarding_answers_${userId}`,
+  POMODORO_SESSIONS: `pomodoro_sessions_${userId}`,
+});
 
 export const [GoalProvider, useGoalStore] = createContextHook(() => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [currentGoal, setCurrentGoal] = useState<Goal | null>(null);
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>([]);
@@ -41,42 +42,46 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     },
   });
 
-  // Load profile
+  const STORAGE_KEYS = getStorageKeys(user?.id || 'default');
+
   const profileQuery = useQuery({
-    queryKey: ['profile'],
+    queryKey: ['profile', user?.id],
     queryFn: async () => {
+      if (!user?.id) return profile;
       return await safeStorageGet(STORAGE_KEYS.PROFILE, profile);
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    enabled: !!user?.id,
   });
 
-  // Load goals
   const goalsQuery = useQuery({
-    queryKey: ['goals'],
+    queryKey: ['goals', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
       return await safeStorageGet(STORAGE_KEYS.GOALS, []);
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    enabled: !!user?.id,
   });
 
-  // Load tasks
   const tasksQuery = useQuery({
-    queryKey: ['tasks'],
+    queryKey: ['tasks', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
       return await safeStorageGet(STORAGE_KEYS.TASKS, []);
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    enabled: !!user?.id,
   });
 
-  // Load pomodoro sessions
   const pomodoroQuery = useQuery({
-    queryKey: ['pomodoro'],
+    queryKey: ['pomodoro', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
       const sessions = await safeStorageGet(STORAGE_KEYS.POMODORO_SESSIONS, []);
-      // Convert date strings back to Date objects
       return sessions.map((session: any) => ({
         ...session,
         completedAt: session.completedAt ? new Date(session.completedAt) : undefined
@@ -84,6 +89,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    enabled: !!user?.id,
   });
 
   useEffect(() => {
@@ -97,7 +103,6 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       const goals = goalsQuery.data as Goal[];
       const activeGoal = goals.find((g: Goal) => g.isActive);
       if (activeGoal) {
-        // Обновляем счетчики задач для активной цели
         const goalTasks = dailyTasks.filter(task => task.goalId === activeGoal.id);
         const completedCount = goalTasks.filter(task => task.completed).length;
         const totalCount = goalTasks.length;
@@ -110,7 +115,6 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
         
         setCurrentGoal(updatedGoal);
       } else {
-        // Если нет активной цели, но есть цели, активируем последнюю
         const lastGoal = goals[goals.length - 1];
         if (lastGoal) {
           const goalTasks = dailyTasks.filter(task => task.goalId === lastGoal.id);
@@ -128,13 +132,13 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
           );
           safeStorageSet(STORAGE_KEYS.GOALS, updatedGoals);
           setCurrentGoal(updatedGoal);
-          queryClient.invalidateQueries({ queryKey: ['goals'] });
+          queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
         }
       }
     } else {
       setCurrentGoal(null);
     }
-  }, [goalsQuery.data, dailyTasks, queryClient]);
+  }, [goalsQuery.data, dailyTasks, queryClient, user?.id, STORAGE_KEYS.GOALS]);
 
   useEffect(() => {
     if (tasksQuery.data) {
@@ -148,53 +152,49 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     }
   }, [pomodoroQuery.data]);
 
-
-
-
-
-  // Save profile mutation
   const saveProfileMutation = useMutation({
     mutationFn: async (newProfile: UserProfile) => {
+      if (!user?.id) throw new Error('User not authenticated');
       await safeStorageSet(STORAGE_KEYS.PROFILE, newProfile);
       return newProfile;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
     },
   });
 
-  // Save goal mutation
   const saveGoalMutation = useMutation({
     mutationFn: async (goal: Goal) => {
+      if (!user?.id) throw new Error('User not authenticated');
       const goals = goalsQuery.data || [];
       const updated = [...goals, goal];
       await safeStorageSet(STORAGE_KEYS.GOALS, updated);
       return updated;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['goals'] });
+      queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
     },
   });
 
-  // Save tasks mutation
   const saveTasksMutation = useMutation({
     mutationFn: async (tasks: DailyTask[]) => {
+      if (!user?.id) throw new Error('User not authenticated');
       await safeStorageSet(STORAGE_KEYS.TASKS, tasks);
       return tasks;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', user?.id] });
     },
   });
 
-  // Save pomodoro sessions mutation
   const savePomodoroMutation = useMutation({
     mutationFn: async (sessions: PomodoroSession[]) => {
+      if (!user?.id) throw new Error('User not authenticated');
       await safeStorageSet(STORAGE_KEYS.POMODORO_SESSIONS, sessions);
       return sessions;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pomodoro'] });
+      queryClient.invalidateQueries({ queryKey: ['pomodoro', user?.id] });
     },
   });
 
@@ -216,7 +216,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       isActive: true,
       completedTasksCount: 0,
       totalTasksCount: tasks.length,
-      planType: goalData.planType || 'free', // По умолчанию свободный план
+      planType: goalData.planType || 'free',
     };
 
     const newTasks: DailyTask[] = tasks.map((task, index) => ({
@@ -226,7 +226,6 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       completed: false,
     }));
 
-    // Деактивируем все предыдущие цели
     const existingGoals = goalsQuery.data || [];
     const updatedExistingGoals = existingGoals.map((g: Goal) => ({ ...g, isActive: false }));
     const allGoals = [...updatedExistingGoals, newGoal];
@@ -234,12 +233,10 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     setCurrentGoal(newGoal);
     setDailyTasks(newTasks);
     
-    // Сохраняем все цели (включая деактивированные старые)
     await safeStorageSet(STORAGE_KEYS.GOALS, allGoals);
     await saveTasksMutation.mutateAsync(newTasks);
     
-    // Обновляем кэш
-    queryClient.invalidateQueries({ queryKey: ['goals'] });
+    queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
     
     updateProfile({ currentGoalId: goalId });
   };
@@ -260,7 +257,6 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     setDailyTasks(updatedTasks);
     saveTasksMutation.mutate(updatedTasks);
 
-    // Update goal progress
     if (currentGoal) {
       const goalTasks = updatedTasks.filter(t => t.goalId === currentGoal.id);
       const completedCount = goalTasks.filter(t => t.completed).length;
@@ -276,10 +272,9 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       const goals = goalsQuery.data || [];
       const updatedGoals = goals.map((g: Goal) => g.id === updatedGoal.id ? updatedGoal : g);
       safeStorageSet(STORAGE_KEYS.GOALS, updatedGoals);
-      queryClient.invalidateQueries({ queryKey: ['goals'] });
+      queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
     }
 
-    // Update streak
     updateStreak();
   };
 
@@ -289,7 +284,6 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     const today = new Date();
     const todayStr = today.toDateString();
     
-    // Получаем все задачи для текущей цели на сегодня
     const todayTasks = dailyTasks.filter(t => 
       t.goalId === currentGoal?.id && 
       new Date(t.date).toDateString() === todayStr
@@ -297,7 +291,6 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     
     const todayAllCompleted = todayTasks.length > 0 && todayTasks.every(t => t.completed);
     
-    // Проверяем, был ли уже засчитан сегодняшний день
     const lastStreakDate = profile.lastStreakDate;
     const todayAlreadyCounted = lastStreakDate === todayStr;
     
@@ -310,11 +303,9 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       lastStreakDate
     });
     
-    // Если сегодня все выполнено и день еще не засчитан
     if (todayAllCompleted && !todayAlreadyCounted) {
-      let newStreak = 1; // Минимум 1 день если сегодня выполнено
+      let newStreak = 1;
       
-      // Если есть предыдущий стрик
       if (profile.currentStreak > 0 && profile.lastStreakDate) {
         const lastStreakDateObj = new Date(profile.lastStreakDate);
         const daysDiff = Math.floor((today.getTime() - lastStreakDateObj.getTime()) / (1000 * 60 * 60 * 24));
@@ -322,10 +313,8 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
         console.log('Days diff:', daysDiff);
         
         if (daysDiff === 1) {
-          // Вчера тоже был засчитан - продолжаем стрик
           newStreak = profile.currentStreak + 1;
         }
-        // Если daysDiff > 1, то стрик прерывается и начинается заново с 1
       }
       
       const bestStreak = Math.max(newStreak, profile.bestStreak);
@@ -337,12 +326,10 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
         lastStreakDate: todayStr
       });
     }
-    // Проверяем, не нужно ли сбросить стрик из-за пропущенных дней (только если сегодня не засчитан)
     else if (profile.lastStreakDate && !todayAlreadyCounted && !todayAllCompleted) {
       const lastStreakDateObj = new Date(profile.lastStreakDate);
       const daysDiff = Math.floor((today.getTime() - lastStreakDateObj.getTime()) / (1000 * 60 * 60 * 24));
       
-      // Если прошло больше 1 дня с последнего засчитанного дня
       if (daysDiff > 1) {
         console.log('Resetting streak due to gap:', daysDiff, 'days');
         updateProfile({ 
@@ -364,7 +351,6 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   const getProgress = () => {
     if (!currentGoal) return 0;
     
-    // Считаем все задачи для текущей цели
     const goalTasks = dailyTasks.filter(task => task.goalId === currentGoal.id);
     const completedTasks = goalTasks.filter(task => task.completed);
     
@@ -378,25 +364,22 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     
     const now = new Date();
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Сбрасываем время для корректного сравнения
+    today.setHours(0, 0, 0, 0);
     
     let filteredTasks = dailyTasks.filter(task => task.goalId === currentGoal.id);
     
     if (period === 'day') {
-      // Фильтруем задачи на сегодняшний день
       filteredTasks = filteredTasks.filter(task => {
         const taskDate = new Date(task.date);
         taskDate.setHours(0, 0, 0, 0);
         return taskDate.getTime() === today.getTime();
       });
     } else if (period === 'week') {
-      // Начало недели (понедельник)
       const weekStart = new Date(today);
       const dayOfWeek = today.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Если воскресенье (0), то 6 дней назад был понедельник
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       weekStart.setDate(today.getDate() - daysToMonday);
       
-      // Конец недели (воскресенье)
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
@@ -406,9 +389,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
         return taskDate >= weekStart && taskDate <= weekEnd;
       });
     } else if (period === 'month') {
-      // Начало месяца
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      // Конец месяца
       const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       monthEnd.setHours(23, 59, 59, 999);
       
@@ -436,12 +417,13 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   };
 
   const resetGoal = async () => {
+    if (!user?.id) return;
     setCurrentGoal(null);
     setDailyTasks([]);
     await AsyncStorage.removeItem(STORAGE_KEYS.GOALS);
     await AsyncStorage.removeItem(STORAGE_KEYS.TASKS);
-    queryClient.invalidateQueries({ queryKey: ['goals'] });
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['tasks', user?.id] });
     updateProfile({ currentGoalId: undefined });
   };
 
@@ -530,4 +512,3 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     getPomodoroStats,
   };
 });
-

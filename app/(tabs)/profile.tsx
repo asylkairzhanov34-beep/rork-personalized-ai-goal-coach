@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { User, Settings, Bell, Target, ChevronRight, Info, LogOut, MessageCircle, RotateCcw, Sparkles } from 'lucide-react-native';
+import { User, Settings, Bell, Target, ChevronRight, Info, LogOut, MessageCircle, RotateCcw, Sparkles, Edit3, X } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
 
@@ -16,8 +16,10 @@ import { useSubscription } from '@/hooks/use-subscription-store';
 export default function ProfileScreen() {
   const store = useGoalStore();
   const { user, logout } = useAuth();
-  const { profile: setupProfile } = useFirstTimeSetup();
+  const { profile: setupProfile, updateProfile: updateSetupProfile } = useFirstTimeSetup();
   const { isPremium, status } = useSubscription();
+  const [isEditingNickname, setIsEditingNickname] = useState(false);
+  const [newNickname, setNewNickname] = useState('');
 
   
   if (!store || !store.isReady) {
@@ -124,6 +126,26 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleEditNickname = () => {
+    setNewNickname(setupProfile?.nickname || user?.name || '');
+    setIsEditingNickname(true);
+  };
+
+  const handleSaveNickname = async () => {
+    if (!newNickname.trim()) {
+      Alert.alert('Ошибка', 'Никнейм не может быть пустым');
+      return;
+    }
+
+    try {
+      await updateSetupProfile({ nickname: newNickname.trim() });
+      setIsEditingNickname(false);
+      Alert.alert('Успешно', 'Никнейм обновлён');
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось обновить никнейм');
+    }
+  };
+
   return (
     <GradientBackground>
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -137,7 +159,16 @@ export default function ProfileScreen() {
               <View style={styles.avatar}>
                 <User size={40} color={theme.colors.primary} />
               </View>
-              <Text style={styles.name}>{setupProfile?.nickname || user?.name || user?.email || profile.name}</Text>
+              <View style={styles.nameContainer}>
+                <Text style={styles.name}>{setupProfile?.nickname || user?.name || user?.email || profile.name}</Text>
+                <TouchableOpacity 
+                  style={styles.editButton}
+                  onPress={handleEditNickname}
+                  activeOpacity={0.7}
+                >
+                  <Edit3 size={18} color={theme.colors.primary} />
+                </TouchableOpacity>
+              </View>
               <Text style={styles.memberSince}>
                 Участник с {new Date(profile.joinedAt).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
               </Text>
@@ -210,6 +241,49 @@ export default function ProfileScreen() {
             <ChevronRight size={20} color={theme.colors.textLight} />
           </TouchableOpacity>
         </ScrollView>
+
+        <Modal
+          visible={isEditingNickname}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsEditingNickname(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Изменить никнейм</Text>
+                <TouchableOpacity onPress={() => setIsEditingNickname(false)}>
+                  <X size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              <TextInput
+                style={styles.nicknameInput}
+                value={newNickname}
+                onChangeText={setNewNickname}
+                placeholder="Введите никнейм"
+                placeholderTextColor={theme.colors.textLight}
+                autoFocus
+                maxLength={30}
+              />
+              
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setIsEditingNickname(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Отмена</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleSaveNickname}
+                >
+                  <Text style={styles.saveButtonText}>Сохранить</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </GradientBackground>
   );
@@ -242,11 +316,21 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     ...theme.shadows.gold,
   },
+  nameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+  },
   name: {
     fontSize: theme.fontSize.xxl,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
+  },
+  editButton: {
+    padding: theme.spacing.xs,
+    backgroundColor: theme.colors.primary + '20',
+    borderRadius: theme.borderRadius.md,
   },
   memberSince: {
     fontSize: theme.fontSize.sm,
@@ -363,5 +447,71 @@ const styles = StyleSheet.create({
   },
   premiumMenuTitle: {
     color: '#FFD700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.shadows.large,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  modalTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+  },
+  nicknameInput: {
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: theme.spacing.lg,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  modalButton: {
+    flex: 1,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  cancelButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
+  },
+  saveButton: {
+    backgroundColor: theme.colors.primary,
+  },
+  saveButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.background,
   },
 });

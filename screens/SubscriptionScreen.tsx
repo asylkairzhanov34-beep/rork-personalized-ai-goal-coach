@@ -8,9 +8,10 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Check, Sparkles, Info } from 'lucide-react-native';
+import { X, Check, Sparkles, Info, Settings } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSubscription } from '@/hooks/use-subscription-store';
@@ -68,6 +69,39 @@ export default function SubscriptionScreen() {
     }
   };
 
+  const handleManageSubscription = () => {
+    if (Platform.OS === 'ios') {
+      Alert.alert(
+        'Управление подпиской',
+        'Для управления подпиской перейдите в настройки iPhone',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          { 
+            text: 'Открыть настройки', 
+            onPress: () => Linking.openURL('https://apps.apple.com/account/subscriptions')
+          }
+        ]
+      );
+    } else if (Platform.OS === 'android') {
+      Alert.alert(
+        'Управление подпиской',
+        'Для управления подпиской перейдите в Google Play',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          { 
+            text: 'Открыть Google Play', 
+            onPress: () => Linking.openURL('https://play.google.com/store/account/subscriptions')
+          }
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Управление подпиской',
+        'В веб-версии это демо-режим. Используйте мобильное приложение для реальных подписок.'
+      );
+    }
+  };
+
   const features = [
     'Безграничный доступ к ИИ-помощнику',
     'Детальные планы задач с упражнениями',
@@ -97,6 +131,15 @@ export default function SubscriptionScreen() {
             <Text style={styles.premiumSubtitle}>
               Спасибо за поддержку приложения
             </Text>
+            
+            <TouchableOpacity
+              style={styles.manageButton}
+              onPress={handleManageSubscription}
+              activeOpacity={0.7}
+            >
+              <Settings size={20} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.manageButtonText}>Управление подпиской</Text>
+            </TouchableOpacity>
           </View>
         </LinearGradient>
       </SafeAreaView>
@@ -209,8 +252,15 @@ export default function SubscriptionScreen() {
             )}
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.manageSubscriptionButton}
+            onPress={handleManageSubscription}
+          >
+            <Text style={styles.manageSubscriptionText}>Управление подпиской</Text>
+          </TouchableOpacity>
+
           <Text style={styles.termsText}>
-            Подписка автоматически продлевается, если не отменена за 24 часа до окончания периода.
+            Подписка автоматически продлевается, если не отменена за 24 часа до окончания периода. Для отмены используйте "Управление подпиской".
           </Text>
         </ScrollView>
       </LinearGradient>
@@ -397,5 +447,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
+    marginBottom: 32,
+  },
+  manageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  manageButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#fff',
+  },
+  manageSubscriptionButton: {
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  manageSubscriptionText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textDecorationLine: 'underline',
   },
 });

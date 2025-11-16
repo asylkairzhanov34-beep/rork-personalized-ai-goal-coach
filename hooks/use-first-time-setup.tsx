@@ -2,15 +2,19 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { FirstTimeProfile, FirstTimeSetupState } from '@/types/first-time-setup';
 import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
+import { useAuth } from '@/hooks/use-auth-store';
 
-const FIRST_TIME_SETUP_KEY = 'first_time_setup';
+const getFirstTimeSetupKey = (userId: string) => `first_time_setup_${userId}`;
 
 export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() => {
+  const { user } = useAuth();
   const [state, setState] = useState<FirstTimeSetupState>({
     profile: null,
     currentStep: 0,
     isLoading: true,
   });
+
+  const FIRST_TIME_SETUP_KEY = getFirstTimeSetupKey(user?.id || 'default');
 
   const loadProfile = useCallback(async () => {
     try {

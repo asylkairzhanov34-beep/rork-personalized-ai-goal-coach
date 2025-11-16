@@ -8,10 +8,14 @@ import { GradientBackground } from '@/components/GradientBackground';
 import { Button } from '@/components/Button';
 import { ProgressRing } from '@/components/ProgressRing';
 import { useGoalStore } from '@/hooks/use-goal-store';
+import { useAuth } from '@/hooks/use-auth-store';
+import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
 
 
 export default function TodayScreen() {
   const store = useGoalStore();
+  const { user } = useAuth();
+  const { profile: setupProfile } = useFirstTimeSetup();
   const [refreshing, setRefreshing] = useState(false);
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(() => 
     Math.floor(Math.random() * getQuotes().length)
@@ -20,6 +24,7 @@ export default function TodayScreen() {
 
   // Use real data from store
   const profile = store?.profile || { name: 'User', currentStreak: 0 };
+  const displayName = setupProfile?.nickname || user?.name || profile?.name || 'User';
   const currentGoal = store?.currentGoal;
   const todayTasks = store?.getTodayTasks() || [];
   // Используем прогресс за сегодня
@@ -91,7 +96,7 @@ export default function TodayScreen() {
           <View style={styles.header}>
             <View style={styles.headerText}>
               <Text style={styles.greeting}>{greeting},</Text>
-              <Text style={styles.name}>{profile?.name || 'User'}!</Text>
+              <Text style={styles.name}>{displayName}!</Text>
             </View>
             <ProgressRing progress={progress} size={60} strokeWidth={2} showPercentage={false} />
           </View>
