@@ -1,9 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Platform, Alert } from 'react-native';
-import Purchases, { PurchasesPackage, CustomerInfo as RCCustomerInfo } from 'react-native-purchases';
+import type { PurchasesPackage, CustomerInfo as RCCustomerInfo } from 'react-native-purchases';
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CustomerInfo, SubscriptionPackage, SubscriptionStatus } from '@/types/subscription';
+
+type PurchasesModule = typeof import('react-native-purchases');
+
+type StoredSubscription = {
+  packageId: string;
+  identifier: string;
+  purchaseDate: string;
+  expiryDate?: string;
+};
 
 const REVENUECAT_API_KEY = {
   ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || '',
@@ -38,6 +47,40 @@ const WEB_MOCK_PACKAGES: SubscriptionPackage[] = [
 
 const SUBSCRIPTION_STORAGE_KEY = '@subscription_status';
 
+const YEAR_IDENTIFIERS = ['year', 'yearly', 'annual', '$rc_annual'];
+
+const isYearlyIdentifier = (identifier: string) =>
+  YEAR_IDENTIFIERS.some(token => identifier.toLowerCase().includes(token));
+
+const buildCustomerInfoFromMock = (packageId: string): CustomerInfo => ({
+  activeSubscriptions: [packageId],
+  allPurchasedProductIdentifiers: [packageId],
+  entitlements: {
+    active: {
+      premium: {
+        identifier: 'premium',
+        productIdentifier: packageId,
+        isActive: true,
+      },
+    },
+  },
+});
+
+const normalizePackageIdentifier = (
+  identifier: string,
+  packages: SubscriptionPackage[],
+): { packageId: string; identifier: string } => {
+  const found = packages.find(
+    pkg => pkg.identifier === identifier || pkg.product.identifier === identifier,
+  );
+
+  if (found) {
+    return { packageId: found.product.identifier, identifier: found.identifier };
+  }
+
+  return { packageId: identifier, identifier };
+};
+
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [status, setStatus] = useState<SubscriptionStatus>('loading');
@@ -45,150 +88,12 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [purchasesModule, setPurchasesModule] = useState<PurchasesModule | null>(null);
+  const [isMockMode, setIsMockMode] = useState(false);
 
-  useEffect(() => {
-    const initializePurchases = async () => {
-      if (Platform.OS === 'web') {
-        console.log('Web platform: using mock subscription system');
-        
-        try {
-          const stored = await AsyncStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
-          if (stored) {
-            const data = JSON.parse(stored);
-            
-            if (data.expiryDate && new Date(data.expiryDate) > new Date()) {
-              setStatus('premium');
-              setCustomerInfo({
-                activeSubscriptions: [data.packageId],
-                allPurchasedProductIdentifiers: [data.packageId],
-                entitlements: {
-                  active: {
-                    premium: {
-                      identifier: 'premium',
-                      productIdentifier: data.packageId,
-                      isActive: true,
-                    },
-                  },
-                },
-              });
-            } else {
-              setStatus('free');
-              await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
-            }
-          } else {
-            setStatus('free');
-          }
-        } catch (error) {
-          console.error('Failed to load web subscription status:', error);
-          setStatus('free');
-        }
-        
-        setPackages(WEB_MOCK_PACKAGES);
-        setIsInitialized(true);
-        return;
-      }
-
-      try {
-        console.log('Initializing RevenueCat...');
-        
-        let apiKey = Platform.OS === 'ios' 
-          ? REVENUECAT_API_KEY.ios 
-          : REVENUECAT_API_KEY.android;
-
-        if (!apiKey) {
-          console.warn('No RevenueCat API key found. Using mock mode.');
-          
-          try {
-            const stored = await AsyncStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
-            if (stored) {
-              const data = JSON.parse(stored);
-              
-              if (data.expiryDate && new Date(data.expiryDate) > new Date()) {
-                setStatus('premium');
-                setCustomerInfo({
-                  activeSubscriptions: [data.packageId],
-                  allPurchasedProductIdentifiers: [data.packageId],
-                  entitlements: {
-                    active: {
-                      premium: {
-                        identifier: 'premium',
-                        productIdentifier: data.packageId,
-                        isActive: true,
-                      },
-                    },
-                  },
-                });
-              } else {
-                setStatus('free');
-                await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
-              }
-            } else {
-              setStatus('free');
-            }
-          } catch (error) {
-            console.error('Failed to load mock subscription status:', error);
-            setStatus('free');
-          }
-          
-          setPackages(WEB_MOCK_PACKAGES);
-          setIsInitialized(true);
-          return;
-        }
-
-        await Purchases.configure({ apiKey });
-        console.log('RevenueCat configured successfully');
-
-        const info = await Purchases.getCustomerInfo();
-        updateCustomerInfo(info);
-
-        await loadOfferings();
-
-        setIsInitialized(true);
-      } catch (error) {
-        console.error('Failed to initialize RevenueCat:', error);
-        
-        try {
-          const stored = await AsyncStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
-          if (stored) {
-            const data = JSON.parse(stored);
-            
-            if (data.expiryDate && new Date(data.expiryDate) > new Date()) {
-              setStatus('premium');
-              setCustomerInfo({
-                activeSubscriptions: [data.packageId],
-                allPurchasedProductIdentifiers: [data.packageId],
-                entitlements: {
-                  active: {
-                    premium: {
-                      identifier: 'premium',
-                      productIdentifier: data.packageId,
-                      isActive: true,
-                    },
-                  },
-                },
-              });
-            } else {
-              setStatus('free');
-            }
-          } else {
-            setStatus('free');
-          }
-        } catch (storageError) {
-          console.error('Failed to load backup subscription status:', storageError);
-          setStatus('free');
-        }
-        
-        setPackages(WEB_MOCK_PACKAGES);
-        setIsInitialized(true);
-      }
-    };
-
-    initializePurchases();
-  }, []);
-
-  const updateCustomerInfo = (info: RCCustomerInfo) => {
+  const updateCustomerInfo = useCallback((info: RCCustomerInfo) => {
     const hasActiveSubscription = Object.keys(info.entitlements.active).length > 0;
-    
+
     setCustomerInfo({
       activeSubscriptions: info.activeSubscriptions,
       allPurchasedProductIdentifiers: info.allPurchasedProductIdentifiers,
@@ -205,182 +110,229 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     });
 
     setStatus(hasActiveSubscription ? 'premium' : 'free');
-  };
+  }, []);
 
-  const loadOfferings = async () => {
+  const loadMockStatus = useCallback(async () => {
     try {
-      const offerings = await Purchases.getOfferings();
-      
-      if (offerings.current && offerings.current.availablePackages.length > 0) {
-        const formattedPackages: SubscriptionPackage[] = offerings.current.availablePackages.map(
-          (pkg: PurchasesPackage) => ({
-            identifier: pkg.identifier,
-            product: {
-              identifier: pkg.product.identifier,
-              title: pkg.product.title,
-              description: pkg.product.description,
-              price: pkg.product.price,
-              priceString: pkg.product.priceString,
-              currencyCode: pkg.product.currencyCode,
-            },
-          })
+      const stored = await AsyncStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
+      if (!stored) {
+        setStatus('free');
+        setCustomerInfo(null);
+        return false;
+      }
+
+      const parsed = JSON.parse(stored) as StoredSubscription;
+      if (parsed.expiryDate && new Date(parsed.expiryDate) > new Date()) {
+        setStatus('premium');
+        setCustomerInfo(buildCustomerInfoFromMock(parsed.packageId));
+        return true;
+      }
+
+      await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
+      setStatus('free');
+      setCustomerInfo(null);
+      return false;
+    } catch (error) {
+      console.error('Failed to load subscription status from storage:', error);
+      setStatus('free');
+      setCustomerInfo(null);
+      return false;
+    }
+  }, []);
+
+  const loadOfferings = useCallback(
+    async (moduleOverride?: PurchasesModule | null) => {
+      const module = moduleOverride ?? purchasesModule;
+
+      if (!module) {
+        console.log('Purchases module not available, skipping offerings load');
+        return;
+      }
+
+      try {
+        const offerings = await module.getOfferings();
+
+        if (offerings.current && offerings.current.availablePackages.length > 0) {
+          const formattedPackages: SubscriptionPackage[] = offerings.current.availablePackages.map(
+            (pkg: PurchasesPackage) => ({
+              identifier: pkg.identifier,
+              product: {
+                identifier: pkg.product.identifier,
+                title: pkg.product.title,
+                description: pkg.product.description,
+                price: pkg.product.price,
+                priceString: pkg.product.priceString,
+                currencyCode: pkg.product.currencyCode,
+              },
+            }),
+          );
+
+          setPackages(formattedPackages);
+          console.log(`Loaded ${formattedPackages.length} subscription packages from RevenueCat`);
+        } else {
+          console.log('RevenueCat returned no available offerings');
+        }
+      } catch (error) {
+        console.error('Failed to load RevenueCat offerings:', error);
+      }
+    },
+    [purchasesModule],
+  );
+
+  const activateMockMode = useCallback(async () => {
+    setIsMockMode(true);
+    setPackages(WEB_MOCK_PACKAGES);
+    await loadMockStatus();
+  }, [loadMockStatus]);
+
+  useEffect(() => {
+    const initializePurchases = async () => {
+      if (Platform.OS === 'web') {
+        console.log('SubscriptionProvider: running in web mode, using mock subscriptions');
+        await activateMockMode();
+        setIsInitialized(true);
+        return;
+      }
+
+      let module: PurchasesModule | null = null;
+
+      try {
+        module = await import('react-native-purchases');
+        setPurchasesModule(module);
+      } catch (error) {
+        console.error('SubscriptionProvider: RevenueCat native module unavailable:', error);
+      }
+
+      if (!module) {
+        console.warn('SubscriptionProvider: falling back to mock mode (module missing)');
+        await activateMockMode();
+        setIsInitialized(true);
+        return;
+      }
+
+      const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY.ios : REVENUECAT_API_KEY.android;
+
+      if (!apiKey) {
+        console.warn('SubscriptionProvider: RevenueCat API key not provided, using mock mode');
+        await activateMockMode();
+        setIsInitialized(true);
+        return;
+      }
+
+      try {
+        await module.configure({ apiKey });
+        console.log('SubscriptionProvider: RevenueCat configured successfully');
+        const info = await module.getCustomerInfo();
+        updateCustomerInfo(info);
+        setIsMockMode(false);
+        await loadOfferings(module);
+      } catch (error) {
+        console.error('SubscriptionProvider: failed to initialize RevenueCat, using mock mode', error);
+        await activateMockMode();
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializePurchases();
+  }, [activateMockMode, loadOfferings, updateCustomerInfo]);
+
+  const persistMockSubscription = useCallback(async (data: StoredSubscription) => {
+    try {
+      await AsyncStorage.setItem(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(data));
+    } catch (error) {
+      console.error('Failed to persist mock subscription state:', error);
+    }
+  }, []);
+
+  const purchasePackage = useCallback(
+    async (packageIdentifier: string): Promise<boolean> => {
+      if (isMockMode || !purchasesModule) {
+        console.log('SubscriptionProvider: performing mock purchase', packageIdentifier);
+        setIsPurchasing(true);
+
+        try {
+          const normalized = normalizePackageIdentifier(packageIdentifier, packages);
+          const expiryDate = new Date();
+
+          if (isYearlyIdentifier(normalized.identifier) || isYearlyIdentifier(normalized.packageId)) {
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+          } else {
+            expiryDate.setMonth(expiryDate.getMonth() + 1);
+          }
+
+          const subscriptionData: StoredSubscription = {
+            packageId: normalized.packageId,
+            identifier: normalized.identifier,
+            purchaseDate: new Date().toISOString(),
+            expiryDate: expiryDate.toISOString(),
+          };
+
+          await persistMockSubscription(subscriptionData);
+          setStatus('premium');
+          setCustomerInfo(buildCustomerInfoFromMock(normalized.packageId));
+          console.log('SubscriptionProvider: mock purchase successful');
+          return true;
+        } catch (error) {
+          console.error('SubscriptionProvider: mock purchase failed', error);
+          Alert.alert('Ошибка', 'Не удалось оформить подписку. Попробуйте снова.');
+          return false;
+        } finally {
+          setIsPurchasing(false);
+        }
+      }
+
+      if (!isInitialized) {
+        console.log('SubscriptionProvider: RevenueCat not initialized yet');
+        Alert.alert('Ошибка', 'Система оплаты еще не готова. Попробуйте позже.');
+        return false;
+      }
+
+      setIsPurchasing(true);
+      const module = purchasesModule;
+
+      try {
+        const offerings = await module.getOfferings();
+        const availablePackage = offerings.current?.availablePackages.find(
+          pkg => pkg.identifier === packageIdentifier,
         );
 
-        setPackages(formattedPackages);
-        console.log(`Loaded ${formattedPackages.length} subscription packages`);
-      } else {
-        console.log('No offerings available');
-      }
-    } catch (error) {
-      console.error('Failed to load offerings:', error);
-    }
-  };
-
-  const purchasePackage = async (packageIdentifier: string): Promise<boolean> => {
-    const isMockMode = Platform.OS === 'web' || !REVENUECAT_API_KEY.ios || packages === WEB_MOCK_PACKAGES;
-    
-    if (isMockMode) {
-      console.log('Mock purchase:', packageIdentifier);
-      
-      setIsPurchasing(true);
-      
-      try {
-        const pkg = packages.find(p => p.identifier === packageIdentifier);
-        
-        if (!pkg) {
-          Alert.alert('Ошибка', 'Пакет не найден');
+        if (!availablePackage) {
+          console.error('SubscriptionProvider: package not found in offerings');
+          Alert.alert('Ошибка', 'Выбранный пакет подписки недоступен.');
           return false;
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        let expiryDate = new Date();
-        if (packageIdentifier === 'monthly') {
-          expiryDate.setMonth(expiryDate.getMonth() + 1);
-        } else if (packageIdentifier === 'yearly') {
-          expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-        }
-        
-        const subscriptionData = {
-          packageId: pkg.product.identifier,
-          identifier: packageIdentifier,
-          purchaseDate: new Date().toISOString(),
-          expiryDate: expiryDate.toISOString(),
-        };
-        
-        await AsyncStorage.setItem(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(subscriptionData));
-        
-        setStatus('premium');
-        setCustomerInfo({
-          activeSubscriptions: [pkg.product.identifier],
-          allPurchasedProductIdentifiers: [pkg.product.identifier],
-          entitlements: {
-            active: {
-              premium: {
-                identifier: 'premium',
-                productIdentifier: pkg.product.identifier,
-                isActive: true,
-              },
-            },
-          },
-        });
-        
-        console.log('Mock purchase successful');
+
+        console.log('SubscriptionProvider: purchasing package', packageIdentifier);
+        const { customerInfo: info } = await module.purchasePackage(availablePackage);
+        updateCustomerInfo(info);
+        console.log('SubscriptionProvider: purchase completed successfully');
         return true;
-      } catch (error) {
-        console.error('Mock purchase failed:', error);
-        Alert.alert('Ошибка', 'Не удалось оформить подписку');
+      } catch (error: any) {
+        if (error?.userCancelled) {
+          console.log('SubscriptionProvider: purchase cancelled by user');
+        } else {
+          console.error('SubscriptionProvider: purchase failed', error);
+          Alert.alert('Ошибка', 'Не удалось оформить подписку. Попробуйте снова.');
+        }
         return false;
       } finally {
         setIsPurchasing(false);
       }
-    }
+    },
+    [isInitialized, isMockMode, packages, persistMockSubscription, purchasesModule, updateCustomerInfo],
+  );
 
-    if (!isInitialized) {
-      console.log('RevenueCat not initialized yet');
-      Alert.alert('Ошибка', 'Система оплаты еще не готова. Попробуйте позже.');
-      return false;
-    }
-
-    setIsPurchasing(true);
-
-    try {
-      const pkg = packages.find(p => p.identifier === packageIdentifier);
-      
-      if (!pkg) {
-        console.error('Package not found:', packageIdentifier);
-        return false;
-      }
-
-      const offerings = await Purchases.getOfferings();
-      const purchasePackage = offerings.current?.availablePackages.find(
-        p => p.identifier === packageIdentifier
-      );
-
-      if (!purchasePackage) {
-        console.error('Purchase package not found');
-        return false;
-      }
-
-      console.log('Starting purchase for package:', packageIdentifier);
-      const { customerInfo: info } = await Purchases.purchasePackage(purchasePackage);
-      
-      updateCustomerInfo(info);
-      console.log('Purchase successful');
-      
-      return true;
-    } catch (error: any) {
-      if (error.userCancelled) {
-        console.log('Purchase cancelled by user');
-      } else {
-        console.error('Purchase failed:', error);
-      }
-      return false;
-    } finally {
-      setIsPurchasing(false);
-    }
-  };
-
-  const restorePurchases = async (): Promise<boolean> => {
-    const isMockMode = Platform.OS === 'web' || !REVENUECAT_API_KEY.ios || packages === WEB_MOCK_PACKAGES;
-    
-    if (isMockMode) {
-      console.log('Mock restore purchases');
-      
+  const restorePurchases = useCallback(async (): Promise<boolean> => {
+    if (isMockMode || !purchasesModule) {
+      console.log('SubscriptionProvider: restoring purchases in mock mode');
       setIsRestoring(true);
-      
+
       try {
-        const stored = await AsyncStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
-        
-        if (!stored) {
-          return false;
-        }
-        
-        const data = JSON.parse(stored);
-        
-        if (data.expiryDate && new Date(data.expiryDate) > new Date()) {
-          setStatus('premium');
-          setCustomerInfo({
-            activeSubscriptions: [data.packageId],
-            allPurchasedProductIdentifiers: [data.packageId],
-            entitlements: {
-              active: {
-                premium: {
-                  identifier: 'premium',
-                  productIdentifier: data.packageId,
-                  isActive: true,
-                },
-              },
-            },
-          });
-          return true;
-        } else {
-          await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
-          setStatus('free');
-          return false;
-        }
+        const restored = await loadMockStatus();
+        return restored;
       } catch (error) {
-        console.error('Mock restore failed:', error);
+        console.error('SubscriptionProvider: failed to restore mock purchases', error);
         return false;
       } finally {
         setIsRestoring(false);
@@ -388,58 +340,60 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     }
 
     if (!isInitialized) {
-      console.log('RevenueCat not initialized yet');
+      console.log('SubscriptionProvider: attempted restore before initialization');
       return false;
     }
 
     setIsRestoring(true);
 
     try {
-      console.log('Restoring purchases...');
-      const info = await Purchases.restorePurchases();
-      
+      const info = await purchasesModule.restorePurchases();
       updateCustomerInfo(info);
-      console.log('Purchases restored successfully');
-      
+      console.log('SubscriptionProvider: purchases restored successfully');
       return Object.keys(info.entitlements.active).length > 0;
     } catch (error) {
-      console.error('Failed to restore purchases:', error);
+      console.error('SubscriptionProvider: failed to restore purchases', error);
+      Alert.alert('Ошибка', 'Не удалось восстановить покупки. Попробуйте позже.');
       return false;
     } finally {
       setIsRestoring(false);
     }
-  };
+  }, [isInitialized, isMockMode, loadMockStatus, purchasesModule, updateCustomerInfo]);
 
   const checkSubscriptionStatus = useCallback(async () => {
-    const isMockMode = Platform.OS === 'web' || !REVENUECAT_API_KEY.ios || packages === WEB_MOCK_PACKAGES;
-    
-    if (isMockMode) return;
+    if (isMockMode || !purchasesModule) {
+      await loadMockStatus();
+      return;
+    }
 
     if (!isInitialized) {
-      console.log('RevenueCat not initialized yet');
+      console.log('SubscriptionProvider: skipping status check before initialization');
       return;
     }
 
     try {
-      const info = await Purchases.getCustomerInfo();
+      const info = await purchasesModule.getCustomerInfo();
       updateCustomerInfo(info);
     } catch (error) {
-      console.error('Failed to check subscription status:', error);
+      console.error('SubscriptionProvider: failed to refresh customer info', error);
     }
-  }, [isInitialized, packages]);
+  }, [isInitialized, isMockMode, loadMockStatus, purchasesModule, updateCustomerInfo]);
 
-  const isPremium = status === 'premium';
+  const value = useMemo(
+    () => ({
+      isInitialized,
+      status,
+      packages,
+      customerInfo,
+      isPurchasing,
+      isRestoring,
+      isPremium: status === 'premium',
+      purchasePackage,
+      restorePurchases,
+      checkSubscriptionStatus,
+    }),
+    [checkSubscriptionStatus, customerInfo, isInitialized, isPurchasing, isRestoring, packages, purchasePackage, restorePurchases, status],
+  );
 
-  return {
-    isInitialized,
-    status,
-    packages,
-    customerInfo,
-    isPurchasing,
-    isRestoring,
-    isPremium,
-    purchasePackage,
-    restorePurchases,
-    checkSubscriptionStatus,
-  };
+  return value;
 });
