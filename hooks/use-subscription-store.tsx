@@ -187,50 +187,64 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   useEffect(() => {
     const initializePurchases = async () => {
-      if (Platform.OS === 'web') {
-        console.log('SubscriptionProvider: running in web mode, using mock subscriptions');
-        await activateMockMode();
-        setIsInitialized(true);
-        return;
-      }
-
-      let module: PurchasesModule | null = null;
-
       try {
-        module = await import('react-native-purchases');
-        setPurchasesModule(module);
+        console.log('[SubscriptionProvider] Starting initialization...');
+        
+        if (Platform.OS === 'web') {
+          console.log('[SubscriptionProvider] Web mode, using mock');
+          await activateMockMode();
+          setIsInitialized(true);
+          return;
+        }
+
+        let module: PurchasesModule | null = null;
+
+        try {
+          module = await import('react-native-purchases');
+          setPurchasesModule(module);
+        } catch (error) {
+          console.warn('[SubscriptionProvider] RevenueCat not available:', error);
+        }
+
+        if (!module) {
+          console.warn('[SubscriptionProvider] Using mock mode (module missing)');
+          await activateMockMode();
+          setIsInitialized(true);
+          return;
+        }
+
+        const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY.ios : REVENUECAT_API_KEY.android;
+
+        if (!apiKey) {
+          console.warn('[SubscriptionProvider] No API key, using mock mode');
+          await activateMockMode();
+          setIsInitialized(true);
+          return;
+        }
+
+        try {
+          await module.configure({ apiKey });
+          console.log('[SubscriptionProvider] RevenueCat configured');
+          const info = await module.getCustomerInfo();
+          updateCustomerInfo(info);
+          setIsMockMode(false);
+          await loadOfferings(module);
+        } catch (error) {
+          console.warn('[SubscriptionProvider] Init failed, using mock:', error);
+          await activateMockMode();
+        }
       } catch (error) {
-        console.error('SubscriptionProvider: RevenueCat native module unavailable:', error);
-      }
-
-      if (!module) {
-        console.warn('SubscriptionProvider: falling back to mock mode (module missing)');
-        await activateMockMode();
-        setIsInitialized(true);
-        return;
-      }
-
-      const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY.ios : REVENUECAT_API_KEY.android;
-
-      if (!apiKey) {
-        console.warn('SubscriptionProvider: RevenueCat API key not provided, using mock mode');
-        await activateMockMode();
-        setIsInitialized(true);
-        return;
-      }
-
-      try {
-        await module.configure({ apiKey });
-        console.log('SubscriptionProvider: RevenueCat configured successfully');
-        const info = await module.getCustomerInfo();
-        updateCustomerInfo(info);
-        setIsMockMode(false);
-        await loadOfferings(module);
-      } catch (error) {
-        console.error('SubscriptionProvider: failed to initialize RevenueCat, using mock mode', error);
-        await activateMockMode();
+        console.error('[SubscriptionProvider] Critical error:', error);
+        try {
+          await activateMockMode();
+        } catch (mockError) {
+          console.error('[SubscriptionProvider] Mock mode failed:', mockError);
+          setStatus('free');
+          setPackages(WEB_MOCK_PACKAGES);
+        }
       } finally {
         setIsInitialized(true);
+        console.log('[SubscriptionProvider] Initialization complete');
       }
     };
 

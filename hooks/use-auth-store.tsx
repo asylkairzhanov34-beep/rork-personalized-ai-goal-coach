@@ -22,14 +22,16 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadStoredUser = useCallback(async () => {
     try {
+      console.log('[AuthProvider] Loading stored user...');
       const user = await safeStorageGet<User | null>(AUTH_STORAGE_KEY, null);
+      console.log('[AuthProvider] User loaded:', user ? 'Yes' : 'No');
       setAuthState({
         user,
         isLoading: false,
         isAuthenticated: !!user,
       });
     } catch (error) {
-      console.error('Error loading stored user:', error);
+      console.error('[AuthProvider] Error loading user:', error);
       setAuthState({
         user: null,
         isLoading: false,
@@ -241,9 +243,21 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     }
   }, []);
 
-  // Load user from storage on app start
   useEffect(() => {
-    loadStoredUser();
+    const init = async () => {
+      try {
+        await loadStoredUser();
+      } catch (error) {
+        console.error('[AuthProvider] Init error:', error);
+        setAuthState({
+          user: null,
+          isLoading: false,
+          isAuthenticated: false,
+        });
+      }
+    };
+    
+    init();
   }, [loadStoredUser]);
 
   return useMemo(() => ({

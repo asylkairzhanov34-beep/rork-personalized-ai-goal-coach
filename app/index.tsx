@@ -13,17 +13,15 @@ export default function Index() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        console.log('Index: Initializing app...');
+        console.log('[Index] Initializing...');
         
-        // Small delay to ensure providers are ready
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
         
         setIsReady(true);
-        console.log('Index: App ready');
+        console.log('[Index] Ready');
       } catch (err) {
-        console.error('Index: Initialization error:', err);
+        console.error('[Index] Init error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
-        // Still set ready to true to allow navigation
         setIsReady(true);
       }
     };
@@ -32,7 +30,7 @@ export default function Index() {
   }, []);
 
   if (error) {
-    console.warn('Index: Error occurred but continuing:', error);
+    console.warn('[Index] Error occurred but continuing:', error);
   }
 
   if (!isReady || authLoading || setupLoading) {
@@ -44,19 +42,19 @@ export default function Index() {
     );
   }
 
-  // First check if user is authenticated
+  console.log('[Index] Auth status:', { isAuthenticated, hasProfile: !!profile, isCompleted: profile?.isCompleted });
+
   if (!isAuthenticated) {
-    console.log('Index: User not authenticated, redirecting to auth...');
+    console.log('[Index] -> /auth');
     return <Redirect href="/auth" />;
   }
 
-  // Check if first-time setup is completed
   if (!profile || !profile.isCompleted) {
-    console.log('Index: First-time setup not completed, redirecting...');
+    console.log('[Index] -> /first-time-setup');
     return <Redirect href="/first-time-setup" />;
   }
 
-  // Navigate to home if setup is complete
+  console.log('[Index] -> /home');
   return <Redirect href="/(tabs)/home" />;
 }
 

@@ -14,14 +14,16 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
 
   const loadProfile = useCallback(async () => {
     try {
+      console.log('[FirstTimeSetupProvider] Loading profile...');
       const stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
+      console.log('[FirstTimeSetupProvider] Profile loaded:', stored ? 'Yes' : 'No');
       setState({
         profile: stored,
         currentStep: 0,
         isLoading: false,
       });
     } catch (error) {
-      console.error('Error loading first-time setup profile:', error);
+      console.error('[FirstTimeSetupProvider] Error loading profile:', error);
       setState({
         profile: null,
         currentStep: 0,
@@ -76,7 +78,20 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
   }, []);
 
   useEffect(() => {
-    loadProfile();
+    const init = async () => {
+      try {
+        await loadProfile();
+      } catch (error) {
+        console.error('[FirstTimeSetupProvider] Init error:', error);
+        setState({
+          profile: null,
+          currentStep: 0,
+          isLoading: false,
+        });
+      }
+    };
+    
+    init();
   }, [loadProfile]);
 
   return useMemo(() => ({

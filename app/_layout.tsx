@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, Component, ReactNode } from "react";
-import { StyleSheet, Text, View, LogBox } from "react-native";
+import React, { useEffect, Component, ReactNode, useState } from "react";
+import { StyleSheet, Text, View, LogBox, ActivityIndicator } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { clearAllStorageIfCorrupted } from '@/utils/storage-helper';
 import { GoalProvider } from '@/hooks/use-goal-store';
@@ -30,66 +30,21 @@ class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.warn('ErrorBoundary caught an error:', error.message);
-    console.warn('Error stack:', error.stack);
-    
-    // Check if it's a storage-related error and clear storage
-    if (error.message?.includes('JSON Parse error') || 
-        error.message?.includes('Unexpected character') ||
-        error.message?.includes('JSON parse error') ||
-        error.message?.includes('Unexpected character: o') ||
-        error.stack?.includes('AsyncStorage') ||
-        error.stack?.includes('storage-helper') ||
-        error.stack?.includes('safeJsonParse') ||
-        error.stack?.includes('safeStorageGet')) {
-      console.log('Storage error detected, clearing storage...');
-      console.log('Error details:', {
-        message: error.message,
-        name: error.name,
-        stack: error.stack?.substring(0, 500)
-      });
-      
-      clearAllStorageIfCorrupted().then(() => {
-        console.log('Storage cleared, resetting error state');
-        this.setState({ hasError: false, error: undefined });
-      }).catch(() => {
-        console.log('Failed to clear storage, but resetting error state anyway');
-        this.setState({ hasError: false, error: undefined });
-      });
-      return;
-    }
-    
-    // Ignore development/inspector errors
-    if (error.stack?.includes('inspector') ||
-        error.stack?.includes('BridgeModule') ||
-        error.message?.includes('createContextHook')) {
-      console.log('Ignoring development error:', error.message);
-      this.setState({ hasError: false, error: undefined });
-      return;
-    }
+    console.error('ErrorBoundary caught an error:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error info:', errorInfo);
   }
 
   render() {
     if (this.state.hasError && this.state.error) {
-      // Don't show error UI for development or storage errors
-      if (this.state.error.message?.includes('JSON Parse error') || 
-          this.state.error.message?.includes('Unexpected character') ||
-          this.state.error.message?.includes('Unexpected character: o') ||
-          this.state.error.stack?.includes('inspector') ||
-          this.state.error.stack?.includes('AsyncStorage') ||
-          this.state.error.stack?.includes('storage-helper') ||
-          this.state.error.stack?.includes('safeJsonParse') ||
-          this.state.error.stack?.includes('safeStorageGet') ||
-          this.state.error.stack?.includes('createContextHook')) {
-        return this.props.children;
-      }
-      
-      // Show error UI for actual app errors
       return (
         <View style={errorStyles.container}>
-          <Text style={errorStyles.title}>Something went wrong</Text>
+          <Text style={errorStyles.title}>Что-то пошло не так</Text>
           <Text style={errorStyles.message}>
-            {this.state.error.message || 'An unexpected error occurred'}
+            Перезапустите приложение
+          </Text>
+          <Text style={errorStyles.errorDetail}>
+            {this.state.error.message}
           </Text>
         </View>
       );
@@ -99,10 +54,15 @@ class ErrorBoundary extends Component<
   }
 }
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(err => {
+  console.error('Failed to prevent auto hide splash:', err);
+});
 
 LogBox.ignoreLogs([
   'source.uri should not be an empty string',
+  'Require cycle',
+  'new NativeEventEmitter',
+  'ViewPropTypes',
 ]);
 
 const queryClient = new QueryClient({
@@ -237,55 +197,72 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const [isReady, setIsReady] = useState(false);
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        console.log('Initializing app...');
+        console.log('[RootLayout] Starting initialization...');
         
-        // Clear any corrupted storage first
-        await clearAllStorageIfCorrupted();
+        await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Hide splash screen
-        await SplashScreen.hideAsync();
-        console.log('App initialized successfully');
+        console.log('[RootLayout] Initialization complete');
+        setIsReady(true);
+        
+        setTimeout(async () => {
+          try {
+            await SplashScreen.hideAsync();
+            console.log('[RootLayout] Splash screen hidden');
+          } catch (error) {
+            console.error('[RootLayout] Failed to hide splash:', error);
+          }
+        }, 300);
       } catch (error) {
-        console.error('Error during app initialization:', error);
+        console.error('[RootLayout] Initialization error:', error);
+        setIsReady(true);
         
         try {
           await SplashScreen.hideAsync();
         } catch (splashError) {
-          console.error('Failed to hide splash screen:', splashError);
+          console.error('[RootLayout] Failed to hide splash on error:', splashError);
         }
       }
     };
     
-    // Initialize immediately
     initializeApp();
   }, []);
 
+  if (!isReady) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFD700" />
+      </View>
+    );
+  }
+
   return (
     <ErrorBoundary>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <SubscriptionProvider>
-            <AuthProvider>
-              <FirstTimeSetupProvider>
-                <GoalProvider>
-                  <TimerProvider>
-                    <ChatProvider>
-                      <ManifestationProvider>
-                        <GestureHandlerRootView style={styles.container}>
+      <GestureHandlerRootView style={styles.container}>
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+          <QueryClientProvider client={queryClient}>
+            <SubscriptionProvider>
+              <AuthProvider>
+                <FirstTimeSetupProvider>
+                  <GoalProvider>
+                    <TimerProvider>
+                      <ChatProvider>
+                        <ManifestationProvider>
                           <RootLayoutNav />
-                        </GestureHandlerRootView>
-                      </ManifestationProvider>
-                    </ChatProvider>
-                  </TimerProvider>
-                </GoalProvider>
-              </FirstTimeSetupProvider>
-            </AuthProvider>
-          </SubscriptionProvider>
-        </QueryClientProvider>
-      </trpc.Provider>
+                        </ManifestationProvider>
+                      </ChatProvider>
+                    </TimerProvider>
+                  </GoalProvider>
+                </FirstTimeSetupProvider>
+              </AuthProvider>
+            </SubscriptionProvider>
+          </QueryClientProvider>
+        </trpc.Provider>
+      </GestureHandlerRootView>
     </ErrorBoundary>
   );
 }
@@ -293,6 +270,12 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
 });
 
@@ -302,14 +285,24 @@ const errorStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#FFFFFF',
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
     marginBottom: 10,
+    color: '#000',
   },
   message: {
     textAlign: 'center',
     color: '#666',
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  errorDetail: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 12,
+    paddingHorizontal: 20,
   },
 });
