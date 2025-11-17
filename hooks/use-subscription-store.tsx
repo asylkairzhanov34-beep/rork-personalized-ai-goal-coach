@@ -15,7 +15,7 @@ type StoredSubscription = {
 };
 
 const REVENUECAT_API_KEY = {
-  ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || '',
+  ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || 'appl_NIzzmGwASbGFsnfAddnshynSnsG',
   android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '',
   web: process.env.EXPO_PUBLIC_REVENUECAT_WEB_KEY || '',
 };
