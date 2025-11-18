@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
-import { Home, Target, Timer, TrendingUp, User } from 'lucide-react-native';
+import { Home, Target, Timer, TrendingUp, User, Calendar } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
@@ -85,6 +85,14 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <TabBarIcon icon={TrendingUp} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="schedule"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabBarIcon icon={Calendar} focused={focused} />
           ),
         }}
       />

@@ -12,6 +12,7 @@ import { ChatProvider } from '@/hooks/use-chat-store';
 import { ManifestationProvider } from '@/hooks/use-manifestation-store';
 import { FirstTimeSetupProvider } from '@/hooks/use-first-time-setup';
 import { SubscriptionProvider } from '@/hooks/use-subscription-store';
+import { ScheduleProvider } from '@/hooks/use-schedule-store';
 import { trpc, trpcClient } from '@/lib/trpc';
 
 // Error Boundary to catch inspector and other development errors
@@ -252,7 +253,9 @@ export default function RootLayout() {
                     <TimerProvider>
                       <ChatProvider>
                         <ManifestationProvider>
-                          <RootLayoutNav />
+                          <ScheduleProvider>
+                            <RootLayoutNav />
+                          </ScheduleProvider>
                         </ManifestationProvider>
                       </ChatProvider>
                     </TimerProvider>
