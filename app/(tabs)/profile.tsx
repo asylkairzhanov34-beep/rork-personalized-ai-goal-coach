@@ -175,24 +175,6 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <View style={styles.statsContainer}>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{profile.totalGoalsCompleted}</Text>
-              <Text style={styles.statLabel}>Цели</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{profile.currentStreak}</Text>
-              <Text style={styles.statLabel}>Серия</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{profile.bestStreak}</Text>
-              <Text style={styles.statLabel}>Лучшая</Text>
-            </View>
-          </View>
-
-
 
           <View style={styles.menu}>
             {menuItems.map((item, index) => {
@@ -336,35 +318,7 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadows.medium,
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text,
-  },
-  statLabel: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.xs,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: theme.colors.border,
-    marginHorizontal: theme.spacing.md,
-  },
+
   menu: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,

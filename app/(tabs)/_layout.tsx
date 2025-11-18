@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   tabBarBackground: {
     position: 'absolute',
     height: 80,
-    backgroundColor: 'rgba(25, 25, 30, 0.85)',
+    backgroundColor: 'rgba(25, 25, 30, 1)',
     borderRadius: 40,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -135,8 +135,6 @@ const styles = StyleSheet.create({
         elevation: 12,
       },
       web: {
-        backdropFilter: 'blur(25px)',
-        WebkitBackdropFilter: 'blur(25px)',
         boxShadow: '0 8px 28px rgba(0, 0, 0, 0.4)',
       },
     }) as any,
