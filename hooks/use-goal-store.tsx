@@ -479,10 +479,10 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     };
   };
 
-  const addTask = (taskData: Omit<DailyTask, 'id' | 'goalId'>) => {
+  const addTask = (taskData: Omit<DailyTask, 'id' | 'goalId' | 'completed'> & { completed?: boolean }) => {
     const newTask: DailyTask = {
-      completed: false,
       ...taskData,
+      completed: taskData.completed ?? false,
       id: `task_${Date.now()}`,
       goalId: currentGoal?.id || 'default',
     };
