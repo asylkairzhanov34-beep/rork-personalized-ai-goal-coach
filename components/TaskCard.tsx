@@ -1,6 +1,5 @@
-import React, { useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Check, Clock, Timer } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { DailyTask } from '@/types/goal';
@@ -13,47 +12,23 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onToggle, onStartTimer }: TaskCardProps) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    Animated.spring(scaleAnim, {
-      toValue: 0.97,
-      useNativeDriver: true,
-      tension: 300,
-      friction: 10,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 300,
-      friction: 10,
-    }).start();
-  };
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
   const handlePress = () => {
-    if (!task.completed) {
-      Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 0.5,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.spring(fadeAnim, {
-          toValue: 1,
-          tension: 100,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-    onToggle();
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onToggle();
+    });
   };
 
   const priorityColors = {
@@ -63,18 +38,8 @@ export function TaskCard({ task, onToggle, onStartTimer }: TaskCardProps) {
   };
 
   return (
-    <Animated.View style={[
-      styles.container, 
-      { 
-        transform: [{ scale: scaleAnim }],
-        opacity: fadeAnim
-      }
-    ]}>
-      <TouchableOpacity 
-        onPress={handlePress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={1}>
+    <Animated.View style={[styles.container, { transform: [{ scale: scaleAnim }] }]}>
+      <TouchableOpacity onPress={handlePress} activeOpacity={0.9}>
         <View style={[styles.card, task.completed && styles.completedCard]}>
           <View style={styles.header}>
             <View style={styles.checkboxContainer}>

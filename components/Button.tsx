@@ -1,6 +1,5 @@
-import React, { useRef } from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, Animated, Platform } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import React from 'react';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
 import { theme } from '@/constants/theme';
 
 interface ButtonProps {
@@ -25,28 +24,6 @@ export function Button({
   textStyle,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    Animated.spring(scaleAnim, {
-      toValue: 0.96,
-      useNativeDriver: true,
-      tension: 300,
-      friction: 10,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 300,
-      friction: 10,
-    }).start();
-  };
 
   const sizeStyles = {
     small: { paddingVertical: 16, paddingHorizontal: 24 },
@@ -61,13 +38,10 @@ export function Button({
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
     <TouchableOpacity
       onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
       disabled={isDisabled}
-      activeOpacity={1}
+      activeOpacity={0.8}
       style={[
         styles.button,
         sizeStyles[size],
@@ -96,7 +70,6 @@ export function Button({
         )}
       </Text>
     </TouchableOpacity>
-    </Animated.View>
   );
 }
 

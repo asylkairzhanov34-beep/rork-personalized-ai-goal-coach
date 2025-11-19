@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { theme } from '@/constants/theme';
 
@@ -18,52 +18,10 @@ export function ProgressRing({
 }: ProgressRingProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const animatedProgress = useRef(new Animated.Value(0)).current;
-  const animatedOpacity = useRef(new Animated.Value(0)).current;
-  const animatedScale = useRef(new Animated.Value(0.8)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(animatedOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(animatedScale, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
-  useEffect(() => {
-    Animated.timing(animatedProgress, {
-      toValue: progress,
-      duration: 800,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-      useNativeDriver: false,
-    }).start();
-  }, [progress]);
-
   const strokeDashoffset = circumference - (progress / 100) * circumference;
-  
-  const animatedStrokeDashoffset = animatedProgress.interpolate({
-    inputRange: [0, 100],
-    outputRange: [circumference, 0],
-  });
 
   return (
-    <Animated.View style={[
-      styles.container, 
-      { 
-        width: size, 
-        height: size,
-        opacity: animatedOpacity,
-        transform: [{ scale: animatedScale }]
-      }
-    ]}>
+    <View style={[styles.container, { width: size, height: size }]}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFillObject}>
         <Circle
           stroke={theme.colors.border}
@@ -92,7 +50,7 @@ export function ProgressRing({
           <Text style={styles.label}>Complete</Text>
         </View>
       )}
-    </Animated.View>
+    </View>
   );
 }
 
