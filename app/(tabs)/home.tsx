@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Animated, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Plus, Target, Zap, Star, Wind, MessageCircle, CheckCircle2, Timer, Sparkles, Calendar } from 'lucide-react-native';
@@ -7,6 +7,7 @@ import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
 import { Button } from '@/components/Button';
 import { ProgressRing } from '@/components/ProgressRing';
+import { AnimatedStatCard } from '@/components/AnimatedStatCard';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { useAuth } from '@/hooks/use-auth-store';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
@@ -22,6 +23,14 @@ export default function TodayScreen() {
   );
   const insets = useSafeAreaInsets();
 
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const motivationAnim = useRef(new Animated.Value(0)).current;
+  const statsAnim = useRef(new Animated.Value(0)).current;
+  const actionsAnim = useRef(new Animated.Value(0)).current;
+
   // Use real data from store
   const profile = store?.profile || { name: 'User', currentStreak: 0 };
   const displayName = setupProfile?.nickname || user?.name || profile?.name || 'User';
@@ -34,12 +43,81 @@ export default function TodayScreen() {
   const manifestationStats = { currentStreak: 0 }; // TODO: implement manifestation integration
   const todayManifestationSessions: any[] = [];
 
+  useEffect(() => {
+    // Staggered animation on mount
+    Animated.stagger(80, [
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 50,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.timing(headerAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(motivationAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(statsAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(actionsAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     // Меняем цитату при обновлении
     setCurrentQuoteIndex(Math.floor(Math.random() * getQuotes().length));
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    
+    // Reset and replay animations
+    fadeAnim.setValue(0);
+    slideAnim.setValue(30);
+    headerAnim.setValue(0);
+    motivationAnim.setValue(0);
+    statsAnim.setValue(0);
+    actionsAnim.setValue(0);
+    
+    setTimeout(() => {
+      setRefreshing(false);
+      Animated.stagger(80, [
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            tension: 50,
+            friction: 8,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.timing(headerAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(motivationAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(statsAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(actionsAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ]).start();
+    }, 300);
+  }, [fadeAnim, slideAnim, headerAnim, motivationAnim, statsAnim, actionsAnim]);
 
   // Calculate values that are used in multiple places
   const completedToday = todayTasks.filter(t => t.completed).length;
@@ -93,54 +171,100 @@ export default function TodayScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          <View style={styles.header}>
+          <Animated.View style={[
+            styles.header,
+            {
+              opacity: headerAnim,
+              transform: [{ translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0]
+              })}]
+            }
+          ]}>
             <View style={styles.headerText}>
               <Text style={styles.greeting}>{greeting},</Text>
               <Text style={styles.name}>{displayName}!</Text>
             </View>
             <ProgressRing progress={progress} size={60} strokeWidth={2} showPercentage={false} />
-          </View>
+          </Animated.View>
 
-          <View style={styles.motivationCard}>
+          <Animated.View style={[
+            styles.motivationCard,
+            {
+              opacity: motivationAnim,
+              transform: [{ 
+                translateY: motivationAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0]
+                }),
+                scale: motivationAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.95, 1]
+                })
+              }]
+            }
+          ]}>
             <Text style={styles.motivationQuote}>&ldquo;{motivationalQuote}&rdquo;</Text>
-          </View>
+          </Animated.View>
 
+          <Animated.View style={{
+            opacity: statsAnim,
+            transform: [{ translateY: statsAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [20, 0]
+            })}]
+          }}>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.statsScrollContainer}
             style={styles.statsContainer}
           >
-            <View style={styles.statCard}>
-              <Zap size={20} color={theme.colors.primary} />
-              <Text style={styles.statValue}>{profile?.currentStreak || 0}</Text>
-              <Text style={styles.statLabel}>Дней подряд</Text>
-            </View>
-            <View style={styles.statCard}>
-              <CheckCircle2 size={20} color={theme.colors.primary} />
-              <Text style={styles.statValue}>{completedToday}/{todayTasks.length}</Text>
-              <Text style={styles.statLabel}>Выполнено</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Timer size={20} color={theme.colors.primary} />
-              <Text style={styles.statValue}>{todayFocusMinutes}</Text>
-              <Text style={styles.statLabel}>Минут фокуса</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Star size={20} color={theme.colors.primary} />
-              <Text style={styles.statValue}>{Math.round(progress)}%</Text>
-              <Text style={styles.statLabel}>Прогресс сегодня</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Sparkles size={20} color={theme.colors.primary} />
-              <Text style={styles.statValue}>{manifestationStats?.currentStreak || 0}</Text>
-              <Text style={styles.statLabel}>Дней манифестации</Text>
-            </View>
+            <AnimatedStatCard
+              icon={<Zap size={20} color={theme.colors.primary} />}
+              value={profile?.currentStreak || 0}
+              label="Дней подряд"
+              delay={0}
+            />
+            <AnimatedStatCard
+              icon={<CheckCircle2 size={20} color={theme.colors.primary} />}
+              value={`${completedToday}/${todayTasks.length}`}
+              label="Выполнено"
+              delay={80}
+            />
+            <AnimatedStatCard
+              icon={<Timer size={20} color={theme.colors.primary} />}
+              value={todayFocusMinutes}
+              label="Минут фокуса"
+              delay={160}
+            />
+            <AnimatedStatCard
+              icon={<Star size={20} color={theme.colors.primary} />}
+              value={`${Math.round(progress)}%`}
+              label="Прогресс сегодня"
+              delay={240}
+            />
+            <AnimatedStatCard
+              icon={<Sparkles size={20} color={theme.colors.primary} />}
+              value={manifestationStats?.currentStreak || 0}
+              label="Дней манифестации"
+              delay={320}
+            />
           </ScrollView>
+          </Animated.View>
 
 
 
-          <View style={styles.section}>
+          <Animated.View style={[
+            styles.section,
+            {
+              opacity: actionsAnim,
+              transform: [{ translateY: actionsAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0]
+              })}]
+            }
+          ]}>
             <TouchableOpacity 
               style={styles.planButton}
               onPress={() => router.push('/plan')}
@@ -149,9 +273,18 @@ export default function TodayScreen() {
               <Calendar size={20} color={theme.colors.background} style={styles.planButtonIcon} />
               <Text style={styles.planButtonText}>Перейти в план</Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
 
-          <View style={styles.manifestationSection}>
+          <Animated.View style={[
+            styles.manifestationSection,
+            {
+              opacity: actionsAnim,
+              transform: [{ translateY: actionsAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0]
+              })}]
+            }
+          ]}>
             <Text style={styles.sectionTitle}>Guided Манифестация</Text>
             <TouchableOpacity 
               style={styles.manifestationCard}
@@ -181,9 +314,18 @@ export default function TodayScreen() {
                 </View>
               )}
             </TouchableOpacity>
-          </View>
+          </Animated.View>
 
-          <View style={styles.quickActionsSection}>
+          <Animated.View style={[
+            styles.quickActionsSection,
+            {
+              opacity: actionsAnim,
+              transform: [{ translateY: actionsAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0]
+              })}]
+            }
+          ]}>
             <Text style={styles.sectionTitle}>Быстрые действия</Text>
             <View style={styles.quickActionsContainer}>
               <TouchableOpacity 
@@ -208,7 +350,7 @@ export default function TodayScreen() {
                 <Text style={styles.quickActionLabel}>Поддержка</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
 
           {completedToday === todayTasks.length && todayTasks.length > 0 && (
             <View style={styles.completionCard}>
@@ -313,33 +455,6 @@ const styles = StyleSheet.create({
   },
   statsScrollContainer: {
     paddingRight: theme.spacing.lg,
-  },
-  statCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginRight: theme.spacing.md,
-    minWidth: 100,
-    ...theme.shadows.medium,
-  },
-  statValue: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.regular,
-    color: theme.colors.text,
-    marginTop: theme.spacing.sm,
-    letterSpacing: 0,
-  },
-  statLabel: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.xs,
-    fontWeight: theme.fontWeight.regular,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    textAlign: 'center',
   },
 
   quickActionsSection: {
