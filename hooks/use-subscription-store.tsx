@@ -5,7 +5,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CustomerInfo, SubscriptionPackage, SubscriptionStatus } from '@/types/subscription';
 
-type PurchasesModule = typeof import('react-native-purchases');
+type PurchasesModule = any;
 
 type StoredSubscription = {
   packageId: string;
@@ -15,9 +15,9 @@ type StoredSubscription = {
 };
 
 const REVENUECAT_API_KEY = {
-  ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || 'appl_NIzzmGwASbGFsnfAddnshynSnsG',
-  android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '',
-  web: process.env.EXPO_PUBLIC_REVENUECAT_WEB_KEY || '',
+  ios: 'appl_NIzzmGwASbGFsnfAddnshynSnsG',
+  android: 'goog_...', // Add Android key if available
+  web: '',
 };
 
 const WEB_MOCK_PACKAGES: SubscriptionPackage[] = [
@@ -154,7 +154,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
         if (offerings.current && offerings.current.availablePackages.length > 0) {
           const formattedPackages: SubscriptionPackage[] = offerings.current.availablePackages.map(
-            (pkg: PurchasesPackage) => ({
+            (pkg: any) => ({
               identifier: pkg.identifier,
               product: {
                 identifier: pkg.product.identifier,
@@ -168,12 +168,16 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           );
 
           setPackages(formattedPackages);
-          console.log(`Loaded ${formattedPackages.length} subscription packages from RevenueCat`);
+          console.log(`[SubscriptionProvider] Loaded ${formattedPackages.length} subscription packages from RevenueCat`);
         } else {
-          console.log('RevenueCat returned no available offerings');
+          console.log('[SubscriptionProvider] RevenueCat returned no available offerings. Check RevenueCat dashboard configuration.');
+          // If no offerings found, we might want to show an alert or fallback in dev mode
+          if (__DEV__) {
+             console.log('[SubscriptionProvider] DEV MODE: You might need to create Offerings in RevenueCat dashboard.');
+          }
         }
       } catch (error) {
-        console.error('Failed to load RevenueCat offerings:', error);
+        console.error('[SubscriptionProvider] Failed to load RevenueCat offerings:', error);
       }
     },
     [purchasesModule],
@@ -200,7 +204,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         let module: PurchasesModule | null = null;
 
         try {
-          module = await import('react-native-purchases');
+          const moduleNamespace = await import('react-native-purchases');
+          // @ts-ignore
+          const module = moduleNamespace.default || moduleNamespace;
           setPurchasesModule(module);
         } catch (error) {
           console.warn('[SubscriptionProvider] RevenueCat not available:', error);
@@ -213,24 +219,38 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           return;
         }
 
+        if (Platform.OS === 'ios' && !REVENUECAT_API_KEY.ios) {
+           console.warn('[SubscriptionProvider] No iOS API key found. Please check REVENUECAT_API_KEY.');
+        }
+
         const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY.ios : REVENUECAT_API_KEY.android;
 
         if (!apiKey) {
-          console.warn('[SubscriptionProvider] No API key, using mock mode');
+          console.warn('[SubscriptionProvider] No API key for current platform, using mock mode');
           await activateMockMode();
           setIsInitialized(true);
           return;
         }
 
         try {
+          // Configure with more verbose logging for debugging
+          if (__DEV__) {
+            await module.setLogLevel(module.LOG_LEVEL.DEBUG);
+          }
+          
           await module.configure({ apiKey });
-          console.log('[SubscriptionProvider] RevenueCat configured');
+          console.log('[SubscriptionProvider] RevenueCat configured with key:', apiKey.substring(0, 8) + '...');
+          
           const info = await module.getCustomerInfo();
+          console.log('[SubscriptionProvider] Initial customer info retrieved:', info?.activeSubscriptions);
+          
           updateCustomerInfo(info);
           setIsMockMode(false);
           await loadOfferings(module);
         } catch (error) {
-          console.warn('[SubscriptionProvider] Init failed, using mock:', error);
+          console.error('[SubscriptionProvider] Configuration failed:', error);
+          // Fallback to mock mode if configuration fails entirely
+          console.warn('[SubscriptionProvider] Init failed, falling back to mock mode');
           await activateMockMode();
         }
       } catch (error) {
@@ -308,7 +328,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       try {
         const offerings = await module.getOfferings();
         const availablePackage = offerings.current?.availablePackages.find(
-          pkg => pkg.identifier === packageIdentifier,
+          (pkg: any) => pkg.identifier === packageIdentifier,
         );
 
         if (!availablePackage) {
