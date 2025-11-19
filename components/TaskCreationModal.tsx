@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
-import { X, Plus, Clock, Target, AlertCircle, Star, Lightbulb, Sparkles, Bot } from 'lucide-react-native';
+import { X, Plus, Clock, Target, AlertCircle, Star, Lightbulb, Sparkles, Bot, CheckCircle, Circle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DailyTask, SubTask } from '@/types/goal';
@@ -20,7 +20,7 @@ interface AIGeneratedTask {
 interface TaskCreationModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (task: Omit<DailyTask, 'id' | 'goalId' | 'completed' | 'completedAt'>) => void;
+  onSave: (task: Omit<DailyTask, 'id' | 'goalId'>) => void;
   selectedDay: string;
   previousDayTasks?: DailyTask[];
 }
@@ -73,6 +73,10 @@ export function TaskCreationModal({
 }: TaskCreationModalProps) {
   const insets = useSafeAreaInsets();
   const { currentGoal } = useGoalStore();
+  
+  const [isCompletedMode, setIsCompletedMode] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
+  
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [estimatedTime, setEstimatedTime] = useState('30');
@@ -86,8 +90,6 @@ export function TaskCreationModal({
   const [aiSuggestions, setAiSuggestions] = useState<AIGeneratedTask[]>([]);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
-
-
   const resetForm = () => {
     setTitle('');
     setDescription('');
@@ -99,25 +101,89 @@ export function TaskCreationModal({
     setSubtasks([]);
     setNewSubtask('');
     setNewSubtaskTime('10');
+    setIsCompletedMode(false);
   };
 
-  const handleSave = () => {
+  const calculateComplexity = async (taskTitle: string, taskDesc: string): Promise<{ difficulty: 'easy' | 'medium' | 'hard', estimatedTime: number }> => {
+    try {
+      const prompt = `
+        Analyze this completed task and estimate its difficulty and duration:
+        Task: ${taskTitle}
+        Description: ${taskDesc}
+        Goal Context: ${currentGoal?.title || 'General'}
+        
+        Return ONLY JSON:
+        {
+          "difficulty": "easy" | "medium" | "hard",
+          "estimatedTime": number (minutes)
+        }
+      `;
+
+      const response = await fetch('https://toolkit.rork.com/text/llm/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { 
+              role: 'system', 
+              content: 'You are an expert task analyzer. Estimate difficulty and time objectively. Return valid JSON only.' 
+            },
+            { role: 'user', content: prompt }
+          ]
+        })
+      });
+
+      const data = await response.json();
+      let jsonString = data.completion.trim();
+      
+      if (jsonString.startsWith('```json')) {
+        jsonString = jsonString.replace(/```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonString.startsWith('```')) {
+        jsonString = jsonString.replace(/```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      const result = JSON.parse(jsonString);
+      return {
+        difficulty: result.difficulty || 'medium',
+        estimatedTime: result.estimatedTime || 30
+      };
+    } catch (error) {
+      console.error('Error calculating complexity:', error);
+      return { difficulty: 'medium', estimatedTime: 30 };
+    }
+  };
+
+  const handleSave = async () => {
     if (!title.trim()) return;
 
-    const task: Omit<DailyTask, 'id' | 'goalId' | 'completed' | 'completedAt'> = {
+    let finalDifficulty = difficulty;
+    let finalTime = parseInt(estimatedTime) || 30;
+
+    if (isCompletedMode) {
+      setIsCalculating(true);
+      const complexity = await calculateComplexity(title, description);
+      finalDifficulty = complexity.difficulty;
+      finalTime = complexity.estimatedTime;
+      setIsCalculating(false);
+    }
+
+    const task: Omit<DailyTask, 'id' | 'goalId'> = {
       day: 0, // Will be set by parent
       date: new Date().toISOString(),
       title: title.trim(),
       description: description.trim(),
-      duration: `${estimatedTime}м`,
-      priority,
-      difficulty,
-      estimatedTime: parseInt(estimatedTime) || 30,
-      tips,
+      duration: `${finalTime}м`,
+      priority: isCompletedMode ? 'medium' : priority,
+      difficulty: finalDifficulty,
+      estimatedTime: finalTime,
+      tips: isCompletedMode ? [] : tips,
       subtasks: subtasks.length > 0 ? subtasks.map((st, index) => ({
         ...st,
         id: `subtask_${Date.now()}_${index}`,
+        completed: isCompletedMode ? true : st.completed, // Mark subtasks completed if parent is completed
       })) : undefined,
+      completed: isCompletedMode,
+      completedAt: isCompletedMode ? new Date().toISOString() : undefined,
     };
 
     onSave(task);
@@ -210,48 +276,14 @@ export function TaskCreationModal({
         - Не пиши "Практиковать грамматику", а дай конкретное грамматическое правило с примерами
         - Давай готовые фразы и выражения для запоминания
         - В описании включай сами слова/фразы, которые нужно выучить
-        - В подзадачах - конкретные слова или фразы для отработки
-        
-        Пример правильной задачи:
-        {
-          "title": "Выучить 12 глаголов движения",
-          "description": "Запомнить глаголы: walk (ходить), run (бежать), jump (прыгать), swim (плавать), climb (взбираться), crawl (ползти), fly (летать), drive (водить), ride (ездить верхом), skip (скакать), hop (прыгать на одной ноге), march (маршировать)",
-          "subtasks": [
-            {"title": "Выучить walk, run, jump, swim", "estimatedTime": 10},
-            {"title": "Выучить climb, crawl, fly, drive", "estimatedTime": 10},
-            {"title": "Практика: составить 5 предложений с этими глаголами", "estimatedTime": 10}
-          ],
-          "tips": [
-            "Повторяй каждое слово вслух 5 раз",
-            "Представляй действие визуально",
-            "Используй флеш-карточки"
-          ]
-        }`;
+        - В подзадачах - конкретные слова или фразы для отработки`;
       } else if (isFitness) {
         specificInstructions = `
         ВАЖНО: Для фитнеса давай КОНКРЕТНЫЕ УПРАЖНЕНИЯ С ЧИСЛАМИ:
         - Не пиши "Сделать упражнения", а дай точный список: "20 приседаний, 15 отжиманий, 30 сек планка"
         - Указывай количество повторений, подходов, время отдыха
         - Давай технику выполнения в tips
-        - В подзадачах - разбивка по упражнениям с конкретными числами
-        
-        Пример правильной задачи:
-        {
-          "title": "Тренировка ног и ягодиц - 35 минут",
-          "description": "Комплекс из 5 упражнений: 1) Приседания - 3 подхода по 20 раз, 2) Выпады - 3 подхода по 15 раз на каждую ногу, 3) Ягодичный мостик - 3 подхода по 25 раз, 4) Боковые выпады - 2 подхода по 12 раз, 5) Прыжки - 3 подхода по 30 секунд. Отдых между подходами 45 секунд",
-          "subtasks": [
-            {"title": "Разминка 5 минут: суставная гимнастика", "estimatedTime": 5},
-            {"title": "Приседания 3x20 + Выпады 3x15", "estimatedTime": 12},
-            {"title": "Мостик 3x25 + Боковые выпады 2x12", "estimatedTime": 10},
-            {"title": "Прыжки 3x30 сек + растяжка", "estimatedTime": 8}
-          ],
-          "tips": [
-            "Следи за коленями - они не должны выходить за носки",
-            "Держи спину прямой",
-            "Пей воду между подходами",
-            "Дыши ровно: выдох на усилии"
-          ]
-        }`;
+        - В подзадачах - разбивка по упражнениям с конкретными числами`;
       } else if (isCooking) {
         specificInstructions = `
         ВАЖНО: Для готовки давай КОНКРЕТНЫЕ РЕЦЕПТЫ:
@@ -313,7 +345,7 @@ export function TaskCreationModal({
           messages: [
             { 
               role: 'system', 
-              content: 'Ты эксперт по планированию задач и персональный тренер/преподаватель. Создаешь МАКСИМАЛЬНО КОНКРЕТНЫЕ, практичные задачи с детальными инструкциями. Для изучения языков - даешь конкретные слова и фразы. Для фитнеса - конкретные упражнения с повторениями. Для любых целей - измеримые, конкретные действия. Отвечай только валидным JSON без markdown блоков и объяснений. Все тексты на русском языке.' 
+              content: 'Ты эксперт по планированию задач и персональный тренер/преподаватель. Создаешь МАКСИМАЛЬНО КОНКРЕТНЫЕ, практичные задачи с детальными инструкциями. Отвечай только валидным JSON без markdown блоков и объяснений. Все тексты на русском языке.' 
             },
             { role: 'user', content: prompt }
           ]
@@ -321,19 +353,15 @@ export function TaskCreationModal({
       });
 
       const data = await response.json();
-      console.log('AI task suggestions response:', data.completion);
       
-      // Extract JSON from the response
       let jsonString = data.completion.trim();
       
-      // Remove markdown code blocks if present
       if (jsonString.startsWith('```json')) {
         jsonString = jsonString.replace(/```json\s*/, '').replace(/\s*```$/, '');
       } else if (jsonString.startsWith('```')) {
         jsonString = jsonString.replace(/```\s*/, '').replace(/\s*```$/, '');
       }
       
-      // Find JSON object boundaries
       const startIndex = jsonString.indexOf('{');
       const lastIndex = jsonString.lastIndexOf('}');
       
@@ -342,7 +370,7 @@ export function TaskCreationModal({
         const aiData = JSON.parse(jsonString);
         
         if (aiData.tasks && Array.isArray(aiData.tasks)) {
-          setAiSuggestions(aiData.tasks.slice(0, 4)); // Limit to 4 suggestions
+          setAiSuggestions(aiData.tasks.slice(0, 4));
         }
       }
     } catch (error) {
@@ -382,105 +410,133 @@ export function TaskCreationModal({
         />
         
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Новая задача</Text>
+          <Text style={styles.headerTitle}>
+            {isCompletedMode ? 'Внести результат' : 'Новая задача'}
+          </Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <X size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
+        {/* Toggle Mode */}
+        <View style={styles.modeToggleContainer}>
+          <TouchableOpacity 
+            style={[styles.modeButton, !isCompletedMode && styles.modeButtonActive]} 
+            onPress={() => setIsCompletedMode(false)}
+          >
+            <Target size={16} color={!isCompletedMode ? '#000' : '#888'} />
+            <Text style={[styles.modeButtonText, !isCompletedMode && styles.modeButtonTextActive]}>
+              Запланировать
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.modeButton, isCompletedMode && styles.modeButtonActive]} 
+            onPress={() => setIsCompletedMode(true)}
+          >
+            <CheckCircle size={16} color={isCompletedMode ? '#000' : '#888'} />
+            <Text style={[styles.modeButtonText, isCompletedMode && styles.modeButtonTextActive]}>
+              Выполнено
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* AI Task Generation */}
-          {currentGoal && (
-            <View style={styles.section}>
-              <View style={styles.aiSectionHeader}>
-                <Text style={styles.sectionTitle}>🤖 ИИ-предложения для вашей цели</Text>
-                <TouchableOpacity 
-                  style={[styles.generateAIButton, isGeneratingAI && styles.generateAIButtonDisabled]}
-                  onPress={generateAITasks}
-                  disabled={isGeneratingAI}
-                >
-                  {isGeneratingAI ? (
-                    <ActivityIndicator size="small" color="#000000" />
-                  ) : (
-                    <Sparkles size={16} color="#000000" />
-                  )}
-                  <Text style={styles.generateAIButtonText}>
-                    {isGeneratingAI ? 'Генерирую...' : 'Создать задачи'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              
-              {aiSuggestions.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={styles.suggestedContainer}>
-                    {aiSuggestions.map((aiTask, index) => (
-                      <TouchableOpacity
-                        key={`ai_${index}`}
-                        style={[styles.suggestedCard, styles.aiSuggestedCard]}
-                        onPress={() => applyAITask(aiTask)}
-                      >
-                        <View style={styles.aiTaskBadge}>
-                          <Bot size={12} color="#FFD600" />
-                        </View>
-                        <Text style={styles.suggestedTitle}>{aiTask.title}</Text>
-                        <Text style={styles.suggestedTime}>{aiTask.estimatedTime}м</Text>
-                        <Text style={styles.aiTaskDifficulty}>{aiTask.difficulty}</Text>
-                      </TouchableOpacity>
-                    ))}
+          {/* AI Suggestions - Only for Planning Mode */}
+          {!isCompletedMode && (
+            <>
+              {currentGoal && (
+                <View style={styles.section}>
+                  <View style={styles.aiSectionHeader}>
+                    <Text style={styles.sectionTitle}>🤖 ИИ-предложения для вашей цели</Text>
+                    <TouchableOpacity 
+                      style={[styles.generateAIButton, isGeneratingAI && styles.generateAIButtonDisabled]}
+                      onPress={generateAITasks}
+                      disabled={isGeneratingAI}
+                    >
+                      {isGeneratingAI ? (
+                        <ActivityIndicator size="small" color="#000000" />
+                      ) : (
+                        <Sparkles size={16} color="#000000" />
+                      )}
+                      <Text style={styles.generateAIButtonText}>
+                        {isGeneratingAI ? 'Генерирую...' : 'Создать задачи'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
-                </ScrollView>
-              )}
-            </View>
-          )}
-
-          {/* Suggested Tasks */}
-          {SUGGESTED_TASKS.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>💡 Общие рекомендации</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.suggestedContainer}>
-                  {SUGGESTED_TASKS.map((suggested) => (
-                    <TouchableOpacity
-                      key={suggested.title}
-                      style={styles.suggestedCard}
-                      onPress={() => applySuggestedTask(suggested)}
-                    >
-                      <Text style={styles.suggestedTitle}>{suggested.title}</Text>
-                      <Text style={styles.suggestedTime}>{suggested.estimatedTime}м</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Previous Day Adaptation */}
-          {previousDayTasks.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>⭐ Адаптировать из предыдущего дня</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.suggestedContainer}>
-                  {previousDayTasks.slice(0, 3).map((task) => (
-                    <TouchableOpacity
-                      key={task.id}
-                      style={[styles.suggestedCard, styles.adaptedCard]}
-                      onPress={() => adaptFromPreviousDay(task)}
-                    >
-                      <View style={styles.adaptedBadge}>
-                        <Star size={12} color="#FFD600" />
+                  
+                  {aiSuggestions.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={styles.suggestedContainer}>
+                        {aiSuggestions.map((aiTask, index) => (
+                          <TouchableOpacity
+                            key={`ai_${index}`}
+                            style={[styles.suggestedCard, styles.aiSuggestedCard]}
+                            onPress={() => applyAITask(aiTask)}
+                          >
+                            <View style={styles.aiTaskBadge}>
+                              <Bot size={12} color="#FFD600" />
+                            </View>
+                            <Text style={styles.suggestedTitle}>{aiTask.title}</Text>
+                            <Text style={styles.suggestedTime}>{aiTask.estimatedTime}м</Text>
+                            <Text style={styles.aiTaskDifficulty}>{aiTask.difficulty}</Text>
+                          </TouchableOpacity>
+                        ))}
                       </View>
-                      <Text style={styles.suggestedTitle}>{task.title}</Text>
-                      <Text style={styles.suggestedTime}>{task.estimatedTime}м</Text>
-                    </TouchableOpacity>
-                  ))}
+                    </ScrollView>
+                  )}
                 </View>
-              </ScrollView>
-            </View>
+              )}
+
+              {SUGGESTED_TASKS.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>💡 Общие рекомендации</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.suggestedContainer}>
+                      {SUGGESTED_TASKS.map((suggested) => (
+                        <TouchableOpacity
+                          key={suggested.title}
+                          style={styles.suggestedCard}
+                          onPress={() => applySuggestedTask(suggested)}
+                        >
+                          <Text style={styles.suggestedTitle}>{suggested.title}</Text>
+                          <Text style={styles.suggestedTime}>{suggested.estimatedTime}м</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {previousDayTasks.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>⭐ Адаптировать из предыдущего дня</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.suggestedContainer}>
+                      {previousDayTasks.slice(0, 3).map((task) => (
+                        <TouchableOpacity
+                          key={task.id}
+                          style={[styles.suggestedCard, styles.adaptedCard]}
+                          onPress={() => adaptFromPreviousDay(task)}
+                        >
+                          <View style={styles.adaptedBadge}>
+                            <Star size={12} color="#FFD600" />
+                          </View>
+                          <Text style={styles.suggestedTitle}>{task.title}</Text>
+                          <Text style={styles.suggestedTime}>{task.estimatedTime}м</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+            </>
           )}
 
-          {/* Basic Info */}
+          {/* Main Form */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Основная информация</Text>
+            <Text style={styles.sectionTitle}>
+              {isCompletedMode ? 'Что было сделано?' : 'Основная информация'}
+            </Text>
             
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Название задачи</Text>
@@ -488,7 +544,7 @@ export function TaskCreationModal({
                 style={styles.textInput}
                 value={title}
                 onChangeText={setTitle}
-                placeholder="Введите название задачи..."
+                placeholder={isCompletedMode ? "Например: Прочитал 20 страниц книги" : "Введите название задачи..."}
                 placeholderTextColor="rgba(255,255,255,0.4)"
               />
             </View>
@@ -499,145 +555,152 @@ export function TaskCreationModal({
                 style={[styles.textInput, styles.textArea]}
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Подробное описание задачи..."
+                placeholder={isCompletedMode ? "Опишите детали, чтобы ИИ мог оценить сложность..." : "Подробное описание задачи..."}
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 multiline
                 numberOfLines={3}
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Время выполнения (минуты)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={estimatedTime}
-                onChangeText={setEstimatedTime}
-                placeholder="30"
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                keyboardType="numeric"
-              />
-            </View>
+            {!isCompletedMode && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Время выполнения (минуты)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={estimatedTime}
+                  onChangeText={setEstimatedTime}
+                  placeholder="30"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  keyboardType="numeric"
+                />
+              </View>
+            )}
           </View>
 
-          {/* Priority & Difficulty */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Приоритет и сложность</Text>
-            
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Приоритет</Text>
-              <View style={styles.optionsContainer}>
-                {PRIORITY_OPTIONS.map((option) => {
-                  const IconComponent = option.icon;
-                  return (
+          {/* Priority & Difficulty - Only for Planning Mode or if user wants to override */}
+          {!isCompletedMode && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Приоритет и сложность</Text>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Приоритет</Text>
+                <View style={styles.optionsContainer}>
+                  {PRIORITY_OPTIONS.map((option) => {
+                    const IconComponent = option.icon;
+                    return (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.optionButton,
+                          priority === option.value && styles.optionButtonSelected
+                        ]}
+                        onPress={() => setPriority(option.value)}
+                      >
+                        <IconComponent size={16} color={option.color} />
+                        <Text style={[
+                          styles.optionText,
+                          priority === option.value && styles.optionTextSelected
+                        ]}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Сложность</Text>
+                <View style={styles.optionsContainer}>
+                  {DIFFICULTY_OPTIONS.map((option) => (
                     <TouchableOpacity
                       key={option.value}
                       style={[
                         styles.optionButton,
-                        priority === option.value && styles.optionButtonSelected
+                        difficulty === option.value && styles.optionButtonSelected
                       ]}
-                      onPress={() => setPriority(option.value)}
+                      onPress={() => setDifficulty(option.value)}
                     >
-                      <IconComponent size={16} color={option.color} />
+                      <View style={[styles.difficultyDot, { backgroundColor: option.color }]} />
                       <Text style={[
                         styles.optionText,
-                        priority === option.value && styles.optionTextSelected
+                        difficulty === option.value && styles.optionTextSelected
                       ]}>
                         {option.label}
                       </Text>
                     </TouchableOpacity>
-                  );
-                })}
+                  ))}
+                </View>
               </View>
             </View>
+          )}
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Сложность</Text>
-              <View style={styles.optionsContainer}>
-                {DIFFICULTY_OPTIONS.map((option) => (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.optionButton,
-                      difficulty === option.value && styles.optionButtonSelected
-                    ]}
-                    onPress={() => setDifficulty(option.value)}
-                  >
-                    <View style={[styles.difficultyDot, { backgroundColor: option.color }]} />
-                    <Text style={[
-                      styles.optionText,
-                      difficulty === option.value && styles.optionTextSelected
-                    ]}>
-                      {option.label}
-                    </Text>
+          {/* Subtasks & Tips - Mostly for Planning */}
+          {!isCompletedMode && (
+            <>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Подзадачи</Text>
+                
+                <View style={styles.addItemContainer}>
+                  <TextInput
+                    style={[styles.textInput, styles.addItemInput]}
+                    value={newSubtask}
+                    onChangeText={setNewSubtask}
+                    placeholder="Добавить подзадачу..."
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                  />
+                  <TextInput
+                    style={[styles.textInput, styles.timeInput]}
+                    value={newSubtaskTime}
+                    onChangeText={setNewSubtaskTime}
+                    placeholder="10м"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    keyboardType="numeric"
+                  />
+                  <TouchableOpacity style={styles.addButton} onPress={addSubtask}>
+                    <Plus size={20} color="#0A0A0A" />
                   </TouchableOpacity>
+                </View>
+
+                {subtasks.map((subtask) => (
+                  <View key={subtask.title} style={styles.listItem}>
+                    <Text style={styles.listItemText}>{subtask.title}</Text>
+                    <Text style={styles.listItemTime}>{subtask.estimatedTime}м</Text>
+                    <TouchableOpacity onPress={() => removeSubtask(subtasks.indexOf(subtask))}>
+                      <X size={16} color="#FF6B6B" />
+                    </TouchableOpacity>
+                  </View>
                 ))}
               </View>
-            </View>
-          </View>
 
-          {/* Subtasks */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Подзадачи</Text>
-            
-            <View style={styles.addItemContainer}>
-              <TextInput
-                style={[styles.textInput, styles.addItemInput]}
-                value={newSubtask}
-                onChangeText={setNewSubtask}
-                placeholder="Добавить подзадачу..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
-              />
-              <TextInput
-                style={[styles.textInput, styles.timeInput]}
-                value={newSubtaskTime}
-                onChangeText={setNewSubtaskTime}
-                placeholder="10м"
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                keyboardType="numeric"
-              />
-              <TouchableOpacity style={styles.addButton} onPress={addSubtask}>
-                <Plus size={20} color="#0A0A0A" />
-              </TouchableOpacity>
-            </View>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Советы</Text>
+                
+                <View style={styles.addItemContainer}>
+                  <TextInput
+                    style={[styles.textInput, styles.addItemInput]}
+                    value={newTip}
+                    onChangeText={setNewTip}
+                    placeholder="Добавить совет..."
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                  />
+                  <TouchableOpacity style={styles.addButton} onPress={addTip}>
+                    <Plus size={20} color="#0A0A0A" />
+                  </TouchableOpacity>
+                </View>
 
-            {subtasks.map((subtask) => (
-              <View key={subtask.title} style={styles.listItem}>
-                <Text style={styles.listItemText}>{subtask.title}</Text>
-                <Text style={styles.listItemTime}>{subtask.estimatedTime}м</Text>
-                <TouchableOpacity onPress={() => removeSubtask(subtasks.indexOf(subtask))}>
-                  <X size={16} color="#FF6B6B" />
-                </TouchableOpacity>
+                {tips.map((tip) => (
+                  <View key={tip} style={styles.listItem}>
+                    <Lightbulb size={16} color="#FFD600" />
+                    <Text style={[styles.listItemText, { flex: 1, marginLeft: 8 }]}>{tip}</Text>
+                    <TouchableOpacity onPress={() => removeTip(tips.indexOf(tip))}>
+                      <X size={16} color="#FF6B6B" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
-
-          {/* Tips */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Советы</Text>
-            
-            <View style={styles.addItemContainer}>
-              <TextInput
-                style={[styles.textInput, styles.addItemInput]}
-                value={newTip}
-                onChangeText={setNewTip}
-                placeholder="Добавить совет..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
-              />
-              <TouchableOpacity style={styles.addButton} onPress={addTip}>
-                <Plus size={20} color="#0A0A0A" />
-              </TouchableOpacity>
-            </View>
-
-            {tips.map((tip) => (
-              <View key={tip} style={styles.listItem}>
-                <Lightbulb size={16} color="#FFD600" />
-                <Text style={[styles.listItemText, { flex: 1, marginLeft: 8 }]}>{tip}</Text>
-                <TouchableOpacity onPress={() => removeTip(tips.indexOf(tip))}>
-                  <X size={16} color="#FF6B6B" />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
+            </>
+          )}
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
@@ -646,11 +709,17 @@ export function TaskCreationModal({
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.saveButton, !title.trim() && styles.saveButtonDisabled]} 
+            style={[styles.saveButton, (!title.trim() || isCalculating) && styles.saveButtonDisabled]} 
             onPress={handleSave}
-            disabled={!title.trim()}
+            disabled={!title.trim() || isCalculating}
           >
-            <Text style={styles.saveButtonText}>Сохранить</Text>
+            {isCalculating ? (
+              <ActivityIndicator color="#000" size="small" />
+            ) : (
+              <Text style={styles.saveButtonText}>
+                {isCompletedMode ? 'Сохранить и оценить' : 'Сохранить'}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -678,6 +747,35 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 4,
+  },
+  modeToggleContainer: {
+    flexDirection: 'row',
+    padding: theme.spacing.md,
+    gap: 12,
+  },
+  modeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    gap: 8,
+  },
+  modeButtonActive: {
+    backgroundColor: '#FFD600',
+    borderColor: '#FFD600',
+  },
+  modeButtonText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  modeButtonTextActive: {
+    color: '#000000',
   },
   content: {
     flex: 1,

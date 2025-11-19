@@ -479,17 +479,39 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     };
   };
 
-  const addTask = (taskData: Omit<DailyTask, 'id' | 'goalId' | 'completed' | 'completedAt'>) => {
+  const addTask = (taskData: Omit<DailyTask, 'id' | 'goalId'>) => {
     const newTask: DailyTask = {
+      completed: false,
       ...taskData,
       id: `task_${Date.now()}`,
       goalId: currentGoal?.id || 'default',
-      completed: false,
     };
     
     const updatedTasks = [...dailyTasks, newTask];
     setDailyTasks(updatedTasks);
     saveTasksMutation.mutate(updatedTasks);
+
+    // If task is added as completed, update goal progress immediately
+    if (newTask.completed) {
+       if (currentGoal) {
+          const goalTasks = updatedTasks.filter(t => t.goalId === currentGoal.id);
+          const completedCount = goalTasks.filter(t => t.completed).length;
+          const totalCount = goalTasks.length;
+          
+          const updatedGoal = { 
+            ...currentGoal, 
+            completedTasksCount: completedCount,
+            totalTasksCount: totalCount
+          };
+          setCurrentGoal(updatedGoal);
+          
+          const goals = goalsQuery.data || [];
+          const updatedGoals = goals.map((g: Goal) => g.id === updatedGoal.id ? updatedGoal : g);
+          safeStorageSet(STORAGE_KEYS.GOALS, updatedGoals);
+          queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
+       }
+       updateStreak();
+    }
   };
 
   return {

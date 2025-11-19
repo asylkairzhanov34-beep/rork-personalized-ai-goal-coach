@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FFD600',
     height: 56,
-    borderRadius: 16,
+    borderRadius: 36,
     marginTop: 24,
     marginBottom: 20,
     ...Platform.select({

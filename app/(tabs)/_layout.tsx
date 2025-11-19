@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   tabBarBackground: {
     position: 'absolute',
     height: 80,
-    backgroundColor: 'rgba(25, 25, 30, 1)',
+    backgroundColor: '#1A1A1A',
     borderRadius: 40,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',

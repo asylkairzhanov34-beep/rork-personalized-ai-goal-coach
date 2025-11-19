@@ -96,7 +96,7 @@ export default function PlanScreen() {
     setShowTaskModal(true);
   };
 
-  const handleSaveTask = (taskData: Omit<DailyTask, 'id' | 'goalId' | 'completed' | 'completedAt'>) => {
+  const handleSaveTask = (taskData: Omit<DailyTask, 'id' | 'goalId'>) => {
     if (!taskData?.title?.trim()) return;
     console.log('Saving task for', selectedDay, ':', taskData);
     
