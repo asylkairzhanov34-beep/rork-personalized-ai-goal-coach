@@ -10,7 +10,6 @@ import { ProgressRing } from '@/components/ProgressRing';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { useAuth } from '@/hooks/use-auth-store';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
-import { TabSwiper } from '@/components/TabSwiper';
 
 
 export default function TodayScreen() {
@@ -85,9 +84,8 @@ export default function TodayScreen() {
 
   return (
     <GradientBackground>
-      <TabSwiper>
-        <View style={[styles.container, { paddingTop: insets.top }]}>
-          <ScrollView
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
 
@@ -221,9 +219,8 @@ export default function TodayScreen() {
               </Text>
             </View>
           )}
-          </ScrollView>
-        </View>
-      </TabSwiper>
+        </ScrollView>
+      </View>
     </GradientBackground>
   );
 }

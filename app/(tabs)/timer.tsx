@@ -9,7 +9,6 @@ import { FocusSettingsModal } from '@/components/FocusSettingsModal';
 import { useTimer } from '@/hooks/use-timer-store';
 import { DEFAULT_SOUND_ID } from '@/constants/sounds';
 import { SoundManager } from '@/utils/SoundManager';
-import { TabSwiper } from '@/components/TabSwiper';
 
 
 type TabType = 'timer' | 'stats';
@@ -41,8 +40,7 @@ export default function TimerScreen() {
 
 
   return (
-    <TabSwiper>
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Premium Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Фокус</Text>
@@ -99,8 +97,7 @@ export default function TimerScreen() {
           onSoundChange={setNotificationSound}
         />
       )}
-      </View>
-    </TabSwiper>
+    </View>
   );
 }
 

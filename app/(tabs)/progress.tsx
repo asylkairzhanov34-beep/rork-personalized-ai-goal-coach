@@ -7,7 +7,6 @@ import { GradientBackground } from '@/components/GradientBackground';
 import { ProgressRing } from '@/components/ProgressRing';
 import { AIInsightCard } from '@/components/AIInsightCard';
 import { useGoalStore } from '@/hooks/use-goal-store';
-import { TabSwiper } from '@/components/TabSwiper';
 
 
 type TimePeriod = 'day' | 'week' | 'month';
@@ -101,9 +100,8 @@ export default function ProgressScreen() {
 
   return (
     <GradientBackground>
-      <TabSwiper>
-        <SafeAreaView style={styles.container} edges={['top']}>
-          <ScrollView
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
 
@@ -278,9 +276,8 @@ export default function ProgressScreen() {
               </Text>
             </View>
           )}
-          </ScrollView>
-        </SafeAreaView>
-      </TabSwiper>
+        </ScrollView>
+      </SafeAreaView>
     </GradientBackground>
   );
 }
