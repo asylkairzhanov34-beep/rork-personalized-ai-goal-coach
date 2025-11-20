@@ -198,6 +198,32 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     },
   });
 
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      if (!user?.id) throw new Error('User not authenticated');
+      const updated = dailyTasks.filter(t => t.id !== taskId);
+      await safeStorageSet(STORAGE_KEYS.TASKS, updated);
+      return updated;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', user?.id] });
+    },
+  });
+
+  const updateTask = (taskId: string, updates: Partial<DailyTask>) => {
+    const updatedTasks = dailyTasks.map(task => 
+      task.id === taskId ? { ...task, ...updates } : task
+    );
+    setDailyTasks(updatedTasks);
+    saveTasksMutation.mutate(updatedTasks);
+  };
+
+  const deleteTask = (taskId: string) => {
+    const updatedTasks = dailyTasks.filter(task => task.id !== taskId);
+    setDailyTasks(updatedTasks);
+    deleteTaskMutation.mutate(taskId);
+  };
+
   const updateProfile = (updates: Partial<UserProfile>) => {
     const newProfile = { ...profile, ...updates };
     setProfile(newProfile);
@@ -532,5 +558,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     addPomodoroSession,
     updatePomodoroSession,
     getPomodoroStats,
+    updateTask,
+    deleteTask,
   };
 });

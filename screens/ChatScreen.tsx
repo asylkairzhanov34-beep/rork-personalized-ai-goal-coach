@@ -8,415 +8,429 @@ import {
   StyleSheet,
   Platform,
   Animated,
-  Keyboard,
+  KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Send, Bot, MoreHorizontal } from 'lucide-react-native';
+import { Send, Bot, MoreHorizontal, Sparkles, User } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
 import { ChatMessage } from '@/types/chat';
+import { theme } from '@/constants/theme';
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  showAvatar: boolean;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, showAvatar }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
 
   return (
-    <Animated.View style={[styles.messageContainer, { opacity: fadeAnim }]}>
+    <Animated.View 
+      style={[
+        styles.messageContainer, 
+        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
+        message.isBot ? styles.botContainer : styles.userContainer
+      ]}
+    >
+      {message.isBot && (
+        <View style={[styles.avatarContainer, !showAvatar && styles.hiddenAvatar]}>
+          <View style={styles.botAvatar}>
+            <Bot size={14} color={theme.colors.background} />
+          </View>
+        </View>
+      )}
+      
       <View style={[
         styles.messageBubble,
         message.isBot ? styles.botBubble : styles.userBubble
       ]}>
-        {message.isBot && (
-          <View style={styles.botAvatar}>
-            <Bot size={14} color="#000000" />
-          </View>
-        )}
-        <View style={[
-          styles.messageContent,
-          message.isBot ? styles.botMessageContent : styles.userMessageContent
+        <Text style={[
+          styles.messageText,
+          message.isBot ? styles.botText : styles.userText
         ]}>
-          <Text style={[
-            styles.messageText,
-            message.isBot ? styles.botText : styles.userText
-          ]}>
-            {message.text}
-          </Text>
-          <Text style={[
-            styles.timestamp,
-            message.isBot ? styles.botTimestamp : styles.userTimestamp
-          ]}>
-            {message.timestamp.toLocaleTimeString('ru-RU', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            })}
-          </Text>
-        </View>
+          {message.text}
+        </Text>
+        <Text style={[
+          styles.timestamp,
+          message.isBot ? styles.botTimestamp : styles.userTimestamp
+        ]}>
+          {message.timestamp ? new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+        </Text>
       </View>
+
+      {!message.isBot && (
+         <View style={[styles.avatarContainer, !showAvatar && styles.hiddenAvatar]}>
+          {/* Placeholder for user avatar if needed, or just empty space for alignment */}
+         </View>
+      )}
     </Animated.View>
   );
 };
 
 const ChatScreen: React.FC = () => {
-  const { messages, isLoading, sendMessage, clearChat } = useChat();
+  const { messages, sendMessage, clearChat, isLoading } = useChat();
   const [inputText, setInputText] = useState<string>('');
-  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
+  const [isSending, setIsSending] = useState(false);
 
   const handleSend = async () => {
     if (inputText.trim()) {
-      const messageText = inputText.trim();
+      const text = inputText.trim();
       setInputText('');
-      await sendMessage(messageText);
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      setIsSending(true);
+      try {
+        await sendMessage(text);
+      } finally {
+        setIsSending(false);
+      }
     }
   };
 
+  // Scroll to bottom when messages change
   useEffect(() => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
+    // Small timeout to ensure layout is updated
+    setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   }, [messages]);
 
-  useEffect(() => {
-    const keyboardWillShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (event) => {
-        setKeyboardHeight(event.endCoordinates.height);
-        setTimeout(() => {
-          scrollViewRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-      }
-    );
-
-    const keyboardWillHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0);
-      }
-    );
-
-    return () => {
-      keyboardWillShowListener.remove();
-      keyboardWillHideListener.remove();
-    };
-  }, []);
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.headerContainer} edges={['top']}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={styles.headerBotIcon}>
-              <Bot size={20} color="#FFD600" />
+            <View style={styles.headerIconContainer}>
+              <Sparkles size={20} color={theme.colors.primary} />
             </View>
-            <Text style={styles.headerTitle}>Помощник</Text>
+            <View>
+              <Text style={styles.headerTitle}>AI Coach</Text>
+              <Text style={styles.headerSubtitle}>Всегда на связи</Text>
+            </View>
           </View>
-          <TouchableOpacity onPress={clearChat} style={styles.clearButton}>
-            <MoreHorizontal size={20} color="#FFD600" />
+          <TouchableOpacity 
+            onPress={clearChat} 
+            style={styles.clearButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MoreHorizontal size={20} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         </View>
+      </SafeAreaView>
 
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoiding} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
         <ScrollView
           ref={scrollViewRef}
-          style={[
-            styles.messagesContainer,
-            { marginBottom: keyboardHeight > 0 ? keyboardHeight - insets.bottom : 0 }
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent, 
+            { paddingBottom: Platform.OS === 'android' ? 20 : 10 }
           ]}
-          contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
         >
           {messages.length === 0 && (
-            <View style={styles.welcomeContainer}>
-              <View style={styles.welcomeCard}>
-                <View style={styles.welcomeIcon}>
-                  <Bot size={24} color="#000000" />
-                </View>
-                <Text style={styles.welcomeTitle}>Добро пожаловать! ✨</Text>
-                <Text style={styles.welcomeText}>
-                  Я ваш персональный помощник по достижению целей. Расскажите мне о своих планах, и я помогу вам их реализовать!
-                </Text>
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <Bot size={40} color={theme.colors.primary} />
               </View>
+              <Text style={styles.emptyTitle}>Привет! Я Rork AI.</Text>
+              <Text style={styles.emptyText}>
+                Я помогу организовать твои дела, дам совет и поддержу мотивацию. Просто напиши мне!
+              </Text>
             </View>
           )}
           
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
+          {messages.map((message, index) => {
+            const isLast = index === messages.length - 1;
+            const isNextSame = !isLast && messages[index + 1].isBot === message.isBot;
+            // Show avatar only if it's the last message of a sequence from the same user
+            const showAvatar = !isNextSame; 
+            
+            return (
+              <MessageBubble 
+                key={message.id || index} 
+                message={message} 
+                showAvatar={showAvatar}
+              />
+            );
+          })}
           
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <View style={styles.botAvatar}>
-                <Bot size={14} color="#000000" />
-              </View>
-              <View style={styles.loadingBubble}>
-                <Text style={styles.loadingText}>Печатает...</Text>
-              </View>
+          {(isLoading || isSending) && (
+            <View style={styles.typingContainer}>
+               <View style={styles.botAvatar}>
+                 <Bot size={14} color={theme.colors.background} />
+               </View>
+               <View style={styles.typingBubble}>
+                 <ActivityIndicator size="small" color={theme.colors.textSecondary} />
+               </View>
             </View>
           )}
         </ScrollView>
 
-        <View style={[
-          styles.inputContainer,
-          {
-            paddingBottom: keyboardHeight > 0 ? 0 : Math.max(insets.bottom, 16),
-            position: keyboardHeight > 0 ? 'absolute' : 'relative',
-            bottom: keyboardHeight > 0 ? keyboardHeight : 0,
-            left: 0,
-            right: 0,
-          }
-        ]}>
-          <View style={styles.inputRow}>
+        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View style={styles.inputWrapper}>
             <TextInput
-              style={styles.textInput}
+              style={styles.input}
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Напишите сообщение..."
-              placeholderTextColor="rgba(255,255,255,0.5)"
+              placeholder="Написать сообщение..."
+              placeholderTextColor={theme.colors.textSecondary}
               multiline
-              maxLength={500}
+              maxLength={1000}
+              returnKeyType="default"
             />
             <TouchableOpacity
               onPress={handleSend}
+              disabled={!inputText.trim()}
               style={[
                 styles.sendButton,
-                { opacity: inputText.trim() ? 1 : 0.5 }
+                !inputText.trim() && styles.sendButtonDisabled
               ]}
-              disabled={!inputText.trim() || isLoading}
             >
-              <Send size={20} color="#000000" />
+              {isSending ? (
+                  <ActivityIndicator size="small" color={theme.colors.background} />
+              ) : (
+                  <Send size={20} color={theme.colors.background} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.colors.background,
   },
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#000000',
+  headerContainer: {
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#000000',
+    paddingVertical: 12,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerBotIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFD600',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#FFD600',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold' as const,
-    color: '#FFFFFF',
-    marginLeft: 12,
-  },
-  clearButton: {
+  headerIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#121212',
+    backgroundColor: theme.colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  messagesContainer: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  messagesContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 24,
-  },
-  welcomeContainer: {
-    alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 32,
-  },
-  welcomeCard: {
-    backgroundColor: '#121212',
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
+    marginRight: 12,
     borderWidth: 1,
-    borderColor: '#FFD600',
-    shadowColor: '#FFD600',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 10,
+    borderColor: theme.colors.border,
   },
-  welcomeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFD600',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.text,
   },
-  welcomeTitle: {
-    fontSize: 18,
-    fontWeight: 'bold' as const,
-    color: '#FFFFFF',
-    marginBottom: 12,
-    textAlign: 'center',
+  headerSubtitle: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    fontWeight: '500',
   },
-  welcomeText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'center',
-    lineHeight: 20,
+  clearButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: theme.colors.surfaceElevated,
+  },
+  keyboardAvoiding: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
   },
   messageContainer: {
-    marginBottom: 16,
-  },
-  messageBubble: {
-    maxWidth: '85%',
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    marginBottom: 12,
+    alignItems: 'flex-end',
   },
-  botBubble: {
-    alignSelf: 'flex-start',
+  botContainer: {
+    justifyContent: 'flex-start',
   },
-  userBubble: {
-    alignSelf: 'flex-end',
+  userContainer: {
+    justifyContent: 'flex-end',
+  },
+  avatarContainer: {
+    width: 28,
+    height: 28,
+    marginRight: 8,
+    marginLeft: 0,
+  },
+  hiddenAvatar: {
+    opacity: 0,
   },
   botAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FFD600',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
-    marginTop: 4,
   },
-  messageContent: {
-    flex: 1,
+  messageBubble: {
+    maxWidth: '75%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 20,
-    padding: 16,
   },
-  botMessageContent: {
-    backgroundColor: '#1C1C1E',
-    shadowColor: '#FFD600',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+  botBubble: {
+    backgroundColor: theme.colors.surfaceElevated,
+    borderTopLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
-  userMessageContent: {
-    backgroundColor: '#FFD600',
+  userBubble: {
+    backgroundColor: theme.colors.primary,
+    borderBottomRightRadius: 4,
   },
   messageText: {
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 22,
-    marginBottom: 8,
   },
   botText: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
   },
   userText: {
-    color: '#000000',
-    fontWeight: '600' as const,
+    color: theme.colors.background, // Black text on yellow
+    fontWeight: '500',
   },
   timestamp: {
-    fontSize: 11,
+    fontSize: 10,
+    marginTop: 4,
     alignSelf: 'flex-end',
   },
   botTimestamp: {
-    color: 'rgba(255,255,255,0.6)',
+    color: theme.colors.textSecondary,
   },
   userTimestamp: {
-    color: 'rgba(0,0,0,0.6)',
+    color: 'rgba(0,0,0,0.5)',
   },
-  loadingContainer: {
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 60,
+    paddingHorizontal: 40,
   },
-  loadingBubble: {
-    backgroundColor: '#1C1C1E',
-    padding: 16,
-    borderRadius: 20,
-    shadowColor: '#FFD600',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  loadingText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 14,
-    fontStyle: 'italic' as const,
-  },
-  inputContainer: {
-    backgroundColor: '#000000',
-    paddingTop: 16,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  textInput: {
-    flex: 1,
-    backgroundColor: '#1E1E1E',
-    borderRadius: 25,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    color: '#FFFFFF',
-    fontSize: 16,
-    maxHeight: 100,
-    marginRight: 12,
-  },
-  sendButton: {
-    backgroundColor: '#FFD600',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FFD600',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.3,
     shadowRadius: 20,
-    elevation: 8,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  inputContainer: {
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: theme.colors.surfaceElevated,
+    borderRadius: 24,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: theme.colors.text,
+    maxHeight: 100,
+    minHeight: 40,
+  },
+  sendButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 2,
+    marginRight: 2,
+  },
+  sendButtonDisabled: {
+    backgroundColor: theme.colors.surface,
+  },
+  typingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  typingBubble: {
+    backgroundColor: theme.colors.surfaceElevated,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginLeft: 0,
   },
 });
 

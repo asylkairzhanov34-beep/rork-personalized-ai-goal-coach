@@ -1,183 +1,145 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Sparkles, ArrowRight } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Sparkles, ArrowRight, RefreshCw } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { router } from 'expo-router';
+import { generateText } from '@rork-ai/toolkit-sdk';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AIInsightCardProps {
   onActionPress?: () => void;
 }
 
+const INSIGHT_CACHE_KEY = 'daily_ai_insight';
+
 export function AIInsightCard({ onActionPress }: AIInsightCardProps) {
   const store = useGoalStore();
-  
-  if (!store || !store.isReady) {
-    return null;
-  }
+  const [insight, setInsight] = useState<{ title: string; message: string; actionText: string; actionRoute: string; icon: string } | null>(null);
+  const [loading, setLoading] = useState(false);
   
   const { profile, currentGoal, dailyTasks, pomodoroSessions } = store;
   
-  // Генерируем инсайт на основе данных пользователя
-  const generateInsight = () => {
-    const today = new Date().toDateString();
-    const todayTasks = dailyTasks.filter(task => 
-      new Date(task.date).toDateString() === today
-    );
-    const completedTodayTasks = todayTasks.filter(t => t.completed);
-    
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    const weekTasks = dailyTasks.filter(task => 
-      new Date(task.date) >= weekStart
-    );
-    const completedWeekTasks = weekTasks.filter(t => t.completed);
-    
-    const pomodoroToday = pomodoroSessions.filter(s => 
-      new Date(s.startTime).toDateString() === today && s.completed
-    );
-    
-    // Определяем время дня когда пользователь чаще всего выполняет задачи
-    const completedTasks = dailyTasks.filter(t => t.completed && t.completedAt);
-    const eveningTasks = completedTasks.filter(t => {
-      const hour = new Date(t.completedAt!).getHours();
-      return hour >= 18;
-    }).length;
-    const morningTasks = completedTasks.filter(t => {
-      const hour = new Date(t.completedAt!).getHours();
-      return hour < 12;
-    }).length;
-    
-    // Логика генерации инсайтов
-    if (!currentGoal) {
-      return {
-        title: 'Время начать!',
-        message: 'Создайте свою первую цель и начните путь к успеху. Даже маленький шаг — это прогресс.',
-        actionText: 'Создать цель',
-        actionRoute: '/goal-creation',
-        icon: '🎯'
-      };
+  useEffect(() => {
+    if (store.isReady) {
+      loadInsight();
     }
+  }, [store.isReady, store.dailyTasks.length]); // Reload if tasks change significantly? Maybe just on mount/ready.
+
+  const loadInsight = async (forceRefresh = false) => {
+    const todayStr = new Date().toDateString();
     
-    if (todayTasks.length === 0) {
-      if (profile.currentStreak === 0) {
-        return {
-          title: 'Новый старт',
-          message: 'Сегодня отличный день начать новую серию. Добавьте первую задачу и сделайте шаг к цели!',
-          actionText: 'Добавить задачу',
-          actionRoute: '/plan',
-          icon: '✨'
-        };
-      } else {
-        return {
-          title: 'Продолжаем серию',
-          message: `У вас серия в ${profile.currentStreak} дней! Не прерывайте её — добавьте задачу на сегодня.`,
-          actionText: 'Запланировать',
-          actionRoute: '/plan',
-          icon: '🔥'
-        };
+    if (!forceRefresh) {
+      try {
+        const cached = await AsyncStorage.getItem(INSIGHT_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.date === todayStr && parsed.data) {
+            setInsight(parsed.data);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Error loading cached insight', e);
       }
     }
-    
-    if (completedTodayTasks.length === 0 && todayTasks.length > 0) {
-      if (pomodoroToday.length === 0) {
-        return {
-          title: 'Время сосредоточиться',
-          message: 'У вас есть задачи на сегодня. Попробуйте технику Pomodoro — 25 минут фокуса творят чудеса!',
-          actionText: 'Запустить таймер',
-          actionRoute: '/timer',
-          icon: '⏰'
-        };
-      } else {
-        return {
-          title: 'Продолжайте работу',
-          message: 'Вы уже использовали Pomodoro сегодня — отличный подход! Завершите начатые задачи.',
-          actionText: 'К задачам',
-          actionRoute: '/plan',
-          icon: '💪'
-        };
-      }
-    }
-    
-    if (completedTodayTasks.length > 0 && completedTodayTasks.length < todayTasks.length) {
-      const remaining = todayTasks.length - completedTodayTasks.length;
-      return {
-        title: 'Почти готово!',
-        message: `Отлично! Выполнено ${completedTodayTasks.length} из ${todayTasks.length} задач. Осталось всего ${remaining}.`,
-        actionText: 'Завершить день',
-        actionRoute: '/plan',
-        icon: '🎯'
-      };
-    }
-    
-    if (completedTodayTasks.length === todayTasks.length && todayTasks.length > 0) {
-      if (profile.currentStreak >= profile.bestStreak && profile.bestStreak > 0) {
-        return {
-          title: 'Новый рекорд!',
-          message: `Поздравляем! Вы побили свой рекорд серии: ${profile.currentStreak} дней подряд. Продолжайте завтра!`,
-          actionText: 'Отдохнуть',
-          actionRoute: '/breathing',
-          icon: '🏆'
-        };
-      } else {
-        return {
-          title: 'День завершён!',
-          message: 'Все задачи выполнены! Заслуженный отдых или дыхательная практика помогут восстановиться.',
-          actionText: 'Расслабиться',
-          actionRoute: '/breathing',
-          icon: '✅'
-        };
-      }
-    }
-    
-    if (eveningTasks > morningTasks && morningTasks > 0) {
-      return {
-        title: 'Утренний потенциал',
-        message: 'Вы чаще выполняете задачи вечером. Попробуйте завтра начать с утренней задачи — это даст энергию на весь день!',
-        actionText: 'Запланировать утром',
-        actionRoute: '/plan',
-        icon: '🌅'
-      };
-    }
-    
-    if (completedWeekTasks.length === 0 && weekTasks.length > 0) {
-      return {
-        title: 'Неделя возможностей',
-        message: 'На этой неделе пока нет выполненных задач. Начните прямо сейчас — каждый день важен!',
-        actionText: 'Начать сейчас',
-        actionRoute: '/timer',
-        icon: '🚀'
-      };
-    }
-    
-    // Дефолтный инсайт
-    return {
-      title: 'Продолжайте движение',
-      message: 'Вы на правильном пути! Постоянство — ключ к достижению целей. Каждый день приближает к успеху.',
-      actionText: 'К задачам',
-      actionRoute: '/plan',
-      icon: '💫'
-    };
+
+    await fetchNewInsight();
   };
-  
-  const insight = generateInsight();
-  
+
+  const fetchNewInsight = async () => {
+    setLoading(true);
+    try {
+      // Calculate 90-day history stats
+      const now = new Date();
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(now.getDate() - 90);
+      
+      const historyTasks = dailyTasks.filter(t => 
+        new Date(t.date) >= ninetyDaysAgo && new Date(t.date) <= now
+      );
+      
+      const total = historyTasks.length;
+      const completed = historyTasks.filter(t => t.completed).length;
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+      
+      const todayTasks = dailyTasks.filter(t => new Date(t.date).toDateString() === now.toDateString());
+      const todayCompleted = todayTasks.filter(t => t.completed).length;
+
+      const prompt = `
+Analyze the user's productivity for the last 90 days and give a specific recommendation.
+Context:
+- Name: ${profile.name}
+- Current Streak: ${profile.currentStreak} days
+- Last 90 Days: ${completed}/${total} tasks completed (${completionRate}%)
+- Today: ${todayCompleted}/${todayTasks.length} tasks completed
+- Current Goal: ${currentGoal?.title || 'None'}
+
+Output a JSON object ONLY with these fields:
+{
+  "title": "Short catchy title (max 20 chars)",
+  "message": "One specific, encouraging sentence based on their history and today's status.",
+  "actionText": "Action button text (max 15 chars)",
+  "actionRoute": "/plan" (or "/timer", "/breathing", "/goal-creation"),
+  "icon": "Emoji"
+}
+If they have no goal, suggest creating one. If they did well, praise them. If they struggled, suggest a small step.
+Respond in Russian.
+`;
+
+      const text = await generateText({
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      // Clean up potential markdown code blocks
+      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const data = JSON.parse(jsonStr);
+      
+      setInsight(data);
+      
+      await AsyncStorage.setItem(INSIGHT_CACHE_KEY, JSON.stringify({
+        date: new Date().toDateString(),
+        data: data
+      }));
+      
+    } catch (error) {
+      console.error('Failed to generate insight:', error);
+      // Fallback
+      setInsight({
+        title: 'Продолжайте!',
+        message: 'Каждый шаг приближает вас к цели. Не останавливайтесь!',
+        actionText: 'К задачам',
+        actionRoute: '/plan',
+        icon: '✨'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleActionPress = () => {
-    if (onActionPress) {
-      onActionPress();
-    } else {
+    if (insight?.actionRoute) {
       router.push(insight.actionRoute as any);
+    } else if (onActionPress) {
+      onActionPress();
     }
   };
-  
+
+  if (!insight) return null;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Sparkles size={20} color={theme.colors.primary} style={styles.sparkleIcon} />
-          <Text style={styles.title}>Инсайт от ИИ</Text>
+          <Text style={styles.title}>AI Совет</Text>
         </View>
-        <Text style={styles.emoji}>{insight.icon}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+           <TouchableOpacity onPress={() => loadInsight(true)} disabled={loading} style={{ marginRight: 10 }}>
+             {loading ? <ActivityIndicator size="small" color={theme.colors.textSecondary} /> : <RefreshCw size={16} color={theme.colors.textSecondary} />}
+           </TouchableOpacity>
+           <Text style={styles.emoji}>{insight.icon}</Text>
+        </View>
       </View>
       
       <Text style={styles.insightTitle}>{insight.title}</Text>
