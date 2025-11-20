@@ -268,13 +268,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: 140, // Увеличенный отступ для навигационной панели
+    paddingBottom: 100, // Optimized spacing for tab bar
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
+    marginTop: theme.spacing.md,
     marginBottom: theme.spacing.lg,
   },
   headerText: {

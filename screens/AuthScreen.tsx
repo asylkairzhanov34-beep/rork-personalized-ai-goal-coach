@@ -335,13 +335,13 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
+    padding: 20,
+    paddingTop: 40,
+    paddingBottom: 32,
   },
   headerSection: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   title: {
     fontSize: 32,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   form: {
     width: '100%',
     maxWidth: 340,
-    marginBottom: 40,
+    marginBottom: 32,
   },
   appleButton: {
     width: '100%',
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 20,
   },
   divider: {
     flex: 1,
@@ -417,9 +417,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   emailFormContainer: {
-    marginTop: 24,
+    marginTop: 20,
     width: '100%',
-    gap: 16,
+    gap: 12,
   },
   input: {
     width: '100%',

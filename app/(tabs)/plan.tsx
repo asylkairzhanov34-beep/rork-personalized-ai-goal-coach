@@ -155,11 +155,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 140,
+    paddingBottom: 100,
   },
   header: {
-    marginTop: 24,
-    marginBottom: 24,
+    marginTop: 20,
+    marginBottom: 20,
   },
   titleContainer: {
     flexDirection: 'row',

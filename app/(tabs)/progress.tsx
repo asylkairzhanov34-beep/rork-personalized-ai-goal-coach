@@ -332,8 +332,8 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   header: {
-    marginTop: 20,
-    marginBottom: 24,
+    marginTop: 16,
+    marginBottom: 20,
   },
   periodSelector: {
     flexDirection: 'row',

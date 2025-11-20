@@ -167,8 +167,8 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginTop: theme.spacing.xl,
-    marginBottom: theme.spacing.xxl,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
   logoContainer: {
     width: 80,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xl,
   },
   footer: {
-    paddingVertical: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
   },
   button: {
     width: '100%',

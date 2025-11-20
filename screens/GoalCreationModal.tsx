@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
   progressBar: {
     height: 4,
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
   },
   questionContainer: {
     alignItems: 'center',
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: 'auto',
-    paddingTop: theme.spacing.xl,
+    paddingTop: theme.spacing.lg,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
   },
   chatMessagesContent: {
     padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: theme.spacing.lg,
   },
   chatMessage: {
     marginBottom: theme.spacing.md,
