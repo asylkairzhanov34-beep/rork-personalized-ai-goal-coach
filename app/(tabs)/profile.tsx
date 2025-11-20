@@ -10,6 +10,7 @@ import { useGoalStore } from '@/hooks/use-goal-store';
 import { useAuth } from '@/hooks/use-auth-store';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
 import { useSubscription } from '@/hooks/use-subscription-store';
+import { TabSwiper } from '@/components/TabSwiper';
 
 
 
@@ -148,8 +149,9 @@ export default function ProfileScreen() {
 
   return (
     <GradientBackground>
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <ScrollView
+      <TabSwiper>
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
 
@@ -222,9 +224,9 @@ export default function ProfileScreen() {
             </View>
             <ChevronRight size={20} color={theme.colors.textLight} />
           </TouchableOpacity>
-        </ScrollView>
+          </ScrollView>
 
-        <Modal
+          <Modal
           visible={isEditingNickname}
           transparent
           animationType="fade"
@@ -265,8 +267,9 @@ export default function ProfileScreen() {
               </View>
             </View>
           </View>
-        </Modal>
-      </SafeAreaView>
+          </Modal>
+        </SafeAreaView>
+      </TabSwiper>
     </GradientBackground>
   );
 }

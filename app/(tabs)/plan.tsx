@@ -7,6 +7,7 @@ import { useGoalStore } from '@/hooks/use-goal-store';
 import { WeeklyPlanView } from '@/components/WeeklyPlanView';
 import { TaskCreationModal } from '@/components/TaskCreationModal';
 import { DailyTask } from '@/types/goal';
+import { TabSwiper } from '@/components/TabSwiper';
 
 // Функция для получения текущего дня недели
 const getCurrentDayKey = () => {
@@ -104,8 +105,9 @@ export default function PlanScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView 
+    <TabSwiper>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -133,16 +135,17 @@ export default function PlanScreen() {
           onDaySelect={setSelectedDay}
           availableDays={availableDays}
         />
-      </ScrollView>
-      
-      <TaskCreationModal
-        visible={showTaskModal}
-        onClose={() => setShowTaskModal(false)}
-        onSave={handleSaveTask}
-        selectedDay={selectedDay}
-        previousDayTasks={getPreviousDayTasks(selectedDay)}
-      />
-    </View>
+        </ScrollView>
+        
+        <TaskCreationModal
+          visible={showTaskModal}
+          onClose={() => setShowTaskModal(false)}
+          onSave={handleSaveTask}
+          selectedDay={selectedDay}
+          previousDayTasks={getPreviousDayTasks(selectedDay)}
+        />
+      </View>
+    </TabSwiper>
   );
 }
 

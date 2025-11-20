@@ -3,7 +3,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
-import { useNotifications } from './use-notifications';
+
 import { SoundId, DEFAULT_SOUND_ID } from '@/constants/sounds';
 import { SoundManager } from '@/utils/SoundManager';
 
@@ -26,7 +26,7 @@ interface TimerState {
   sessionsCompleted: number;
   currentGoalId?: string;
   sessions: TimerSession[];
-  notificationId?: string;
+
   notificationSound: SoundId;
 }
 
@@ -50,12 +50,11 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
     mode: 'focus',
     sessionsCompleted: 0,
     sessions: [],
-    notificationId: undefined,
+
     notificationSound: DEFAULT_SOUND_ID,
   });
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const { permission, scheduleNotification, cancelNotification } = useNotifications();
 
 
   useEffect(() => {
@@ -113,12 +112,6 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
     console.log('🎯 Timer completed! Handling completion...');
     console.log('Playing sound:', state.notificationSound);
     
-    // Cancel the scheduled background notification since we're handling completion in foreground
-    if (state.notificationId) {
-      console.log('Cancelling scheduled notification:', state.notificationId);
-      await cancelNotification(state.notificationId);
-    }
-    
     // Play sound immediately (foreground only)
     await playSound(state.notificationSound);
     
@@ -151,10 +144,10 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
         mode: nextMode,
         sessionsCompleted,
         sessions: [...prev.sessions, session],
-        notificationId: undefined,
+
       };
     });
-  }, [state.notificationId, state.notificationSound, cancelNotification, playSound]);
+  }, [state.notificationSound, playSound]);
 
   // Timer countdown logic
   useEffect(() => {
@@ -193,38 +186,13 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
   const startTimer = useCallback(async (goalId?: string) => {
     console.log('▶️ Starting timer...');
     
-    // Schedule background notification for timer completion (only for background)
-    let notificationId: string | null = null;
-    if (permission.granted) {
-      const currentMode = state.mode;
-      const duration = state.currentTime;
-      
-      console.log(`Scheduling background notification for ${duration} seconds`);
-      
-      const title = currentMode === 'focus' ? 'Перерыв начинается! 🌟' : 'Фокус начинается! 🎯';
-      const body = currentMode === 'focus' 
-        ? 'Отдохните и восстановите силы' 
-        : 'Сосредоточьтесь на задаче и достигните цели';
-      
-      // This notification will only fire if app is in background
-      notificationId = await scheduleNotification({
-        title,
-        body,
-        data: { type: 'timer_complete', mode: currentMode },
-        trigger: { seconds: duration },
-      });
-      
-      console.log('Background notification scheduled with ID:', notificationId);
-    }
-    
     setState(prev => ({
       ...prev,
       isRunning: true,
       isPaused: false,
       currentGoalId: goalId,
-      notificationId: notificationId || undefined,
     }));
-  }, [state.mode, state.currentTime, permission.granted, scheduleNotification]);
+  }, []);
 
   const pauseTimer = useCallback(() => {
     setState(prev => ({
@@ -241,19 +209,13 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
   }, []);
 
   const stopTimer = useCallback(async () => {
-    // Cancel scheduled notification
-    if (state.notificationId) {
-      await cancelNotification(state.notificationId);
-    }
-    
     setState(prev => ({
       ...prev,
       isRunning: false,
       isPaused: false,
       currentTime: prev.totalTime,
-      notificationId: undefined,
     }));
-  }, [state.notificationId, cancelNotification]);
+  }, []);
 
   const skipTimer = useCallback(() => {
     handleTimerComplete();
