@@ -120,7 +120,7 @@ const ChatScreen: React.FC = () => {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
     >
       <SafeAreaView style={styles.headerContainer} edges={['top']}>
         <View style={styles.header}>
@@ -131,7 +131,7 @@ const ChatScreen: React.FC = () => {
               </View>
             </View>
             <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>Rork AI</Text>
+              <Text style={styles.headerTitle}>GoalForge</Text>
               <View style={styles.statusContainer}>
                 <View style={styles.statusDot} />
                 <Text style={styles.headerSubtitle}>Онлайн</Text>
@@ -164,18 +164,18 @@ const ChatScreen: React.FC = () => {
               <View style={styles.emptyIcon}>
                 <Bot size={48} color={theme.colors.primary} />
               </View>
-              <Text style={styles.emptyTitle}>Привет! Я Rork AI</Text>
+              <Text style={styles.emptyTitle}>Привет! Я GoalForge</Text>
               <Text style={styles.emptyText}>
-                Я помогу организовать дела и достичь целей.{"\n"}
-                Попроси меня создать задачу или проанализировать прогресс.
+                Я помогу проанализировать твой прогресс и дам советы.{"\n"}
+                Спроси меня о продуктивности или анализе твоих целей.
               </Text>
               
               <View style={styles.suggestionsContainer}>
                 <TouchableOpacity 
                   style={styles.suggestionChip}
-                  onPress={() => setInputText("Создай план на сегодня")}
+                  onPress={() => setInputText("Дай советы по продуктивности")}
                 >
-                  <Text style={styles.suggestionText}>📝 Создай план на сегодня</Text>
+                  <Text style={styles.suggestionText}>📝 Советы по продуктивности</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.suggestionChip}
@@ -221,7 +221,7 @@ const ChatScreen: React.FC = () => {
         </ScrollView>
       </View>
       
-      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom + 8, 20) }]}>
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     backgroundColor: theme.colors.background,
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },

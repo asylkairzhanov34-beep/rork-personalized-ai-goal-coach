@@ -10,34 +10,6 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const { messages, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
-      addTask: createRorkTool({
-        description: 'Добавить новую задачу в расписание пользователя. ИСПОЛЬЗУЙ ЭТУ ФУНКЦИЮ когда пользователь просит добавить задачи или изменить план.',
-        zodSchema: z.object({
-          title: z.string().describe('Название задачи'),
-          date: z.string().describe('Дата для задачи (ISO строка, например: 2025-01-20)'),
-          priority: z.enum(['high', 'medium', 'low']).describe('Приоритет задачи'),
-          estimatedTime: z.number().describe('Предполагаемое время в минутах'),
-          description: z.string().optional().describe('Описание задачи'),
-        }),
-        execute: async (input) => {
-          try {
-            goalStore.addTask({
-              title: input.title,
-              date: input.date,
-              priority: input.priority as any,
-              estimatedTime: input.estimatedTime,
-              description: input.description || '',
-              duration: input.estimatedTime + ' мин',
-              difficulty: 'medium',
-              day: Math.floor((new Date(input.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) + 1,
-              tips: [],
-            });
-            return `✅ Задача "${input.title}" успешно добавлена на ${new Date(input.date).toLocaleDateString('ru-RU')}.`;
-          } catch (error) {
-            return `❌ Ошибка при добавлении задачи: ${error}`;
-          }
-        },
-      }),
       updateTask: createRorkTool({
         description: 'Обновить существующую задачу. Используй для изменения статуса, названия или других параметров.',
         zodSchema: z.object({
@@ -122,12 +94,13 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     // Добавляем системный контекст к сообщению пользователя
     const currentGoalTitle = goalStore.currentGoal?.title || 'не установлена';
     const enrichedMessage = `
-Контекст: Ты - умный AI помощник для управления задачами. Когда пользователь просит изменить план, составить задачи или помочь с расписанием - ты ОБЯЗАТЕЛЬНО используешь функции addTask, updateTask, deleteTask чтобы вставить задачи прямо в приложение.
+Контекст: Ты - GoalForge, умный AI помощник для ан��лиза прогресса и продуктивности. Ты помогаешь с анализом целей, даешь советы по продуктивности и отслеживаешь прогресс пользователя.
 
 ВАЖНО:
-- Если пользователь говорит "составь план" или "добавь задачи" - создавай 5-10 конкретных задач через addTask
 - Анализируй историю через getHistory для персонализированных советов
+- Давай конкретные советы по улучшению продуктивности
 - Учитывай текущую цель: ${currentGoalTitle}
+- НЕ предлагай создавать задачи через команды - просто давай советы и рекомендации
 
 Запрос пользователя: ${text}`;
     
