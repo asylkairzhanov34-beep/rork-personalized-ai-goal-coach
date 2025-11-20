@@ -16,6 +16,8 @@ import { Send, Bot, MoreHorizontal, Sparkles, User } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
 import { ChatMessage } from '@/types/chat';
 import { theme } from '@/constants/theme';
+import { useSubscription } from '@/hooks/use-subscription-store';
+import SubscriptionPaywall from '@/components/SubscriptionPaywall';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -94,9 +96,19 @@ const ChatScreen: React.FC = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const [isSending, setIsSending] = useState(false);
+  const { getFeatureAccess } = useSubscription();
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  const featureAccess = getFeatureAccess();
 
   const handleSend = async () => {
     if (inputText.trim()) {
+      // Check if AI chat is available
+      if (!featureAccess.aiChatAssistant) {
+        setShowPaywall(true);
+        return;
+      }
+      
       const text = inputText.trim();
       setInputText('');
       setIsSending(true);
@@ -116,8 +128,47 @@ const ChatScreen: React.FC = () => {
     }, 100);
   }, [messages]);
 
+  // Show paywall if feature not available
+  if (!featureAccess.aiChatAssistant) {
+    return (
+      <View style={styles.container}>
+        <SafeAreaView style={styles.headerContainer} edges={['top']}>
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <View style={styles.avatarContainer}>
+                <View style={styles.avatarGradient}>
+                  <Sparkles size={20} color={theme.colors.background} />
+                </View>
+              </View>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.headerTitle}>GoalForge</Text>
+                <View style={styles.statusContainer}>
+                  <View style={[styles.statusDot, { backgroundColor: theme.colors.textSecondary }]} />
+                  <Text style={styles.headerSubtitle}>Premium функция</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </SafeAreaView>
+        <SubscriptionPaywall 
+          visible={true} 
+          fullscreen={false}
+          feature="ИИ-чат помощник GoalForge"
+          message="Получайте персональные советы и анализ прогресса от ИИ"
+        />
+      </View>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView 
+    <>
+      <SubscriptionPaywall 
+        visible={showPaywall} 
+        onClose={() => setShowPaywall(false)}
+        feature="ИИ-чат помощник GoalForge"
+        message="Получайте персональные советы и анализ прогресса от ИИ"
+      />
+      <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
@@ -255,7 +306,8 @@ const ChatScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </>
   );
 };
 

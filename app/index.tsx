@@ -3,6 +3,8 @@ import { Redirect } from 'expo-router';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
 import { useAuth } from '@/hooks/use-auth-store';
+import { useSubscription } from '@/hooks/use-subscription-store';
+import SubscriptionPaywall from '@/components/SubscriptionPaywall';
 
 export default function Index() {
   const [isReady, setIsReady] = useState(false);
@@ -10,6 +12,13 @@ export default function Index() {
   const [error, setError] = useState<string | null>(null);
   const { profile, isLoading: setupLoading } = useFirstTimeSetup();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { 
+    isFirstLaunch, 
+    trialInfo, 
+    trialOfferShown,
+    markTrialOfferShown,
+    isInitialized: subInitialized 
+  } = useSubscription();
 
   useEffect(() => {
     // Mark as client side for hydration
@@ -42,7 +51,7 @@ export default function Index() {
     console.warn('[Index] Error occurred but continuing:', error);
   }
 
-  if (!isClient || !isReady || authLoading || setupLoading) {
+  if (!isClient || !isReady || authLoading || setupLoading || !subInitialized) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#FFD700" />
@@ -51,7 +60,20 @@ export default function Index() {
     );
   }
 
-  console.log('[Index] Auth status:', { isAuthenticated, hasProfile: !!profile, isCompleted: profile?.isCompleted });
+  console.log('[Index] Auth status:', { 
+    isAuthenticated, 
+    hasProfile: !!profile, 
+    isCompleted: profile?.isCompleted,
+    isFirstLaunch,
+    trialOfferShown,
+    trialExpired: trialInfo?.isExpired
+  });
+
+  // Check if trial has expired
+  if (trialInfo?.isExpired && !trialOfferShown) {
+    console.log('[Index] Trial expired, showing paywall');
+    return <SubscriptionPaywall visible={true} fullscreen={true} />;
+  }
 
   if (!isAuthenticated) {
     console.log('[Index] -> /auth');
@@ -61,6 +83,13 @@ export default function Index() {
   if (!profile || !profile.isCompleted) {
     console.log('[Index] -> /first-time-setup');
     return <Redirect href="/first-time-setup" />;
+  }
+
+  // Show subscription offer on first launch
+  if (isFirstLaunch && !trialOfferShown) {
+    console.log('[Index] First launch, showing subscription offer');
+    markTrialOfferShown();
+    return <Redirect href="/subscription" />;
   }
 
   console.log('[Index] -> /home');

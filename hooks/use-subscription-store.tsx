@@ -14,6 +14,17 @@ type StoredSubscription = {
   expiryDate?: string;
 };
 
+type TrialInfo = {
+  startDate: string;
+  endDate: string;
+  isExpired: boolean;
+};
+
+const TRIAL_DURATION_DAYS = 1;
+const TRIAL_KEY = '@trial_info';
+const FIRST_LAUNCH_KEY = '@first_launch';
+const TRIAL_SHOWN_KEY = '@trial_offer_shown';
+
 const REVENUECAT_API_KEY = {
   ios: 'appl_NIzzmGwASbGFsnfAddnshynSnsG',
   android: 'goog_...', // Add Android key if available
@@ -90,6 +101,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [isRestoring, setIsRestoring] = useState(false);
   const [purchasesModule, setPurchasesModule] = useState<PurchasesModule | null>(null);
   const [isMockMode, setIsMockMode] = useState(false);
+  const [trialInfo, setTrialInfo] = useState<TrialInfo | null>(null);
+  const [isFirstLaunch, setIsFirstLaunch] = useState(false);
+  const [trialOfferShown, setTrialOfferShown] = useState(false);
 
   const updateCustomerInfo = useCallback((info: RCCustomerInfo) => {
     const hasActiveSubscription = Object.keys(info.entitlements.active).length > 0;
@@ -110,6 +124,71 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     });
 
     setStatus(hasActiveSubscription ? 'premium' : 'free');
+  }, []);
+
+  const checkFirstLaunch = useCallback(async () => {
+    try {
+      const firstLaunch = await AsyncStorage.getItem(FIRST_LAUNCH_KEY);
+      const offerShown = await AsyncStorage.getItem(TRIAL_SHOWN_KEY);
+      
+      if (!firstLaunch) {
+        await AsyncStorage.setItem(FIRST_LAUNCH_KEY, 'false');
+        setIsFirstLaunch(true);
+        console.log('[SubscriptionProvider] First launch detected');
+      } else {
+        setIsFirstLaunch(false);
+      }
+
+      if (offerShown) {
+        setTrialOfferShown(true);
+      }
+    } catch (error) {
+      console.error('[SubscriptionProvider] Error checking first launch:', error);
+    }
+  }, []);
+
+  const initializeTrial = useCallback(async () => {
+    try {
+      const storedTrial = await AsyncStorage.getItem(TRIAL_KEY);
+      const now = new Date();
+      
+      if (storedTrial) {
+        const trial = JSON.parse(storedTrial) as TrialInfo;
+        const endDate = new Date(trial.endDate);
+        trial.isExpired = endDate < now;
+        setTrialInfo(trial);
+        console.log('[SubscriptionProvider] Trial status:', trial.isExpired ? 'expired' : 'active');
+        return trial;
+      } else {
+        // Start new trial
+        const startDate = now.toISOString();
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + TRIAL_DURATION_DAYS);
+        
+        const newTrial: TrialInfo = {
+          startDate,
+          endDate: endDate.toISOString(),
+          isExpired: false,
+        };
+        
+        await AsyncStorage.setItem(TRIAL_KEY, JSON.stringify(newTrial));
+        setTrialInfo(newTrial);
+        console.log('[SubscriptionProvider] New trial started');
+        return newTrial;
+      }
+    } catch (error) {
+      console.error('[SubscriptionProvider] Error initializing trial:', error);
+      return null;
+    }
+  }, []);
+
+  const markTrialOfferShown = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(TRIAL_SHOWN_KEY, 'true');
+      setTrialOfferShown(true);
+    } catch (error) {
+      console.error('[SubscriptionProvider] Error marking trial offer shown:', error);
+    }
   }, []);
 
   const loadMockStatus = useCallback(async () => {
@@ -187,7 +266,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     setIsMockMode(true);
     setPackages(WEB_MOCK_PACKAGES);
     await loadMockStatus();
-  }, [loadMockStatus]);
+    await initializeTrial();
+    await checkFirstLaunch();
+  }, [loadMockStatus, initializeTrial, checkFirstLaunch]);
 
   useEffect(() => {
     const initializePurchases = async () => {
@@ -247,6 +328,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           updateCustomerInfo(info);
           setIsMockMode(false);
           await loadOfferings(module);
+          await initializeTrial();
+          await checkFirstLaunch();
         } catch (error) {
           console.error('[SubscriptionProvider] Configuration failed:', error);
           // Fallback to mock mode if configuration fails entirely
@@ -413,6 +496,45 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     }
   }, [isInitialized, isMockMode, loadMockStatus, purchasesModule, updateCustomerInfo]);
 
+  const canAccessPremiumFeatures = useCallback(() => {
+    if (status === 'premium') return true;
+    if (trialInfo && !trialInfo.isExpired) return true;
+    return false;
+  }, [status, trialInfo]);
+
+  const getFeatureAccess = useCallback(() => {
+    const isPremium = status === 'premium';
+    const hasActiveTrial = trialInfo && !trialInfo.isExpired;
+    const hasAccess = isPremium || hasActiveTrial;
+
+    return {
+      // Free features (always available)
+      addTasks: true,
+      oneDayPlan: true,
+      pomodoroTimer: true,
+      basicGamification: true,
+      oneDayHistory: true,
+      basicThemes: true,
+      
+      // Limited free features
+      aiAdviceLimit: hasAccess ? Infinity : 3,
+      smartTasksLimit: hasAccess ? Infinity : 1,
+      
+      // Premium features
+      dailyAICoach: hasAccess,
+      weeklyMonthlyPlan: hasAccess,
+      weeklyAIReport: hasAccess,
+      unlimitedAIAdvice: hasAccess,
+      unlimitedSmartTasks: hasAccess,
+      extendedHistory: hasAccess,
+      levelsAndRewards: hasAccess,
+      aiChatAssistant: hasAccess,
+      prioritySpeed: hasAccess,
+      smartPomodoroAnalytics: hasAccess,
+      allFutureFeatures: hasAccess,
+    };
+  }, [status, trialInfo]);
+
   const value = useMemo(
     () => ({
       isInitialized,
@@ -425,8 +547,30 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       purchasePackage,
       restorePurchases,
       checkSubscriptionStatus,
+      trialInfo,
+      isFirstLaunch,
+      trialOfferShown,
+      markTrialOfferShown,
+      canAccessPremiumFeatures,
+      getFeatureAccess,
     }),
-    [checkSubscriptionStatus, customerInfo, isInitialized, isPurchasing, isRestoring, packages, purchasePackage, restorePurchases, status],
+    [
+      checkSubscriptionStatus,
+      customerInfo,
+      isInitialized,
+      isPurchasing,
+      isRestoring,
+      packages,
+      purchasePackage,
+      restorePurchases,
+      status,
+      trialInfo,
+      isFirstLaunch,
+      trialOfferShown,
+      markTrialOfferShown,
+      canAccessPremiumFeatures,
+      getFeatureAccess,
+    ],
   );
 
   return value;

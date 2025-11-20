@@ -17,7 +17,11 @@ import { useRouter } from 'expo-router';
 import { useSubscription } from '@/hooks/use-subscription-store';
 import { COLORS } from '@/constants/theme';
 
-export default function SubscriptionScreen() {
+interface SubscriptionScreenProps {
+  skipButton?: boolean;
+}
+
+export default function SubscriptionScreen({ skipButton = false }: SubscriptionScreenProps) {
   const router = useRouter();
   const {
     packages,
@@ -102,13 +106,29 @@ export default function SubscriptionScreen() {
     }
   };
 
-  const features = [
-    'Безграничный доступ к ИИ-помощнику',
-    'Детальные планы задач с упражнениями',
-    'Персонализированные рекомендации',
-    'Расширенная статистика и аналитика',
-    'Неограниченное количество целей',
-    'Приоритетная поддержка',
+  const freeFeatures = [
+    { title: 'Добавление задач', icon: '✏️' },
+    { title: '1-дневный план от ИИ', icon: '📅' },
+    { title: 'Помодоро-таймер', icon: '⏱️' },
+    { title: 'Базовая геймификация', icon: '🎮' },
+    { title: 'История 1 день', icon: '📊' },
+    { title: '3 персональных совета от ИИ', icon: '💡' },
+    { title: '1 умная задача в день', icon: '🎯' },
+    { title: 'Базовые темы', icon: '🎨' },
+  ];
+
+  const premiumFeatures = [
+    { title: 'Ежедневный ИИ-коуч', icon: '🤖', highlight: true },
+    { title: 'Полный недельный/месячный план', icon: '📆', highlight: true },
+    { title: 'Weekly AI Report', icon: '📈', highlight: true },
+    { title: 'Все персональные советы', icon: '💎' },
+    { title: 'Умные задачи без ограничений', icon: '🚀' },
+    { title: 'История 7-90 дней', icon: '📊' },
+    { title: 'Уровни и награды', icon: '🏆' },
+    { title: 'ИИ-чат помощник GoalForge', icon: '💬' },
+    { title: 'Приоритетная скорость', icon: '⚡' },
+    { title: 'Умный Pomodoro с аналитикой', icon: '⏰', highlight: true },
+    { title: 'Все будущие функции', icon: '✨' },
   ];
 
   if (isPremium) {
@@ -166,9 +186,9 @@ export default function SubscriptionScreen() {
         >
           <View style={styles.header}>
             <Sparkles size={48} color="#FFD700" />
-            <Text style={styles.title}>Разблокировать Premium</Text>
+            <Text style={styles.title}>GoalForge Premium</Text>
             <Text style={styles.subtitle}>
-              Получите максимум от GoalForge
+              Разблокируйте все возможности для достижения целей
             </Text>
           </View>
 
@@ -184,15 +204,51 @@ export default function SubscriptionScreen() {
             </View>
           )}
 
-          <View style={styles.featuresContainer}>
-            {features.map((feature, index) => (
-              <View key={index} style={styles.featureItem}>
-                <View style={styles.checkIcon}>
-                  <Check size={18} color="#FFD700" />
-                </View>
-                <Text style={styles.featureText}>{feature}</Text>
+          {/* Feature Comparison */}
+          <View style={styles.comparisonContainer}>
+            {/* Free Features */}
+            <View style={styles.featureSection}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>🆓 Free</Text>
+                <Text style={styles.sectionSubtitle}>Базовые возможности</Text>
               </View>
-            ))}
+              {freeFeatures.map((feature, index) => (
+                <View key={index} style={styles.featureRow}>
+                  <Text style={styles.featureIcon}>{feature.icon}</Text>
+                  <Text style={[styles.featureText, styles.freeFeatureText]}>{feature.title}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Premium Features */}
+            <View style={[styles.featureSection, styles.premiumSection]}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.premiumBadge}>
+                  <Text style={styles.sectionTitle}>🟦 Premium</Text>
+                </View>
+                <Text style={styles.sectionSubtitle}>Всё из Free +</Text>
+              </View>
+              {premiumFeatures.map((feature, index) => (
+                <View key={index} style={[
+                  styles.featureRow,
+                  feature.highlight && styles.highlightedFeature
+                ]}>
+                  <Text style={styles.featureIcon}>{feature.icon}</Text>
+                  <Text style={[
+                    styles.featureText, 
+                    styles.premiumFeatureText,
+                    feature.highlight && styles.highlightedText
+                  ]}>
+                    {feature.title}
+                  </Text>
+                  {feature.highlight && (
+                    <View style={styles.newBadge}>
+                      <Text style={styles.newBadgeText}>HOT</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
           </View>
 
           {packages.length > 0 ? (
@@ -236,9 +292,21 @@ export default function SubscriptionScreen() {
             {isPurchasing ? (
               <ActivityIndicator size="small" color={COLORS.primary} />
             ) : (
-              <Text style={styles.purchaseButtonText}>Продолжить</Text>
+              <>
+                <Text style={styles.purchaseButtonText}>Начать бесплатно</Text>
+                <Text style={styles.purchaseButtonSubtext}>Затем {selectedPackage?.includes('monthly') ? '$9.99/мес' : '$79/год'}</Text>
+              </>
             )}
           </TouchableOpacity>
+
+          {skipButton && (
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={() => router.replace('/(tabs)/home')}
+            >
+              <Text style={styles.skipButtonText}>Начать с пробного периода →</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.restoreButton}
@@ -330,8 +398,83 @@ const styles = StyleSheet.create({
   },
   featureText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     color: '#fff',
+    lineHeight: 20,
+  },
+  comparisonContainer: {
+    marginBottom: 24,
+    gap: 16,
+  },
+  featureSection: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 8,
+  },
+  premiumSection: {
+    backgroundColor: 'rgba(100, 150, 255, 0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(100, 150, 255, 0.3)',
+  },
+  sectionHeader: {
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  highlightedFeature: {
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    marginHorizontal: -8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  featureIcon: {
+    fontSize: 18,
+    marginRight: 12,
+    width: 24,
+  },
+  freeFeatureText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  premiumFeatureText: {
+    color: '#fff',
+    fontWeight: '500' as const,
+  },
+  highlightedText: {
+    color: '#FFD700',
+    fontWeight: 'bold' as const,
+  },
+  newBadge: {
+    backgroundColor: '#FF4444',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  newBadgeText: {
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: 'bold' as const,
   },
   packagesContainer: {
     marginBottom: 24,
@@ -389,6 +532,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.primary,
+  },
+  purchaseButtonSubtext: {
+    fontSize: 12,
+    color: COLORS.secondary,
+    marginTop: 2,
+  },
+  skipButton: {
+    marginTop: 8,
+    paddingVertical: 12,
+  },
+  skipButtonText: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textDecorationLine: 'underline',
   },
   restoreButton: {
     padding: 16,
