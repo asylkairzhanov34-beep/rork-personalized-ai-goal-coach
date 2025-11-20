@@ -194,35 +194,35 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
     console.log('▶️ Starting timer...');
     
     // Schedule background notification for timer completion (only for background)
-    let notificationId: string | null = null;
-    if (permission.granted) {
-      const currentMode = state.mode;
-      const duration = state.currentTime;
+    // let notificationId: string | null = null;
+    // if (permission.granted) {
+    //   const currentMode = state.mode;
+    //   const duration = state.currentTime;
       
-      console.log(`Scheduling background notification for ${duration} seconds`);
+    //   console.log(`Scheduling background notification for ${duration} seconds`);
       
-      const title = currentMode === 'focus' ? 'Перерыв начинается! 🌟' : 'Фокус начинается! 🎯';
-      const body = currentMode === 'focus' 
-        ? 'Отдохните и восстановите силы' 
-        : 'Сосредоточьтесь на задаче и достигните цели';
+    //   const title = currentMode === 'focus' ? 'Перерыв начинается! 🌟' : 'Фокус начинается! 🎯';
+    //   const body = currentMode === 'focus' 
+    //     ? 'Отдохните и восстановите силы' 
+    //     : 'Сосредоточьтесь на задаче и достигните цели';
       
-      // This notification will only fire if app is in background
-      notificationId = await scheduleNotification({
-        title,
-        body,
-        data: { type: 'timer_complete', mode: currentMode },
-        trigger: { seconds: duration },
-      });
+    //   // This notification will only fire if app is in background
+    //   notificationId = await scheduleNotification({
+    //     title,
+    //     body,
+    //     data: { type: 'timer_complete', mode: currentMode },
+    //     trigger: { seconds: duration },
+    //   });
       
-      console.log('Background notification scheduled with ID:', notificationId);
-    }
+    //   console.log('Background notification scheduled with ID:', notificationId);
+    // }
     
     setState(prev => ({
       ...prev,
       isRunning: true,
       isPaused: false,
       currentGoalId: goalId,
-      notificationId: notificationId || undefined,
+      notificationId: undefined, // notificationId || undefined,
     }));
   }, [state.mode, state.currentTime, permission.granted, scheduleNotification]);
 

@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
   },
   planButton: {
     backgroundColor: theme.colors.primary,
-    borderRadius: 16,
+    borderRadius: 999,
     height: 56,
     flexDirection: 'row',
     alignItems: 'center',
