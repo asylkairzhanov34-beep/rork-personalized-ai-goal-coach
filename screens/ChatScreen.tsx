@@ -117,7 +117,11 @@ const ChatScreen: React.FC = () => {
   }, [messages]);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
       <SafeAreaView style={styles.headerContainer} edges={['top']}>
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -144,11 +148,7 @@ const ChatScreen: React.FC = () => {
         </View>
       </SafeAreaView>
 
-      <KeyboardAvoidingView 
-        style={styles.keyboardAvoiding} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
+      <View style={styles.chatContainer}>
         <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
@@ -219,37 +219,43 @@ const ChatScreen: React.FC = () => {
             </View>
           )}
         </ScrollView>
-
-        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Написать сообщение..."
-              placeholderTextColor={theme.colors.textSecondary}
-              multiline
-              maxLength={1000}
-              returnKeyType="default"
-            />
-            <TouchableOpacity
-              onPress={handleSend}
-              disabled={!inputText.trim()}
-              style={[
-                styles.sendButton,
-                !inputText.trim() && styles.sendButtonDisabled
-              ]}
-            >
-              {isSending ? (
-                  <ActivityIndicator size="small" color={theme.colors.background} />
-              ) : (
-                  <Send size={20} color={theme.colors.background} />
-              )}
-            </TouchableOpacity>
-          </View>
+      </View>
+      
+      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Написать сообщение..."
+            placeholderTextColor={theme.colors.textSecondary}
+            multiline
+            maxLength={1000}
+            returnKeyType="send"
+            blurOnSubmit={false}
+            onSubmitEditing={() => {
+              if (inputText.trim()) {
+                handleSend();
+              }
+            }}
+          />
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={!inputText.trim()}
+            style={[
+              styles.sendButton,
+              !inputText.trim() && styles.sendButtonDisabled
+            ]}
+          >
+            {isSending ? (
+                <ActivityIndicator size="small" color={theme.colors.background} />
+            ) : (
+                <Send size={20} color={theme.colors.background} />
+            )}
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -302,7 +308,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: theme.colors.surfaceElevated,
   },
-  keyboardAvoiding: {
+  chatContainer: {
     flex: 1,
   },
   scrollView: {
@@ -311,6 +317,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 20,
+    paddingBottom: 20,
   },
   messageContainer: {
     flexDirection: 'row',

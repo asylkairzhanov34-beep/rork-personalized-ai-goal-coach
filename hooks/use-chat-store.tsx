@@ -8,34 +8,38 @@ import { useMemo, useEffect, useCallback } from 'react';
 export const [ChatProvider, useChat] = createContextHook(() => {
   const goalStore = useGoalStore();
 
-  const { messages, sendMessage: rorkSendMessage, setMessages, error } = useRorkAgent({
+  const { messages, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
       addTask: createRorkTool({
-        description: 'Add a new task to the user\'s schedule',
+        description: 'Добавить новую задачу в расписание пользователя. ИСПОЛЬЗУЙ ЭТУ ФУНКЦИЮ когда пользователь просит добавить задачи или изменить план.',
         zodSchema: z.object({
-          title: z.string().describe('Title of the task'),
-          date: z.string().describe('Date for the task (ISO string)'),
-          priority: z.enum(['high', 'medium', 'low']).describe('Priority of the task'),
-          estimatedTime: z.number().describe('Estimated time in minutes'),
-          description: z.string().optional().describe('Description of the task'),
+          title: z.string().describe('Название задачи'),
+          date: z.string().describe('Дата для задачи (ISO строка, например: 2025-01-20)'),
+          priority: z.enum(['high', 'medium', 'low']).describe('Приоритет задачи'),
+          estimatedTime: z.number().describe('Предполагаемое время в минутах'),
+          description: z.string().optional().describe('Описание задачи'),
         }),
         execute: async (input) => {
-          goalStore.addTask({
-            title: input.title,
-            date: input.date,
-            priority: input.priority as any,
-            estimatedTime: input.estimatedTime,
-            description: input.description || '',
-            duration: input.estimatedTime + ' мин',
-            difficulty: 'medium',
-            day: 1, // Default to day 1 or calculate based on goal start
-            tips: [],
-          });
-          return `Task "${input.title}" added for ${new Date(input.date).toLocaleDateString()}.`;
+          try {
+            goalStore.addTask({
+              title: input.title,
+              date: input.date,
+              priority: input.priority as any,
+              estimatedTime: input.estimatedTime,
+              description: input.description || '',
+              duration: input.estimatedTime + ' мин',
+              difficulty: 'medium',
+              day: Math.floor((new Date(input.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) + 1,
+              tips: [],
+            });
+            return `✅ Задача "${input.title}" успешно добавлена на ${new Date(input.date).toLocaleDateString('ru-RU')}.`;
+          } catch (error) {
+            return `❌ Ошибка при добавлении задачи: ${error}`;
+          }
         },
       }),
       updateTask: createRorkTool({
-        description: 'Update an existing task',
+        description: 'Обновить существующую задачу. Используй для изменения статуса, названия или других параметров.',
         zodSchema: z.object({
           taskId: z.string().describe('ID of the task to update'),
           title: z.string().optional(),
@@ -54,7 +58,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
         },
       }),
       deleteTask: createRorkTool({
-        description: 'Delete a task',
+        description: 'Удалить задачу из расписания',
         zodSchema: z.object({
           taskId: z.string().describe('ID of the task to delete'),
         }),
@@ -64,7 +68,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
         },
       }),
       getTasks: createRorkTool({
-        description: 'Get tasks for a specific date range or all active tasks',
+        description: 'Получить задачи для определенного периода или все активные задачи. Используй перед добавлением задач чтобы понять текущий план.',
         zodSchema: z.object({
           startDate: z.string().optional().describe('Start date (ISO)'),
           endDate: z.string().optional().describe('End date (ISO)'),
@@ -87,7 +91,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
         },
       }),
       getHistory: createRorkTool({
-        description: 'Get performance history statistics for the last 90 days',
+        description: 'Получить историю выполнения за последние 90 дней для анализа продуктивности и персонализированных рекомендаций',
         zodSchema: z.object({}),
         execute: async () => {
           const now = new Date();
@@ -115,8 +119,20 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   });
 
   const sendMessage = useCallback(async (text: string) => {
-    await rorkSendMessage(text);
-  }, [rorkSendMessage]);
+    // Добавляем системный контекст к сообщению пользователя
+    const currentGoalTitle = goalStore.currentGoal?.title || 'не установлена';
+    const enrichedMessage = `
+Контекст: Ты - умный AI помощник для управления задачами. Когда пользователь просит изменить план, составить задачи или помочь с расписанием - ты ОБЯЗАТЕЛЬНО используешь функции addTask, updateTask, deleteTask чтобы вставить задачи прямо в приложение.
+
+ВАЖНО:
+- Если пользователь говорит "составь план" или "добавь задачи" - создавай 5-10 конкретных задач через addTask
+- Анализируй историю через getHistory для персонализированных советов
+- Учитывай текущую цель: ${currentGoalTitle}
+
+Запрос пользователя: ${text}`;
+    
+    await rorkSendMessage(enrichedMessage);
+  }, [rorkSendMessage, goalStore.currentGoal]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
