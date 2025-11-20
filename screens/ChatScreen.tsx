@@ -85,9 +85,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, showAvatar }) =>
   );
 };
 
+import { useLocalSearchParams } from 'expo-router';
+
 const ChatScreen: React.FC = () => {
   const { messages, sendMessage, clearChat, isLoading } = useChat();
-  const [inputText, setInputText] = useState<string>('');
+  const params = useLocalSearchParams<{ initialMessage?: string }>();
+  const [inputText, setInputText] = useState<string>(params.initialMessage || '');
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const [isSending, setIsSending] = useState(false);
@@ -117,13 +120,18 @@ const ChatScreen: React.FC = () => {
     <View style={styles.container}>
       <SafeAreaView style={styles.headerContainer} edges={['top']}>
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <View style={styles.headerIconContainer}>
-              <Sparkles size={20} color={theme.colors.primary} />
+          <View style={styles.headerContent}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarGradient}>
+                <Sparkles size={20} color={theme.colors.background} />
+              </View>
             </View>
-            <View>
-              <Text style={styles.headerTitle}>AI Coach</Text>
-              <Text style={styles.headerSubtitle}>Всегда на связи</Text>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Rork AI</Text>
+              <View style={styles.statusContainer}>
+                <View style={styles.statusDot} />
+                <Text style={styles.headerSubtitle}>Онлайн</Text>
+              </View>
             </View>
           </View>
           <TouchableOpacity 
@@ -131,7 +139,7 @@ const ChatScreen: React.FC = () => {
             style={styles.clearButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <MoreHorizontal size={20} color={theme.colors.textSecondary} />
+            <MoreHorizontal size={24} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -152,13 +160,36 @@ const ChatScreen: React.FC = () => {
         >
           {messages.length === 0 && (
             <View style={styles.emptyState}>
+              <View style={styles.emptyIconGlow} />
               <View style={styles.emptyIcon}>
-                <Bot size={40} color={theme.colors.primary} />
+                <Bot size={48} color={theme.colors.primary} />
               </View>
-              <Text style={styles.emptyTitle}>Привет! Я Rork AI.</Text>
+              <Text style={styles.emptyTitle}>Привет! Я Rork AI</Text>
               <Text style={styles.emptyText}>
-                Я помогу организовать твои дела, дам совет и поддержу мотивацию. Просто напиши мне!
+                Я помогу организовать дела и достичь целей.{"\n"}
+                Попроси меня создать задачу или проанализировать прогресс.
               </Text>
+              
+              <View style={styles.suggestionsContainer}>
+                <TouchableOpacity 
+                  style={styles.suggestionChip}
+                  onPress={() => setInputText("Создай план на сегодня")}
+                >
+                  <Text style={styles.suggestionText}>📝 Создай план на сегодня</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.suggestionChip}
+                  onPress={() => setInputText("Проанализируй мой прогресс")}
+                >
+                  <Text style={styles.suggestionText}>📊 Проанализируй прогресс</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.suggestionChip}
+                  onPress={() => setInputText("Дай совет по продуктивности")}
+                >
+                  <Text style={styles.suggestionText}>💡 Дай совет</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
           
@@ -242,6 +273,7 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    display: 'none', // Hide old styles
   },
   headerIconContainer: {
     width: 40,
@@ -253,6 +285,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    display: 'none', // Hide old styles
   },
   headerTitle: {
     fontSize: 16,
@@ -261,7 +294,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    color: theme.colors.primary,
+    color: theme.colors.textSecondary, // Changed color
     fontWeight: '500',
   },
   clearButton: {
@@ -290,12 +323,7 @@ const styles = StyleSheet.create({
   userContainer: {
     justifyContent: 'flex-end',
   },
-  avatarContainer: {
-    width: 28,
-    height: 28,
-    marginRight: 8,
-    marginLeft: 0,
-  },
+  // Removed old avatarContainer
   hiddenAvatar: {
     opacity: 0,
   },
@@ -303,12 +331,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   messageBubble: {
-    maxWidth: '75%',
+    maxWidth: '80%',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 20,
@@ -331,8 +361,8 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   userText: {
-    color: theme.colors.background, // Black text on yellow
-    fontWeight: '500',
+    color: theme.colors.background,
+    fontWeight: '600',
   },
   timestamp: {
     fontSize: 10,
@@ -343,13 +373,23 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   userTimestamp: {
-    color: 'rgba(0,0,0,0.5)',
+    color: 'rgba(0,0,0,0.6)',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 60,
-    paddingHorizontal: 40,
+    marginTop: 40,
+    paddingHorizontal: 24,
+  },
+  emptyIconGlow: {
+    position: 'absolute',
+    top: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.colors.primary,
+    opacity: 0.1,
+    transform: [{ scale: 1.5 }],
   },
   emptyIcon: {
     width: 80,
@@ -362,22 +402,44 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.primary,
     shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 0 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 20,
+    shadowRadius: 16,
+    elevation: 8,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: theme.colors.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 15,
     color: theme.colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  suggestionsContainer: {
+    width: '100%',
+    gap: 12,
+  },
+  suggestionChip: {
+    backgroundColor: theme.colors.surfaceElevated,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestionText: {
+    color: theme.colors.text,
+    fontSize: 14,
+    fontWeight: '500',
   },
   inputContainer: {
     backgroundColor: theme.colors.background,
@@ -385,6 +447,40 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    marginRight: 12,
+  },
+  avatarGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  headerTextContainer: {
+    justifyContent: 'center',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.success,
+    marginRight: 4,
   },
   inputWrapper: {
     flexDirection: 'row',

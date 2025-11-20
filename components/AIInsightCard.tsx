@@ -13,9 +13,18 @@ interface AIInsightCardProps {
 
 const INSIGHT_CACHE_KEY = 'daily_ai_insight';
 
+interface InsightData {
+  title: string;
+  message: string;
+  actionText: string;
+  actionRoute: string;
+  actionParam?: string;
+  icon: string;
+}
+
 export function AIInsightCard({ onActionPress }: AIInsightCardProps) {
   const store = useGoalStore();
-  const [insight, setInsight] = useState<{ title: string; message: string; actionText: string; actionRoute: string; icon: string } | null>(null);
+  const [insight, setInsight] = useState<InsightData | null>(null);
   const [loading, setLoading] = useState(false);
   
   const { profile, currentGoal, dailyTasks, pomodoroSessions } = store;
@@ -67,7 +76,7 @@ export function AIInsightCard({ onActionPress }: AIInsightCardProps) {
       const todayCompleted = todayTasks.filter(t => t.completed).length;
 
       const prompt = `
-Analyze the user's productivity for the last 90 days and give a specific recommendation.
+Analyze the user's productivity for the last 90 days to provide a strategic recommendation.
 Context:
 - Name: ${profile.name}
 - Current Streak: ${profile.currentStreak} days
@@ -77,13 +86,13 @@ Context:
 
 Output a JSON object ONLY with these fields:
 {
-  "title": "Short catchy title (max 20 chars)",
-  "message": "One specific, encouraging sentence based on their history and today's status.",
-  "actionText": "Action button text (max 15 chars)",
-  "actionRoute": "/plan" (or "/timer", "/breathing", "/goal-creation"),
-  "icon": "Emoji"
+  "title": "Short strategic title (max 25 chars)",
+  "message": "One specific, actionable advice based on their history. If they struggle, suggest adjusting the plan. If doing well, suggest a challenge.",
+  "actionText": "Action button text (max 20 chars)",
+  "actionRoute": "/chat" (or "/plan" if just viewing tasks),
+  "actionParam": "Optimize my plan" (optional message to send to chat if route is /chat),
+  "icon": "Emoji representing the advice"
 }
-If they have no goal, suggest creating one. If they did well, praise them. If they struggled, suggest a small step.
 Respond in Russian.
 `;
 
@@ -106,11 +115,12 @@ Respond in Russian.
       console.error('Failed to generate insight:', error);
       // Fallback
       setInsight({
-        title: 'Продолжайте!',
-        message: 'Каждый шаг приближает вас к цели. Не останавливайтесь!',
-        actionText: 'К задачам',
-        actionRoute: '/plan',
-        icon: '✨'
+        title: 'Оптимизация плана',
+        message: 'Я могу проанализировать ваши задачи и предложить улучшения.',
+        actionText: 'Спросить совета',
+        actionRoute: '/chat',
+        actionParam: 'Проанализируй мой план и дай совет',
+        icon: '🧠'
       });
     } finally {
       setLoading(false);
@@ -119,7 +129,11 @@ Respond in Russian.
 
   const handleActionPress = () => {
     if (insight?.actionRoute) {
-      router.push(insight.actionRoute as any);
+      if (insight.actionRoute === '/chat' && insight.actionParam) {
+         router.push({ pathname: '/chat', params: { initialMessage: insight.actionParam } });
+      } else {
+         router.push(insight.actionRoute as any);
+      }
     } else if (onActionPress) {
       onActionPress();
     }
