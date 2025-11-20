@@ -201,10 +201,10 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
       
       console.log(`Scheduling background notification for ${duration} seconds`);
       
-      const title = currentMode === 'focus' ? 'Pomodoro завершен! 🎉' : 'Перерыв завершен! 💪';
+      const title = currentMode === 'focus' ? 'Перерыв начинается! 🌟' : 'Фокус начинается! 🎯';
       const body = currentMode === 'focus' 
-        ? 'Время для перерыва. Отличная работа!' 
-        : 'Время вернуться к работе!';
+        ? 'Отдохните и восстановите силы' 
+        : 'Сосредоточьтесь на задаче и достигните цели';
       
       // This notification will only fire if app is in background
       notificationId = await scheduleNotification({

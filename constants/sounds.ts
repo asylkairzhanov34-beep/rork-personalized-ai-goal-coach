@@ -55,7 +55,7 @@ export const SOUNDS_CONFIG: SoundConfig[] = [
   },
 ];
 
-export const DEFAULT_SOUND_ID: SoundId = 'triple';
+export const DEFAULT_SOUND_ID: SoundId = 'bell';
 
 export function getSoundById(id: SoundId): SoundConfig | undefined {
   return SOUNDS_CONFIG.find(sound => sound.id === id);
