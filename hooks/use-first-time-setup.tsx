@@ -21,20 +21,26 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
       console.log('[FirstTimeSetupProvider] Loading profile...');
       const stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
       console.log('[FirstTimeSetupProvider] Profile loaded:', stored ? 'Yes' : 'No');
-      setState({
-        profile: stored,
-        currentStep: 0,
-        isLoading: false,
+      
+      // Use requestAnimationFrame to prevent blocking
+      requestAnimationFrame(() => {
+        setState({
+          profile: stored,
+          currentStep: 0,
+          isLoading: false,
+        });
       });
     } catch (error) {
       console.error('[FirstTimeSetupProvider] Error loading profile:', error);
-      setState({
-        profile: null,
-        currentStep: 0,
-        isLoading: false,
+      requestAnimationFrame(() => {
+        setState({
+          profile: null,
+          currentStep: 0,
+          isLoading: false,
+        });
       });
     }
-  }, []);
+  }, [FIRST_TIME_SETUP_KEY]);
 
   const updateProfile = useCallback(async (updates: Partial<FirstTimeProfile>) => {
     setState(prev => {
@@ -50,7 +56,7 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
         profile: newProfile,
       };
     });
-  }, []);
+  }, [FIRST_TIME_SETUP_KEY]);
 
   const completeSetup = useCallback(async () => {
     setState(prev => {
@@ -66,7 +72,7 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
         profile: completed,
       };
     });
-  }, []);
+  }, [FIRST_TIME_SETUP_KEY]);
 
   const setStep = useCallback((step: number) => {
     setState(prev => ({ ...prev, currentStep: step }));
@@ -79,7 +85,7 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
       currentStep: 0,
       isLoading: false,
     });
-  }, []);
+  }, [FIRST_TIME_SETUP_KEY]);
 
   useEffect(() => {
     const init = async () => {

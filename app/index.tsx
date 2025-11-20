@@ -6,16 +6,25 @@ import { useAuth } from '@/hooks/use-auth-store';
 
 export default function Index() {
   const [isReady, setIsReady] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { profile, isLoading: setupLoading } = useFirstTimeSetup();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
+    // Mark as client side for hydration
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    
     const initializeApp = async () => {
       try {
         console.log('[Index] Initializing...');
         
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // Small timeout to prevent blocking
+        await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
         
         setIsReady(true);
         console.log('[Index] Ready');
@@ -27,13 +36,13 @@ export default function Index() {
     };
 
     initializeApp();
-  }, []);
+  }, [isClient]);
 
   if (error) {
     console.warn('[Index] Error occurred but continuing:', error);
   }
 
-  if (!isReady || authLoading || setupLoading) {
+  if (!isClient || !isReady || authLoading || setupLoading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#FFD700" />

@@ -25,17 +25,23 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[AuthProvider] Loading stored user...');
       const user = await safeStorageGet<User | null>(AUTH_STORAGE_KEY, null);
       console.log('[AuthProvider] User loaded:', user ? 'Yes' : 'No');
-      setAuthState({
-        user,
-        isLoading: false,
-        isAuthenticated: !!user,
+      
+      // Use requestAnimationFrame to prevent blocking
+      requestAnimationFrame(() => {
+        setAuthState({
+          user,
+          isLoading: false,
+          isAuthenticated: !!user,
+        });
       });
     } catch (error) {
       console.error('[AuthProvider] Error loading user:', error);
-      setAuthState({
-        user: null,
-        isLoading: false,
-        isAuthenticated: false,
+      requestAnimationFrame(() => {
+        setAuthState({
+          user: null,
+          isLoading: false,
+          isAuthenticated: false,
+        });
       });
     }
   }, []);

@@ -81,11 +81,17 @@ export function useNotifications() {
       });
 
       return () => {
-        if (notificationListener.current) {
+        if (notificationListener.current && typeof notificationListener.current.remove === 'function') {
           notificationListener.current.remove();
+        } else if (notificationListener.current && typeof notificationListener.current === 'object') {
+          // For older versions or web compatibility
+          notificationListener.current = null;
         }
-        if (responseListener.current) {
+        if (responseListener.current && typeof responseListener.current.remove === 'function') {
           responseListener.current.remove();
+        } else if (responseListener.current && typeof responseListener.current === 'object') {
+          // For older versions or web compatibility
+          responseListener.current = null;
         }
       };
     }

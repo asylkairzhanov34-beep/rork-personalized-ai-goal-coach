@@ -198,25 +198,35 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    // Mark as client side for hydration
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    
     const initializeApp = async () => {
       try {
         console.log('[RootLayout] Starting initialization...');
         
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Reduced timeout to prevent hydration timeout
+        await new Promise(resolve => setTimeout(resolve, 50));
         
         console.log('[RootLayout] Initialization complete');
         setIsReady(true);
         
-        setTimeout(async () => {
+        // Hide splash screen after mount
+        requestAnimationFrame(async () => {
           try {
             await SplashScreen.hideAsync();
             console.log('[RootLayout] Splash screen hidden');
           } catch (error) {
             console.error('[RootLayout] Failed to hide splash:', error);
           }
-        }, 300);
+        });
       } catch (error) {
         console.error('[RootLayout] Initialization error:', error);
         setIsReady(true);
@@ -230,9 +240,9 @@ export default function RootLayout() {
     };
     
     initializeApp();
-  }, []);
+  }, [isClient]);
 
-  if (!isReady) {
+  if (!isClient || !isReady) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FFD700" />
