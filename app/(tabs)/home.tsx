@@ -69,13 +69,16 @@ export default function TodayScreen() {
             <Text style={styles.emptyDescription}>
               Начните свой путь, поставив цель, и позвольте ИИ создать персональный план
             </Text>
-            <Button
-              title="Создать первую цель"
+            <TouchableOpacity
+              style={styles.createGoalButton}
               onPress={() => router.push('/goal-creation')}
-              variant="premium"
-              size="large"
-              style={styles.createButton}
-            />
+              activeOpacity={0.9}
+            >
+              <View style={styles.createGoalButtonInner}>
+                <Sparkles size={24} color="#000" style={{ marginRight: 8 }} />
+                <Text style={styles.createGoalButtonText}>Создать первую цель</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
       </GradientBackground>
@@ -428,7 +431,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: theme.fontSize.xxxl,
-    fontWeight: theme.fontWeight.regular,
+    fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
     marginTop: theme.spacing.xl,
     marginBottom: theme.spacing.lg,
@@ -436,16 +439,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptyDescription: {
-    fontSize: theme.fontSize.md,
+    fontSize: theme.fontSize.lg,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: theme.spacing.xxxl,
-    lineHeight: 24,
+    lineHeight: 26,
     fontWeight: theme.fontWeight.regular,
     letterSpacing: 0,
+    paddingHorizontal: theme.spacing.lg,
   },
-  createButton: {
+  createGoalButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 999,
     paddingHorizontal: theme.spacing.xxxl,
+    paddingVertical: theme.spacing.xl,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  createGoalButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  createGoalButtonText: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.bold,
+    color: '#000',
   },
   loadingContainer: {
     flex: 1,

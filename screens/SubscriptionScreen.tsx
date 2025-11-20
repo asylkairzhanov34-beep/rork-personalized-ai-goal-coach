@@ -9,9 +9,10 @@ import {
   Alert,
   Platform,
   Linking,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Check, Sparkles, Info, Settings } from 'lucide-react-native';
+import { X, Check, Sparkles, Info, Settings, Crown, Star, Zap, TrendingUp } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSubscription } from '@/hooks/use-subscription-store';
@@ -106,30 +107,38 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
     }
   };
 
-  const freeFeatures = [
-    { title: 'Добавление задач', icon: '✏️' },
-    { title: '1-дневный план от ИИ', icon: '📅' },
-    { title: 'Помодоро-таймер', icon: '⏱️' },
-    { title: 'Базовая геймификация', icon: '🎮' },
-    { title: 'История 1 день', icon: '📊' },
-    { title: '3 персональных совета от ИИ', icon: '💡' },
-    { title: '1 умная задача в день', icon: '🎯' },
-    { title: 'Базовые темы', icon: '🎨' },
-  ];
+  const [scaleAnim] = useState(new Animated.Value(1));
 
   const premiumFeatures = [
     { title: 'Ежедневный ИИ-коуч', icon: '🤖', highlight: true },
     { title: 'Полный недельный/месячный план', icon: '📆', highlight: true },
     { title: 'Weekly AI Report', icon: '📈', highlight: true },
-    { title: 'Все персональные советы', icon: '💎' },
+    { title: 'Безлимитный ИИ-чат GoalForge', icon: '💬', highlight: true },
     { title: 'Умные задачи без ограничений', icon: '🚀' },
-    { title: 'История 7-90 дней', icon: '📊' },
-    { title: 'Уровни и награды', icon: '🏆' },
-    { title: 'ИИ-чат помощник GoalForge', icon: '💬' },
-    { title: 'Приоритетная скорость', icon: '⚡' },
-    { title: 'Умный Pomodoro с аналитикой', icon: '⏰', highlight: true },
+    { title: 'История прогресса 90 дней', icon: '📊' },
+    { title: 'Система уровней и наград', icon: '🏆' },
+    { title: 'Приоритетная скорость ИИ', icon: '⚡' },
+    { title: 'Умный Pomodoro с аналитикой', icon: '⏰' },
+    { title: 'Персонализированные советы', icon: '💎' },
     { title: 'Все будущие функции', icon: '✨' },
   ];
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.05,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [scaleAnim]);
 
   if (isPremium) {
     return (
@@ -185,10 +194,21 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Sparkles size={48} color="#FFD700" />
-            <Text style={styles.title}>GoalForge Premium</Text>
+            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+              <View style={styles.iconContainer}>
+                <LinearGradient
+                  colors={['#FFD700', '#FFA500']}
+                  style={styles.iconGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Crown size={48} color="#fff" />
+                </LinearGradient>
+              </View>
+            </Animated.View>
+            <Text style={styles.title}>Разблокируйте Premium</Text>
             <Text style={styles.subtitle}>
-              Разблокируйте все возможности для достижения целей
+              Достигайте целей в 3x быстрее с ИИ-коучем
             </Text>
           </View>
 
@@ -204,50 +224,43 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
             </View>
           )}
 
-          {/* Feature Comparison */}
-          <View style={styles.comparisonContainer}>
-            {/* Free Features */}
-            <View style={styles.featureSection}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>🆓 Free</Text>
-                <Text style={styles.sectionSubtitle}>Базовые возможности</Text>
-              </View>
-              {freeFeatures.map((feature, index) => (
-                <View key={index} style={styles.featureRow}>
+          {/* Premium Features Grid */}
+          <View style={styles.featuresGrid}>
+            {premiumFeatures.map((feature, index) => (
+              <View 
+                key={index} 
+                style={[
+                  styles.featureCard,
+                  feature.highlight && styles.featureCardHighlight
+                ]}
+              >
+                <View style={styles.featureCardIcon}>
                   <Text style={styles.featureIcon}>{feature.icon}</Text>
-                  <Text style={[styles.featureText, styles.freeFeatureText]}>{feature.title}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Premium Features */}
-            <View style={[styles.featureSection, styles.premiumSection]}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.premiumBadge}>
-                  <Text style={styles.sectionTitle}>🟦 Premium</Text>
-                </View>
-                <Text style={styles.sectionSubtitle}>Всё из Free +</Text>
-              </View>
-              {premiumFeatures.map((feature, index) => (
-                <View key={index} style={[
-                  styles.featureRow,
-                  feature.highlight && styles.highlightedFeature
-                ]}>
-                  <Text style={styles.featureIcon}>{feature.icon}</Text>
-                  <Text style={[
-                    styles.featureText, 
-                    styles.premiumFeatureText,
-                    feature.highlight && styles.highlightedText
-                  ]}>
-                    {feature.title}
-                  </Text>
                   {feature.highlight && (
-                    <View style={styles.newBadge}>
-                      <Text style={styles.newBadgeText}>HOT</Text>
+                    <View style={styles.hotBadge}>
+                      <Zap size={12} color="#fff" />
                     </View>
                   )}
                 </View>
-              ))}
+                <Text style={[
+                  styles.featureCardText,
+                  feature.highlight && styles.featureCardTextHighlight
+                ]}>
+                  {feature.title}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Value Props */}
+          <View style={styles.valueProps}>
+            <View style={styles.valueProp}>
+              <TrendingUp size={24} color="#FFD700" />
+              <Text style={styles.valuePropText}>90% пользователей достигают целей</Text>
+            </View>
+            <View style={styles.valueProp}>
+              <Star size={24} color="#FFD700" />
+              <Text style={styles.valuePropText}>4.9★ рейтинг в App Store</Text>
             </View>
           </View>
 
@@ -289,14 +302,26 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
             onPress={handlePurchase}
             disabled={isPurchasing || packages.length === 0}
           >
-            {isPurchasing ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
-            ) : (
-              <>
-                <Text style={styles.purchaseButtonText}>Начать бесплатно</Text>
-                <Text style={styles.purchaseButtonSubtext}>Затем {selectedPackage?.includes('monthly') ? '$9.99/мес' : '$79/год'}</Text>
-              </>
-            )}
+            <LinearGradient
+              colors={['#FFD700', '#FFA500']}
+              style={styles.purchaseButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              {isPurchasing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <View style={styles.purchaseButtonContent}>
+                    <Text style={styles.purchaseButtonText}>Попробовать Premium</Text>
+                    <Crown size={20} color="#fff" style={{ marginLeft: 8 }} />
+                  </View>
+                  <Text style={styles.purchaseButtonSubtext}>
+                    3 дня бесплатно • Затем {selectedPackage?.includes('monthly') ? '999₽/мес' : '7990₽/год'}
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
 
           {skipButton && (
@@ -402,79 +427,83 @@ const styles = StyleSheet.create({
     color: '#fff',
     lineHeight: 20,
   },
-  comparisonContainer: {
-    marginBottom: 24,
-    gap: 16,
-  },
-  featureSection: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 8,
-  },
-  premiumSection: {
-    backgroundColor: 'rgba(100, 150, 255, 0.15)',
-    borderWidth: 2,
-    borderColor: 'rgba(100, 150, 255, 0.3)',
-  },
-  sectionHeader: {
+  iconContainer: {
+    alignItems: 'center',
     marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
+  iconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
+  featuresGrid: {
+    marginBottom: 24,
   },
-  premiumBadge: {
+  featureCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  highlightedFeature: {
+  featureCardHighlight: {
     backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    marginHorizontal: -8,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  featureCardIcon: {
+    position: 'relative',
+    marginRight: 16,
   },
   featureIcon: {
-    fontSize: 18,
-    marginRight: 12,
-    width: 24,
+    fontSize: 24,
   },
-  freeFeatureText: {
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  premiumFeatureText: {
-    color: '#fff',
+  featureCardText: {
+    flex: 1,
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '500' as const,
   },
-  highlightedText: {
-    color: '#FFD700',
-    fontWeight: 'bold' as const,
-  },
-  newBadge: {
-    backgroundColor: '#FF4444',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  newBadgeText: {
-    fontSize: 10,
+  featureCardTextHighlight: {
     color: '#fff',
-    fontWeight: 'bold' as const,
+    fontWeight: '600' as const,
+  },
+  hotBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  valueProps: {
+    marginBottom: 32,
+    gap: 12,
+  },
+  valueProp: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 215, 0, 0.08)',
+    padding: 12,
+    borderRadius: 12,
+    gap: 12,
+  },
+  valuePropText: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '500' as const,
   },
   packagesContainer: {
     marginBottom: 24,
@@ -519,24 +548,35 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
   },
   purchaseButton: {
-    backgroundColor: '#fff',
     borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  purchaseButtonGradient: {
     padding: 18,
     alignItems: 'center',
-    marginBottom: 16,
+  },
+  purchaseButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   purchaseButtonDisabled: {
     opacity: 0.5,
   },
   purchaseButtonText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+    fontWeight: 'bold' as const,
+    color: '#fff',
   },
   purchaseButtonSubtext: {
-    fontSize: 12,
-    color: COLORS.secondary,
-    marginTop: 2,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 4,
   },
   skipButton: {
     marginTop: 8,

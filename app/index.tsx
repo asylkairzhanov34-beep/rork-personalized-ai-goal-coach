@@ -80,16 +80,22 @@ export default function Index() {
     return <Redirect href="/auth" />;
   }
 
-  if (!profile || !profile.isCompleted) {
-    console.log('[Index] -> /first-time-setup');
+  // Always show first-time-setup immediately after authentication
+  if (!profile || !profile.nickname) {
+    console.log('[Index] -> /first-time-setup (no profile)');
     return <Redirect href="/first-time-setup" />;
   }
 
   // Show subscription offer on first launch
-  if (isFirstLaunch && !trialOfferShown) {
+  if (isFirstLaunch && !trialOfferShown && !profile.isCompleted) {
     console.log('[Index] First launch, showing subscription offer');
     markTrialOfferShown();
     return <Redirect href="/subscription" />;
+  }
+
+  if (!profile.isCompleted) {
+    console.log('[Index] -> /first-time-setup');
+    return <Redirect href="/first-time-setup" />;
   }
 
   console.log('[Index] -> /home');
