@@ -1,5 +1,7 @@
-import PurchaseScreen from '@/screens/PurchaseScreen';
+import SubscriptionScreen from '@/screens/SubscriptionScreen';
+import { useSubscription } from '@/hooks/use-subscription-store';
 
 export default function Subscription() {
-  return <PurchaseScreen />;
+  const { isFirstLaunch } = useSubscription();
+  return <SubscriptionScreen skipButton={isFirstLaunch} />;
 }

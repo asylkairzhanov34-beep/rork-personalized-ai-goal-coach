@@ -4,24 +4,24 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
 import { useAuth } from '@/hooks/use-auth-store';
 import { useSubscription } from '@/hooks/use-subscription-store';
-import PaywallModal from '@/components/PaywallModal';
+import SubscriptionPaywall from '@/components/SubscriptionPaywall';
 
 export default function Index() {
   const [isReady, setIsReady] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { profile, isLoading: setupLoading } = useFirstTimeSetup();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { 
-    isInitialized: subInitialized,
-    isPremium,
-    trialStartAt,
-    startTrial,
+    isFirstLaunch, 
+    trialInfo, 
+    trialOfferShown,
+    markTrialOfferShown,
+    isInitialized: subInitialized 
   } = useSubscription();
 
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [paywallDismissed, setPaywallDismissed] = useState(false);
-
   useEffect(() => {
+    // Mark as client side for hydration
     setIsClient(true);
   }, []);
 
@@ -29,56 +29,76 @@ export default function Index() {
     if (!isClient) return;
     
     const initializeApp = async () => {
-      // Artificial delay for splash
-      await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
-      setIsReady(true);
+      try {
+        console.log('[Index] Initializing...');
+        
+        // Small timeout to prevent blocking
+        await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+        
+        setIsReady(true);
+        console.log('[Index] Ready');
+      } catch (err) {
+        console.error('[Index] Init error:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setIsReady(true);
+      }
     };
 
     initializeApp();
   }, [isClient]);
 
-  // Handle First Launch Trial Logic
-  useEffect(() => {
-    if (!subInitialized || !isReady || authLoading || setupLoading) return;
-    if (!isAuthenticated) return;
-    if (!profile?.isCompleted) return; // Don't show on setup
-
-    // If not premium and no trial started -> Start trial & Show Paywall
-    if (!isPremium && !trialStartAt && !paywallDismissed) {
-      console.log('[Index] First launch detected, starting trial & showing paywall');
-      startTrial();
-      setShowPaywall(true);
-    }
-  }, [subInitialized, isReady, authLoading, setupLoading, isAuthenticated, profile, isPremium, trialStartAt, paywallDismissed, startTrial]);
+  if (error) {
+    console.warn('[Index] Error occurred but continuing:', error);
+  }
 
   if (!isClient || !isReady || authLoading || setupLoading || !subInitialized) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#FFD700" />
+        <Text style={styles.text}>Loading...</Text>
       </View>
     );
   }
 
+  console.log('[Index] Auth status:', { 
+    isAuthenticated, 
+    hasProfile: !!profile, 
+    isCompleted: profile?.isCompleted,
+    isFirstLaunch,
+    trialOfferShown,
+    trialExpired: trialInfo?.isExpired
+  });
+
+  // Check if trial has expired
+  if (trialInfo?.isExpired && !trialOfferShown) {
+    console.log('[Index] Trial expired, showing paywall');
+    return <SubscriptionPaywall visible={true} fullscreen={true} />;
+  }
+
   if (!isAuthenticated) {
+    console.log('[Index] -> /auth');
     return <Redirect href="/auth" />;
   }
 
-  if (!profile || !profile.nickname || !profile.isCompleted) {
+  // Always show first-time-setup immediately after authentication
+  if (!profile || !profile.nickname) {
+    console.log('[Index] -> /first-time-setup (no profile)');
     return <Redirect href="/first-time-setup" />;
   }
 
-  if (showPaywall) {
-    return (
-      <PaywallModal 
-        visible={true} 
-        onClose={() => {
-          setShowPaywall(false);
-          setPaywallDismissed(true);
-        }} 
-      />
-    );
+  // Show subscription offer on first launch
+  if (isFirstLaunch && !trialOfferShown && !profile.isCompleted) {
+    console.log('[Index] First launch, showing subscription offer');
+    markTrialOfferShown();
+    return <Redirect href="/subscription" />;
   }
 
+  if (!profile.isCompleted) {
+    console.log('[Index] -> /first-time-setup');
+    return <Redirect href="/first-time-setup" />;
+  }
+
+  console.log('[Index] -> /home');
   return <Redirect href="/(tabs)/home" />;
 }
 
@@ -87,6 +107,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: '#fff',
+  },
+  text: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
 });
+
