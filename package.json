@@ -48,7 +48,6 @@
     "expo-web-browser": "~15.0.9",
     "hono": "^4.10.6",
     "lucide-react-native": "^0.475.0",
-    "nativewind": "^4.1.23",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
