@@ -6,6 +6,13 @@ import { useAuth } from '@/hooks/use-auth-store';
 import { useSubscription } from '@/hooks/use-subscription-store';
 import SubscriptionPaywall from '@/components/SubscriptionPaywall';
 
+const ANALYTICS_EVENTS = {
+  PAYWALL_SHOWN: 'paywall_shown',
+  TRIAL_STARTED: 'trial_started',
+  TRIAL_EXPIRED: 'trial_expired',
+  FEATURE_BLOCKED: 'feature_blocked',
+};
+
 export default function Index() {
   const [isReady, setIsReady] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -17,11 +24,12 @@ export default function Index() {
     trialInfo, 
     trialOfferShown,
     markTrialOfferShown,
-    isInitialized: subInitialized 
+    isInitialized: subInitialized,
+    status,
   } = useSubscription();
+  const [showFirstLaunchPaywall, setShowFirstLaunchPaywall] = useState(false);
 
   useEffect(() => {
-    // Mark as client side for hydration
     setIsClient(true);
   }, []);
 
@@ -31,10 +39,7 @@ export default function Index() {
     const initializeApp = async () => {
       try {
         console.log('[Index] Initializing...');
-        
-        // Small timeout to prevent blocking
         await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
-        
         setIsReady(true);
         console.log('[Index] Ready');
       } catch (err) {
@@ -46,6 +51,20 @@ export default function Index() {
 
     initializeApp();
   }, [isClient]);
+
+  useEffect(() => {
+    if (!isClient || !isReady || !subInitialized || !isAuthenticated) return;
+
+    const checkFirstLaunchPaywall = async () => {
+      if (status !== 'premium' && isFirstLaunch && !trialOfferShown && profile?.isCompleted) {
+        console.log('[Index] First launch after setup, showing paywall', { ANALYTICS_EVENTS });
+        setShowFirstLaunchPaywall(true);
+        await markTrialOfferShown();
+      }
+    };
+
+    checkFirstLaunchPaywall();
+  }, [isClient, isReady, subInitialized, isAuthenticated, status, isFirstLaunch, trialOfferShown, profile, markTrialOfferShown]);
 
   if (error) {
     console.warn('[Index] Error occurred but continuing:', error);
@@ -66,12 +85,13 @@ export default function Index() {
     isCompleted: profile?.isCompleted,
     isFirstLaunch,
     trialOfferShown,
-    trialExpired: trialInfo?.isExpired
+    trialExpired: trialInfo?.isExpired,
+    status,
+    showFirstLaunchPaywall,
   });
 
-  // Check if trial has expired
-  if (trialInfo?.isExpired && !trialOfferShown) {
-    console.log('[Index] Trial expired, showing paywall');
+  if (trialInfo?.isExpired && status !== 'premium') {
+    console.log('[Index] Trial expired, showing fullscreen paywall', { ANALYTICS_EVENTS });
     return <SubscriptionPaywall visible={true} fullscreen={true} />;
   }
 
@@ -80,22 +100,29 @@ export default function Index() {
     return <Redirect href="/auth" />;
   }
 
-  // Always show first-time-setup immediately after authentication
   if (!profile || !profile.nickname) {
     console.log('[Index] -> /first-time-setup (no profile)');
     return <Redirect href="/first-time-setup" />;
   }
 
-  // Show subscription offer on first launch
-  if (isFirstLaunch && !trialOfferShown && !profile.isCompleted) {
-    console.log('[Index] First launch, showing subscription offer');
-    markTrialOfferShown();
-    return <Redirect href="/subscription" />;
-  }
-
   if (!profile.isCompleted) {
     console.log('[Index] -> /first-time-setup');
     return <Redirect href="/first-time-setup" />;
+  }
+
+  if (showFirstLaunchPaywall) {
+    console.log('[Index] Showing first launch paywall modal');
+    return (
+      <>
+        <Redirect href="/(tabs)/home" />
+        <SubscriptionPaywall
+          visible={true}
+          onClose={() => setShowFirstLaunchPaywall(false)}
+          fullscreen={false}
+          isFirstLaunch={true}
+        />
+      </>
+    );
   }
 
   console.log('[Index] -> /home');

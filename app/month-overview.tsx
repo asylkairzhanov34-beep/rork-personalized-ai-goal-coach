@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, Clock, Plus, Check, X } from 'lucide-react-native';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { DailyTask } from '@/types/goal';
+import PremiumGate from '@/components/PremiumGate';
 
 interface MonthDay {
   date: Date;
@@ -333,75 +334,80 @@ export default function MonthOverviewScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/(tabs)/plan');
-            }
-          }}
-        >
-          <ArrowLeft size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Обзор месяца</Text>
-          <Text style={styles.subtitle}>{currentMonth} {currentYear}</Text>
-        </View>
-      </View>
-      
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: '#4CAF50' }]} />
-            <Text style={styles.legendText}>Все выполнено</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: '#FFD600' }]} />
-            <Text style={styles.legendText}>Есть невыполненные</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: '#5A5A5A' }]} />
-            <Text style={styles.legendText}>Нет задач</Text>
+    <PremiumGate 
+      feature="Месячный обзор" 
+      message="Получите полный обзор ваших задач на месяц вперёд"
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/plan');
+              }
+            }}
+          >
+            <ArrowLeft size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>Обзор месяца</Text>
+            <Text style={styles.subtitle}>{currentMonth} {currentYear}</Text>
           </View>
         </View>
         
-        {renderDaysList()}
-        
-        <TouchableOpacity 
-          style={styles.backToWeekButton}
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/(tabs)/plan');
-            }
-          }}
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <Clock size={20} color="#000000" />
-          <Text style={styles.backToWeekText}>Назад к неделе</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <View style={styles.legend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendColor, { backgroundColor: '#4CAF50' }]} />
+              <Text style={styles.legendText}>Все выполнено</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendColor, { backgroundColor: '#FFD600' }]} />
+              <Text style={styles.legendText}>Есть невыполненные</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendColor, { backgroundColor: '#5A5A5A' }]} />
+              <Text style={styles.legendText}>Нет задач</Text>
+            </View>
+          </View>
+          
+          {renderDaysList()}
+          
+          <TouchableOpacity 
+            style={styles.backToWeekButton}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/plan');
+              }
+            }}
+          >
+            <Clock size={20} color="#000000" />
+            <Text style={styles.backToWeekText}>Назад к неделе</Text>
+          </TouchableOpacity>
+        </ScrollView>
 
-      <DayTasksModal
-        visible={modalVisible}
-        day={selectedDay}
-        onClose={() => {
-          setModalVisible(false);
-          setSelectedDay(null);
-        }}
-        onToggleTask={handleToggleTask}
-        onAddTask={handleAddTask}
-      />
-    </View>
+        <DayTasksModal
+          visible={modalVisible}
+          day={selectedDay}
+          onClose={() => {
+            setModalVisible(false);
+            setSelectedDay(null);
+          }}
+          onToggleTask={handleToggleTask}
+          onAddTask={handleAddTask}
+        />
+      </View>
+    </PremiumGate>
   );
 }
 
