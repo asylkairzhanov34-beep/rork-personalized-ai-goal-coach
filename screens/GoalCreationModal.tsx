@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -11,7 +11,10 @@ import {
   Modal,
   TouchableOpacity,
   FlatList,
-  Keyboard
+  Keyboard,
+  Animated,
+  Easing,
+  AccessibilityInfo
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -58,26 +61,93 @@ export function GoalCreationModal() {
   const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
   const { createGoal } = useGoalStore();
   const insets = useSafeAreaInsets();
+  
+  // Animation refs
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+  const translateYAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const inputRef = useRef<TextInput>(null);
+  const [inputHeight, setInputHeight] = useState(48);
+
+  const animateTransition = (callback: () => void) => {
+    Animated.parallel([
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 180,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateYAnim, {
+        toValue: -10,
+        duration: 180,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      callback();
+      translateYAnim.setValue(10);
+      
+      // Small delay to ensure state updates
+      setTimeout(() => {
+         Animated.parallel([
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+          Animated.spring(translateYAnim, {
+            toValue: 0,
+            friction: 7,
+            tension: 40,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          if (inputRef.current) {
+            // Optional: refocus or keep focus
+            // inputRef.current.focus();
+          }
+           AccessibilityInfo.announceForAccessibility(`Вопрос ${currentQuestion + 1}: ${questions[currentQuestion]}`);
+        });
+      }, 50);
+    });
+  };
 
   const handleNext = () => {
     if (currentAnswer.trim()) {
-      const newAnswers = [...answers];
-      newAnswers[currentQuestion] = currentAnswer;
-      setAnswers(newAnswers);
-      
+      // Button press animation
+      Animated.sequence([
+        Animated.timing(scaleAnim, { toValue: 0.96, duration: 60, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1.0, duration: 60, useNativeDriver: true }),
+      ]).start();
+
+      const nextAction = () => {
+        const newAnswers = [...answers];
+        newAnswers[currentQuestion] = currentAnswer;
+        setAnswers(newAnswers);
+        
+        if (currentQuestion < questions.length - 1) {
+          setCurrentQuestion(currentQuestion + 1);
+          setCurrentAnswer(answers[currentQuestion + 1] || '');
+        } else {
+          generatePlan(newAnswers);
+        }
+      };
+
       if (currentQuestion < questions.length - 1) {
-        setCurrentQuestion(currentQuestion + 1);
-        setCurrentAnswer(answers[currentQuestion + 1] || '');
+        animateTransition(nextAction);
       } else {
-        generatePlan(newAnswers);
+        nextAction();
       }
     }
   };
 
   const handleBack = () => {
     if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-      setCurrentAnswer(answers[currentQuestion - 1]);
+      animateTransition(() => {
+        setCurrentQuestion(currentQuestion - 1);
+        setCurrentAnswer(answers[currentQuestion - 1]);
+      });
     }
   };
 
@@ -326,7 +396,13 @@ export function GoalCreationModal() {
     }
   };
 
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: ((currentQuestion + 1) / questions.length) * 100,
+      duration: 240,
+      useNativeDriver: false,
+    }).start();
+  }, [currentQuestion, progressAnim]);
 
   useEffect(() => {
     const keyboardWillShowListener = Keyboard.addListener(
@@ -350,12 +426,13 @@ export function GoalCreationModal() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <View style={styles.container}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={insets.top + 8}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 12 : 8) }]}>
           <TouchableOpacity
             onPress={() => {
               if (router.canGoBack()) {
@@ -374,7 +451,10 @@ export function GoalCreationModal() {
 
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+            <Animated.View style={[styles.progressFill, { width: progressAnim.interpolate({
+              inputRange: [0, 100],
+              outputRange: ['0%', '100%']
+            }) }]} />
           </View>
           <Text style={styles.progressText}>
             Вопрос {currentQuestion + 1} из {questions.length}
@@ -391,33 +471,41 @@ export function GoalCreationModal() {
           <ScrollView 
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.questionContainer}>
-              <MessageCircle size={32} color={theme.colors.primary} />
-              <Text style={styles.question}>{questions[currentQuestion]}</Text>
-              <Text style={styles.example}>{examples[currentQuestion]}</Text>
-            </View>
+            <Animated.View style={{ 
+              opacity: opacityAnim, 
+              transform: [{ translateY: translateYAnim }],
+              width: '100%'
+            }}>
+              <View style={styles.questionContainer}>
+                <MessageCircle size={32} color={theme.colors.primary} />
+                <Text style={styles.question}>{questions[currentQuestion]}</Text>
+                <Text style={styles.example}>{examples[currentQuestion]}</Text>
+              </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Опиши свою цель..."
-              placeholderTextColor={theme.colors.textLight}
-              value={currentAnswer}
-              onChangeText={setCurrentAnswer}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
+              <TextInput
+                ref={inputRef}
+                style={[styles.input, { height: Math.max(48, Math.min(inputHeight, 200)) }]}
+                placeholder="Опиши свою цель..."
+                placeholderTextColor={theme.colors.textLight}
+                value={currentAnswer}
+                onChangeText={setCurrentAnswer}
+                multiline
+                onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
+                textAlignVertical="top"
+              />
 
-            <TouchableOpacity 
-              style={styles.aiChatButton}
-              onPress={startAIChat}
-              activeOpacity={0.7}
-            >
-              <Sparkles size={20} color={theme.colors.primary} />
-              <Text style={styles.aiChatButtonText}>Обсудить с ИИ</Text>
-              <Text style={styles.aiChatButtonSubtext}>Помощь в формулировке цели</Text>
-            </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.aiChatButton}
+                onPress={startAIChat}
+                activeOpacity={0.7}
+              >
+                <Sparkles size={20} color={theme.colors.primary} />
+                <Text style={styles.aiChatButtonText}>Обсудить с ИИ</Text>
+                <Text style={styles.aiChatButtonSubtext}>Помощь в формулировке цели</Text>
+              </TouchableOpacity>
+            </Animated.View>
 
             <View style={styles.footer}>
               <View style={styles.buttonRow}>
@@ -429,13 +517,19 @@ export function GoalCreationModal() {
                     style={styles.backButton}
                   />
                 )}
-                <Button
-                  title={currentQuestion === questions.length - 1 ? "Создать план" : "Далее"}
-                  onPress={handleNext}
-                  variant="premium"
-                  disabled={!currentAnswer.trim()}
-                  style={styles.nextButton}
-                />
+                <Animated.View style={[
+                  styles.nextButtonWrapper, 
+                  { transform: [{ scale: scaleAnim }] },
+                  currentQuestion === 0 && { flex: 1 } // Full width if no back button
+                ]}>
+                  <Button
+                    title={currentQuestion === questions.length - 1 ? "Создать план" : "Далее"}
+                    onPress={handleNext}
+                    variant="premium"
+                    disabled={!currentAnswer.trim()}
+                    style={styles.nextButton}
+                  />
+                </Animated.View>
               </View>
             </View>
           </ScrollView>
@@ -531,7 +625,7 @@ export function GoalCreationModal() {
           </SafeAreaView>
         </Modal>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -616,6 +710,9 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     minHeight: 120,
     backgroundColor: theme.colors.surface,
+  },
+  nextButtonWrapper: {
+    flex: 2,
   },
   footer: {
     marginTop: 'auto',
