@@ -450,7 +450,7 @@ export function GoalCreationModal() {
             <View style={styles.chatHeader}>
               <View style={styles.chatHeaderLeft}>
                 <Bot size={24} color={theme.colors.primary} />
-                <Text style={styles.headerTitle}>GoalForge</Text>
+                <Text style={styles.chatHeaderTitle}>ИИ-помощник</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setShowAIChat(false)}
@@ -548,22 +548,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: 0, // Reduced from theme.spacing.xs
-    paddingBottom: theme.spacing.sm, // Reduced from theme.spacing.md
-    borderBottomWidth: 0, // Remove border for cleaner look
-    backgroundColor: 'transparent',
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text,
   },
   placeholder: {
@@ -571,18 +573,17 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical: 10,
+    paddingVertical: theme.spacing.sm,
   },
   progressBar: {
-    height: 6,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 3,
+    height: 4,
+    backgroundColor: theme.colors.border,
+    borderRadius: 2,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#FFD600', // Brand color
-    borderRadius: 3,
+    backgroundColor: theme.colors.primary,
   },
   progressText: {
     fontSize: theme.fontSize.sm,
@@ -599,28 +600,22 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
   },
   question: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text,
     textAlign: 'center',
-    marginTop: theme.spacing.sm,
-    lineHeight: 34,
-    letterSpacing: -0.5,
+    marginTop: theme.spacing.md,
+    lineHeight: 32,
   },
   input: {
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 20,
-    padding: 20,
-    fontSize: 18,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    fontSize: theme.fontSize.md,
     color: theme.colors.text,
-    minHeight: 150,
+    minHeight: 120,
     backgroundColor: theme.colors.surface,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
   },
   footer: {
     marginTop: 'auto',
@@ -761,7 +756,7 @@ const styles = StyleSheet.create({
   },
   chatInputContainer: {
     backgroundColor: '#000000',
-    paddingTop: 12, // Reduced from 16
+    paddingTop: 16,
   },
   chatInputRow: {
     flexDirection: 'row',
