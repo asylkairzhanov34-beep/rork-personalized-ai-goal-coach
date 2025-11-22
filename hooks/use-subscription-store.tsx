@@ -276,7 +276,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         try {
           const moduleNamespace = await import('react-native-purchases');
           // @ts-ignore
-          const module = moduleNamespace.default || moduleNamespace;
+          module = moduleNamespace.default || moduleNamespace;
           setPurchasesModule(module);
         } catch (error) {
           console.warn('[SubscriptionProvider] RevenueCat not available:', error);
