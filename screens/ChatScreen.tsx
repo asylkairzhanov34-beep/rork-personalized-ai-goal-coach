@@ -273,8 +273,8 @@ const ChatScreen: React.FC = () => {
       </View>
       
       <View style={[styles.inputContainer, { 
-        paddingBottom: Math.max(insets.bottom + 8, 16),
-        marginBottom: Platform.OS === 'ios' ? 0 : 8
+        paddingBottom: Math.max(insets.bottom, 8),
+        marginBottom: Platform.OS === 'ios' ? 0 : 4
       }]}>
         <View style={styles.inputWrapper}>
           <TextInput
