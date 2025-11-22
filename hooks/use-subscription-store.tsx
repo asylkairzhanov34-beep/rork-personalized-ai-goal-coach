@@ -3,6 +3,7 @@ import { Platform, Alert } from 'react-native';
 import type { PurchasesPackage, CustomerInfo as RCCustomerInfo } from 'react-native-purchases';
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { CustomerInfo, SubscriptionPackage, SubscriptionStatus } from '@/types/subscription';
 
 type PurchasesModule = any;
@@ -14,20 +15,15 @@ type StoredSubscription = {
   expiryDate?: string;
 };
 
-type TrialInfo = {
-  startDate: string;
-  endDate: string;
-  isExpired: boolean;
-};
-
 const TRIAL_DURATION_DAYS = 1;
-const TRIAL_KEY = '@trial_info';
-const FIRST_LAUNCH_KEY = '@first_launch';
-const TRIAL_SHOWN_KEY = '@trial_offer_shown';
+const TRIAL_START_KEY = 'trialStartAt';
+const PAYWALL_SEEN_KEY = 'hasSeenPaywall';
+const SUBSCRIPTION_STORAGE_KEY = '@subscription_status';
 
+// RevenueCat Keys
 const REVENUECAT_API_KEY = {
   ios: 'appl_NIzzmGwASbGFsnfAddnshynSnsG',
-  android: 'goog_...', // Add Android key if available
+  android: 'goog_placeholder_key', // Add Android key if available
   web: '',
 };
 
@@ -55,8 +51,6 @@ const WEB_MOCK_PACKAGES: SubscriptionPackage[] = [
     },
   },
 ];
-
-const SUBSCRIPTION_STORAGE_KEY = '@subscription_status';
 
 const YEAR_IDENTIFIERS = ['year', 'yearly', 'annual', '$rc_annual'];
 
@@ -92,6 +86,22 @@ const normalizePackageIdentifier = (
   return { packageId: identifier, identifier };
 };
 
+// Helper for storage (SecureStore on mobile, AsyncStorage on web)
+const storage = {
+  getItem: async (key: string) => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.getItem(key);
+    }
+    return SecureStore.getItemAsync(key);
+  },
+  setItem: async (key: string, value: string) => {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.setItem(key, value);
+    }
+    return SecureStore.setItemAsync(key, value);
+  },
+};
+
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [status, setStatus] = useState<SubscriptionStatus>('loading');
@@ -101,9 +111,12 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [isRestoring, setIsRestoring] = useState(false);
   const [purchasesModule, setPurchasesModule] = useState<PurchasesModule | null>(null);
   const [isMockMode, setIsMockMode] = useState(false);
-  const [trialInfo, setTrialInfo] = useState<TrialInfo | null>(null);
-  const [isFirstLaunch, setIsFirstLaunch] = useState(false);
-  const [trialOfferShown, setTrialOfferShown] = useState(false);
+  
+  // Trial state
+  const [trialStartAt, setTrialStartAt] = useState<string | null>(null);
+  const [hasSeenPaywall, setHasSeenPaywall] = useState(false);
+  const [isTrialActive, setIsTrialActive] = useState(false);
+  const [isTrialExpired, setIsTrialExpired] = useState(false);
 
   const updateCustomerInfo = useCallback((info: RCCustomerInfo) => {
     const hasActiveSubscription = Object.keys(info.entitlements.active).length > 0;
@@ -126,68 +139,56 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     setStatus(hasActiveSubscription ? 'premium' : 'free');
   }, []);
 
-  const checkFirstLaunch = useCallback(async () => {
+  const checkTrialStatus = useCallback(async () => {
     try {
-      const firstLaunch = await AsyncStorage.getItem(FIRST_LAUNCH_KEY);
-      const offerShown = await AsyncStorage.getItem(TRIAL_SHOWN_KEY);
+      const start = await storage.getItem(TRIAL_START_KEY);
+      const seen = await storage.getItem(PAYWALL_SEEN_KEY);
       
-      if (!firstLaunch) {
-        await AsyncStorage.setItem(FIRST_LAUNCH_KEY, 'false');
-        setIsFirstLaunch(true);
-        console.log('[SubscriptionProvider] First launch detected');
-      } else {
-        setIsFirstLaunch(false);
-      }
+      setTrialStartAt(start);
+      setHasSeenPaywall(seen === 'true');
 
-      if (offerShown) {
-        setTrialOfferShown(true);
+      if (start) {
+        const startDate = new Date(start);
+        const now = new Date();
+        const diffMs = now.getTime() - startDate.getTime();
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+        
+        if (diffDays < TRIAL_DURATION_DAYS) {
+          setIsTrialActive(true);
+          setIsTrialExpired(false);
+        } else {
+          setIsTrialActive(false);
+          setIsTrialExpired(true);
+        }
+      } else {
+        // No trial started yet
+        setIsTrialActive(false);
+        setIsTrialExpired(false);
       }
     } catch (error) {
-      console.error('[SubscriptionProvider] Error checking first launch:', error);
+      console.error('[SubscriptionProvider] Error checking trial status:', error);
     }
   }, []);
 
-  const initializeTrial = useCallback(async () => {
+  const startTrial = useCallback(async () => {
     try {
-      const storedTrial = await AsyncStorage.getItem(TRIAL_KEY);
-      const now = new Date();
-      
-      if (storedTrial) {
-        const trial = JSON.parse(storedTrial) as TrialInfo;
-        const endDate = new Date(trial.endDate);
-        trial.isExpired = endDate < now;
-        setTrialInfo(trial);
-        console.log('[SubscriptionProvider] Trial status:', trial.isExpired ? 'expired' : 'active');
-        return trial;
-      } else {
-        // Start new trial
-        const startDate = now.toISOString();
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + TRIAL_DURATION_DAYS);
-        
-        const newTrial: TrialInfo = {
-          startDate,
-          endDate: endDate.toISOString(),
-          isExpired: false,
-        };
-        
-        await AsyncStorage.setItem(TRIAL_KEY, JSON.stringify(newTrial));
-        setTrialInfo(newTrial);
-        console.log('[SubscriptionProvider] New trial started');
-        return newTrial;
-      }
+      const now = new Date().toISOString();
+      await storage.setItem(TRIAL_START_KEY, now);
+      setTrialStartAt(now);
+      setIsTrialActive(true);
+      setIsTrialExpired(false);
+      console.log('[SubscriptionProvider] Trial started at:', now);
     } catch (error) {
-      console.error('[SubscriptionProvider] Error initializing trial:', error);
-      return null;
+      console.error('[SubscriptionProvider] Error starting trial:', error);
     }
   }, []);
 
-  const markTrialOfferShown = useCallback(async () => {
+  const markPaywallSeen = useCallback(async () => {
     try {
-      await AsyncStorage.setItem(TRIAL_SHOWN_KEY, 'true');
-      setTrialOfferShown(true);
+      await storage.setItem(PAYWALL_SEEN_KEY, 'true');
+      setHasSeenPaywall(true);
     } catch (error) {
-      console.error('[SubscriptionProvider] Error marking trial offer shown:', error);
+      console.error('[SubscriptionProvider] Error marking paywall seen:', error);
     }
   }, []);
 
@@ -224,7 +225,6 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       const module = moduleOverride ?? purchasesModule;
 
       if (!module) {
-        console.log('Purchases module not available, skipping offerings load');
         return;
       }
 
@@ -247,13 +247,6 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           );
 
           setPackages(formattedPackages);
-          console.log(`[SubscriptionProvider] Loaded ${formattedPackages.length} subscription packages from RevenueCat`);
-        } else {
-          console.log('[SubscriptionProvider] RevenueCat returned no available offerings. Check RevenueCat dashboard configuration.');
-          // If no offerings found, we might want to show an alert or fallback in dev mode
-          if (__DEV__) {
-             console.log('[SubscriptionProvider] DEV MODE: You might need to create Offerings in RevenueCat dashboard.');
-          }
         }
       } catch (error) {
         console.error('[SubscriptionProvider] Failed to load RevenueCat offerings:', error);
@@ -266,17 +259,13 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     setIsMockMode(true);
     setPackages(WEB_MOCK_PACKAGES);
     await loadMockStatus();
-    await initializeTrial();
-    await checkFirstLaunch();
-  }, [loadMockStatus, initializeTrial, checkFirstLaunch]);
+    await checkTrialStatus();
+  }, [loadMockStatus, checkTrialStatus]);
 
   useEffect(() => {
     const initializePurchases = async () => {
       try {
-        console.log('[SubscriptionProvider] Starting initialization...');
-        
         if (Platform.OS === 'web') {
-          console.log('[SubscriptionProvider] Web mode, using mock');
           await activateMockMode();
           setIsInitialized(true);
           return;
@@ -294,46 +283,38 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         }
 
         if (!module) {
-          console.warn('[SubscriptionProvider] Using mock mode (module missing)');
           await activateMockMode();
           setIsInitialized(true);
           return;
         }
 
         if (Platform.OS === 'ios' && !REVENUECAT_API_KEY.ios) {
-           console.warn('[SubscriptionProvider] No iOS API key found. Please check REVENUECAT_API_KEY.');
+           console.warn('[SubscriptionProvider] No iOS API key found.');
         }
 
         const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY.ios : REVENUECAT_API_KEY.android;
 
         if (!apiKey) {
-          console.warn('[SubscriptionProvider] No API key for current platform, using mock mode');
           await activateMockMode();
           setIsInitialized(true);
           return;
         }
 
         try {
-          // Configure with more verbose logging for debugging
           if (__DEV__) {
             await module.setLogLevel(module.LOG_LEVEL.DEBUG);
           }
           
           await module.configure({ apiKey });
-          console.log('[SubscriptionProvider] RevenueCat configured with key:', apiKey.substring(0, 8) + '...');
           
           const info = await module.getCustomerInfo();
-          console.log('[SubscriptionProvider] Initial customer info retrieved:', info?.activeSubscriptions);
           
           updateCustomerInfo(info);
           setIsMockMode(false);
           await loadOfferings(module);
-          await initializeTrial();
-          await checkFirstLaunch();
+          await checkTrialStatus();
         } catch (error) {
           console.error('[SubscriptionProvider] Configuration failed:', error);
-          // Fallback to mock mode if configuration fails entirely
-          console.warn('[SubscriptionProvider] Init failed, falling back to mock mode');
           await activateMockMode();
         }
       } catch (error) {
@@ -341,18 +322,16 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         try {
           await activateMockMode();
         } catch (mockError) {
-          console.error('[SubscriptionProvider] Mock mode failed:', mockError);
           setStatus('free');
           setPackages(WEB_MOCK_PACKAGES);
         }
       } finally {
         setIsInitialized(true);
-        console.log('[SubscriptionProvider] Initialization complete');
       }
     };
 
     initializePurchases();
-  }, [activateMockMode, loadOfferings, updateCustomerInfo]);
+  }, [activateMockMode, loadOfferings, updateCustomerInfo, checkTrialStatus]);
 
   const persistMockSubscription = useCallback(async (data: StoredSubscription) => {
     try {
@@ -365,9 +344,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const purchasePackage = useCallback(
     async (packageIdentifier: string): Promise<boolean> => {
       if (isMockMode || !purchasesModule) {
-        console.log('SubscriptionProvider: performing mock purchase', packageIdentifier);
         setIsPurchasing(true);
-
         try {
           const normalized = normalizePackageIdentifier(packageIdentifier, packages);
           const expiryDate = new Date();
@@ -388,11 +365,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           await persistMockSubscription(subscriptionData);
           setStatus('premium');
           setCustomerInfo(buildCustomerInfoFromMock(normalized.packageId));
-          console.log('SubscriptionProvider: mock purchase successful');
           return true;
         } catch (error) {
-          console.error('SubscriptionProvider: mock purchase failed', error);
-          Alert.alert('Ошибка', 'Не удалось оформить подписку. Попробуйте снова.');
+          Alert.alert('Ошибка', 'Не удалось оформить подписку.');
           return false;
         } finally {
           setIsPurchasing(false);
@@ -400,8 +375,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       }
 
       if (!isInitialized) {
-        console.log('SubscriptionProvider: RevenueCat not initialized yet');
-        Alert.alert('Ошибка', 'Система оплаты еще не готова. Попробуйте позже.');
+        Alert.alert('Ошибка', 'Система оплаты еще не готова.');
         return false;
       }
 
@@ -415,22 +389,16 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         );
 
         if (!availablePackage) {
-          console.error('SubscriptionProvider: package not found in offerings');
           Alert.alert('Ошибка', 'Выбранный пакет подписки недоступен.');
           return false;
         }
 
-        console.log('SubscriptionProvider: purchasing package', packageIdentifier);
         const { customerInfo: info } = await module.purchasePackage(availablePackage);
         updateCustomerInfo(info);
-        console.log('SubscriptionProvider: purchase completed successfully');
         return true;
       } catch (error: any) {
-        if (error?.userCancelled) {
-          console.log('SubscriptionProvider: purchase cancelled by user');
-        } else {
-          console.error('SubscriptionProvider: purchase failed', error);
-          Alert.alert('Ошибка', 'Не удалось оформить подписку. Попробуйте снова.');
+        if (!error?.userCancelled) {
+          Alert.alert('Ошибка', 'Не удалось оформить подписку.');
         }
         return false;
       } finally {
@@ -442,35 +410,23 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   const restorePurchases = useCallback(async (): Promise<boolean> => {
     if (isMockMode || !purchasesModule) {
-      console.log('SubscriptionProvider: restoring purchases in mock mode');
       setIsRestoring(true);
-
       try {
-        const restored = await loadMockStatus();
-        return restored;
-      } catch (error) {
-        console.error('SubscriptionProvider: failed to restore mock purchases', error);
-        return false;
+        return await loadMockStatus();
       } finally {
         setIsRestoring(false);
       }
     }
 
-    if (!isInitialized) {
-      console.log('SubscriptionProvider: attempted restore before initialization');
-      return false;
-    }
+    if (!isInitialized) return false;
 
     setIsRestoring(true);
-
     try {
       const info = await purchasesModule.restorePurchases();
       updateCustomerInfo(info);
-      console.log('SubscriptionProvider: purchases restored successfully');
       return Object.keys(info.entitlements.active).length > 0;
     } catch (error) {
-      console.error('SubscriptionProvider: failed to restore purchases', error);
-      Alert.alert('Ошибка', 'Не удалось восстановить покупки. Попробуйте позже.');
+      Alert.alert('Ошибка', 'Не удалось восстановить покупки.');
       return false;
     } finally {
       setIsRestoring(false);
@@ -478,15 +434,14 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, [isInitialized, isMockMode, loadMockStatus, purchasesModule, updateCustomerInfo]);
 
   const checkSubscriptionStatus = useCallback(async () => {
+    await checkTrialStatus();
+    
     if (isMockMode || !purchasesModule) {
       await loadMockStatus();
       return;
     }
 
-    if (!isInitialized) {
-      console.log('SubscriptionProvider: skipping status check before initialization');
-      return;
-    }
+    if (!isInitialized) return;
 
     try {
       const info = await purchasesModule.getCustomerInfo();
@@ -494,21 +449,19 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     } catch (error) {
       console.error('SubscriptionProvider: failed to refresh customer info', error);
     }
-  }, [isInitialized, isMockMode, loadMockStatus, purchasesModule, updateCustomerInfo]);
+  }, [isInitialized, isMockMode, loadMockStatus, purchasesModule, updateCustomerInfo, checkTrialStatus]);
 
+  // Access logic
   const canAccessPremiumFeatures = useCallback(() => {
     if (status === 'premium') return true;
-    if (trialInfo && !trialInfo.isExpired) return true;
+    if (isTrialActive && !isTrialExpired) return true;
     return false;
-  }, [status, trialInfo]);
+  }, [status, isTrialActive, isTrialExpired]);
 
   const getFeatureAccess = useCallback(() => {
-    const isPremium = status === 'premium';
-    const hasActiveTrial = trialInfo && !trialInfo.isExpired;
-    const hasAccess = isPremium || hasActiveTrial;
+    const hasAccess = canAccessPremiumFeatures();
 
     return {
-      // Free features (always available)
       addTasks: true,
       oneDayPlan: true,
       pomodoroTimer: true,
@@ -516,11 +469,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       oneDayHistory: true,
       basicThemes: true,
       
-      // Limited free features
       aiAdviceLimit: hasAccess ? Infinity : 3,
       smartTasksLimit: hasAccess ? Infinity : 1,
       
-      // Premium features
       dailyAICoach: hasAccess,
       weeklyMonthlyPlan: hasAccess,
       weeklyAIReport: hasAccess,
@@ -533,7 +484,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       smartPomodoroAnalytics: hasAccess,
       allFutureFeatures: hasAccess,
     };
-  }, [status, trialInfo]);
+  }, [canAccessPremiumFeatures]);
 
   const value = useMemo(
     () => ({
@@ -547,10 +498,15 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       purchasePackage,
       restorePurchases,
       checkSubscriptionStatus,
-      trialInfo,
-      isFirstLaunch,
-      trialOfferShown,
-      markTrialOfferShown,
+      
+      // Trial & First Launch
+      trialStartAt,
+      hasSeenPaywall,
+      isTrialActive,
+      isTrialExpired,
+      startTrial,
+      markPaywallSeen,
+      
       canAccessPremiumFeatures,
       getFeatureAccess,
     }),
@@ -564,10 +520,12 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       purchasePackage,
       restorePurchases,
       status,
-      trialInfo,
-      isFirstLaunch,
-      trialOfferShown,
-      markTrialOfferShown,
+      trialStartAt,
+      hasSeenPaywall,
+      isTrialActive,
+      isTrialExpired,
+      startTrial,
+      markPaywallSeen,
       canAccessPremiumFeatures,
       getFeatureAccess,
     ],
