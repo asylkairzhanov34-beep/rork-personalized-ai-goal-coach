@@ -1,11 +1,8 @@
-import "react-native-gesture-handler";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, Component, ReactNode, useState } from "react";
 import { StyleSheet, Text, View, LogBox, ActivityIndicator } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { clearAllStorageIfCorrupted } from '@/utils/storage-helper';
 import { GoalProvider } from '@/hooks/use-goal-store';
 import { AuthProvider } from '@/hooks/use-auth-store';
 import { TimerProvider } from '@/hooks/use-timer-store';
@@ -253,7 +250,7 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <GestureHandlerRootView style={styles.container}>
+      <View style={styles.container}>
         <trpc.Provider client={trpcClient} queryClient={queryClient}>
           <QueryClientProvider client={queryClient}>
             <SubscriptionProvider>
@@ -273,7 +270,7 @@ export default function RootLayout() {
             </SubscriptionProvider>
           </QueryClientProvider>
         </trpc.Provider>
-      </GestureHandlerRootView>
+      </View>
     </ErrorBoundary>
   );
 }
