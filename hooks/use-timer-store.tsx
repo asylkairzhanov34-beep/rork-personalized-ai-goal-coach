@@ -26,15 +26,19 @@ interface TimerState {
   sessionsCompleted: number;
   currentGoalId?: string;
   sessions: TimerSession[];
-  endTime?: number;
   notificationId?: string;
   notificationSound: SoundId;
 }
 
 const TIMER_DURATIONS = {
-  focus: 25 * 60, // 25 minutes
-  shortBreak: 5 * 60, // 5 minutes
-  longBreak: 15 * 60, // 15 minutes
+  // For testing, using shorter durations:
+  focus: 10, // 10 seconds for testing
+  shortBreak: 5, // 5 seconds for testing
+  longBreak: 8, // 8 seconds for testing
+  // For production, use these longer durations:
+  // focus: 25 * 60, // 25 minutes for production
+  // shortBreak: 5 * 60, // 5 minutes for production
+  // longBreak: 15 * 60, // 15 minutes for production
 };
 
 export const [TimerProvider, useTimer] = createContextHook(() => {
@@ -46,7 +50,6 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
     mode: 'focus',
     sessionsCompleted: 0,
     sessions: [],
-    endTime: undefined,
     notificationId: undefined,
     notificationSound: DEFAULT_SOUND_ID,
   });
@@ -155,17 +158,16 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
 
   // Timer countdown logic
   useEffect(() => {
-    if (state.isRunning && !state.isPaused && state.endTime) {
+    if (state.isRunning && !state.isPaused) {
       const interval = setInterval(() => {
-        const now = Date.now();
-        const remaining = Math.ceil((state.endTime! - now) / 1000);
-        
-        if (remaining <= 0) {
-          setState(prev => ({ ...prev, currentTime: 0, endTime: undefined }));
-        } else {
-          setState(prev => ({ ...prev, currentTime: remaining }));
-        }
-      }, 200);
+        setState(prev => {
+          if (prev.currentTime <= 0) {
+            // Timer complete will be handled in next effect
+            return { ...prev, currentTime: 0 };
+          }
+          return { ...prev, currentTime: prev.currentTime - 1 };
+        });
+      }, 1000);
       intervalRef.current = interval;
     } else {
       if (intervalRef.current) {
@@ -179,7 +181,7 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [state.isRunning, state.isPaused, state.endTime]);
+  }, [state.isRunning, state.isPaused]);
 
   // Handle timer completion
   useEffect(() => {
@@ -191,64 +193,51 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
   const startTimer = useCallback(async (goalId?: string) => {
     console.log('▶️ Starting timer...');
     
-    // Schedule background notification for timer completion
-    let notificationId: string | null = null;
-    if (permission.granted) {
-      const currentMode = state.mode;
-      const duration = state.currentTime;
+    // Schedule background notification for timer completion (only for background)
+    // let notificationId: string | null = null;
+    // if (permission.granted) {
+    //   const currentMode = state.mode;
+    //   const duration = state.currentTime;
       
-      console.log(`Scheduling background notification for ${duration} seconds`);
+    //   console.log(`Scheduling background notification for ${duration} seconds`);
       
-      const title = currentMode === 'focus' ? 'Перерыв начался! ☕️' : 'Фокус начался! 🚀';
-      const body = currentMode === 'focus' 
-        ? 'Сфокусируйтесь на отдыхе' 
-        : 'Сфокусируйтесь на работе';
+    //   const title = currentMode === 'focus' ? 'Перерыв начинается! 🌟' : 'Фокус начинается! 🎯';
+    //   const body = currentMode === 'focus' 
+    //     ? 'Отдохните и восстановите силы' 
+    //     : 'Сосредоточьтесь на задаче и достигните цели';
       
-      // This notification will fire even if app is in background
-      notificationId = await scheduleNotification({
-        title,
-        body,
-        data: { type: 'timer_complete', mode: currentMode },
-        trigger: { seconds: duration },
-        sound: 'notification_sound.wav',
-      });
+    //   // This notification will only fire if app is in background
+    //   notificationId = await scheduleNotification({
+    //     title,
+    //     body,
+    //     data: { type: 'timer_complete', mode: currentMode },
+    //     trigger: { seconds: duration },
+    //   });
       
-      console.log('Background notification scheduled with ID:', notificationId);
-    }
+    //   console.log('Background notification scheduled with ID:', notificationId);
+    // }
     
-    setState(prev => {
-      const now = Date.now();
-      const endTime = now + state.currentTime * 1000;
-      
-      return {
-        ...prev,
-        isRunning: true,
-        isPaused: false,
-        currentGoalId: goalId,
-        notificationId: notificationId || undefined,
-        endTime,
-      };
-    });
+    setState(prev => ({
+      ...prev,
+      isRunning: true,
+      isPaused: false,
+      currentGoalId: goalId,
+      notificationId: undefined, // notificationId || undefined,
+    }));
   }, [state.mode, state.currentTime, permission.granted, scheduleNotification]);
 
   const pauseTimer = useCallback(() => {
     setState(prev => ({
       ...prev,
       isPaused: true,
-      endTime: undefined,
     }));
   }, []);
 
   const resumeTimer = useCallback(() => {
-    setState(prev => {
-      const now = Date.now();
-      const endTime = now + prev.currentTime * 1000;
-      return {
-        ...prev,
-        isPaused: false,
-        endTime,
-      };
-    });
+    setState(prev => ({
+      ...prev,
+      isPaused: false,
+    }));
   }, []);
 
   const stopTimer = useCallback(async () => {
@@ -263,7 +252,6 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
       isPaused: false,
       currentTime: prev.totalTime,
       notificationId: undefined,
-      endTime: undefined,
     }));
   }, [state.notificationId, cancelNotification]);
 
@@ -292,7 +280,6 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
         totalTime: duration,
         isRunning: false,
         isPaused: false,
-        endTime: undefined,
       };
     });
   }, []);
@@ -313,7 +300,6 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
       ...prev,
       currentTime: seconds,
       totalTime: seconds,
-      endTime: undefined,
     }));
   }, []);
 

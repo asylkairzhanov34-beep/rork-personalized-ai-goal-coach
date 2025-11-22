@@ -149,8 +149,8 @@ export default function TodayScreen() {
               onPress={() => router.push('/plan')}
               activeOpacity={0.8}
             >
-              <Calendar size={28} color={theme.colors.background} />
-              {/* <Text style={styles.planButtonText}>Перейти в план</Text> */}
+              <Calendar size={20} color={theme.colors.background} style={styles.planButtonIcon} />
+              <Text style={styles.planButtonText}>Перейти в план</Text>
             </TouchableOpacity>
           </View>
 
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     borderRadius: 999,
     height: 56,
-    width: 56,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: theme.colors.primary,
@@ -554,7 +554,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   planButtonIcon: {
-    // marginRight: theme.spacing.sm,
+    marginRight: theme.spacing.sm,
   },
   planButtonText: {
     fontSize: 16,

@@ -184,7 +184,7 @@ export function useNotifications() {
     body: string;
     data?: Record<string, any>;
     trigger?: any;
-    sound?: string;
+    sound?: 'default' | 'bell' | 'chime' | 'ding';
   }) => {
     if (!Notifications) {
       console.log('Notifications not available, showing alert instead');
@@ -216,7 +216,7 @@ export function useNotifications() {
         notificationSound = Platform.OS === 'ios' ? 'ding.caf' : 'default';
         break;
       default:
-        notificationSound = sound;
+        notificationSound = 'default';
     }
 
     try {

@@ -171,7 +171,7 @@ const ChatScreen: React.FC = () => {
       <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
     >
       <SafeAreaView style={styles.headerContainer} edges={['top']}>
         <View style={styles.header}>
@@ -272,10 +272,7 @@ const ChatScreen: React.FC = () => {
         </ScrollView>
       </View>
       
-      <View style={[styles.inputContainer, { 
-        paddingBottom: Math.max(insets.bottom, 8),
-        marginBottom: Platform.OS === 'ios' ? 0 : 4
-      }]}>
+      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
@@ -507,7 +504,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 8,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },
