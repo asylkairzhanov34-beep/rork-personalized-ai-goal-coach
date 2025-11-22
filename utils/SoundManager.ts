@@ -53,7 +53,6 @@ class SoundManagerClass {
         playsInSilentMode: true,
         interruptionMode: 'duckOthers',
         interruptionModeAndroid: 'duckOthers',
-        shouldPlayInBackground: false,
       });
       this.configured = true;
       console.log('[SOUND MANAGER] Audio configured');

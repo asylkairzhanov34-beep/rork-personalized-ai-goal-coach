@@ -31,14 +31,9 @@ interface TimerState {
 }
 
 const TIMER_DURATIONS = {
-  // For testing, using shorter durations:
-  focus: 10, // 10 seconds for testing
-  shortBreak: 5, // 5 seconds for testing
-  longBreak: 8, // 8 seconds for testing
-  // For production, use these longer durations:
-  // focus: 25 * 60, // 25 minutes for production
-  // shortBreak: 5 * 60, // 5 minutes for production
-  // longBreak: 15 * 60, // 15 minutes for production
+  focus: 25 * 60, // 25 minutes
+  shortBreak: 5 * 60, // 5 minutes
+  longBreak: 15 * 60, // 15 minutes
 };
 
 export const [TimerProvider, useTimer] = createContextHook(() => {
@@ -193,36 +188,36 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
   const startTimer = useCallback(async (goalId?: string) => {
     console.log('▶️ Starting timer...');
     
-    // Schedule background notification for timer completion (only for background)
-    // let notificationId: string | null = null;
-    // if (permission.granted) {
-    //   const currentMode = state.mode;
-    //   const duration = state.currentTime;
+    // Schedule background notification for timer completion
+    let notificationId: string | null = null;
+    if (permission.granted) {
+      const currentMode = state.mode;
+      const duration = state.currentTime;
       
-    //   console.log(`Scheduling background notification for ${duration} seconds`);
+      console.log(`Scheduling background notification for ${duration} seconds`);
       
-    //   const title = currentMode === 'focus' ? 'Перерыв начинается! 🌟' : 'Фокус начинается! 🎯';
-    //   const body = currentMode === 'focus' 
-    //     ? 'Отдохните и восстановите силы' 
-    //     : 'Сосредоточьтесь на задаче и достигните цели';
+      const title = currentMode === 'focus' ? 'Фокус завершен! 🎯' : 'Перерыв завершен! 🌟';
+      const body = currentMode === 'focus' 
+        ? 'Время для перерыва. Отдохните и восстановите силы' 
+        : 'Время вернуться к работе. Сосредоточьтесь на задаче';
       
-    //   // This notification will only fire if app is in background
-    //   notificationId = await scheduleNotification({
-    //     title,
-    //     body,
-    //     data: { type: 'timer_complete', mode: currentMode },
-    //     trigger: { seconds: duration },
-    //   });
+      // This notification will fire even if app is in background
+      notificationId = await scheduleNotification({
+        title,
+        body,
+        data: { type: 'timer_complete', mode: currentMode },
+        trigger: { seconds: duration },
+      });
       
-    //   console.log('Background notification scheduled with ID:', notificationId);
-    // }
+      console.log('Background notification scheduled with ID:', notificationId);
+    }
     
     setState(prev => ({
       ...prev,
       isRunning: true,
       isPaused: false,
       currentGoalId: goalId,
-      notificationId: undefined, // notificationId || undefined,
+      notificationId: notificationId || undefined,
     }));
   }, [state.mode, state.currentTime, permission.granted, scheduleNotification]);
 

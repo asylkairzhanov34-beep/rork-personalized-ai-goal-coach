@@ -548,9 +548,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: 0, // Reduced from theme.spacing.xs
-    paddingBottom: theme.spacing.sm, // Reduced from theme.spacing.md
-    borderBottomWidth: 0, // Remove border for cleaner look
+    paddingTop: 4, // Minimal padding for better visual balance
+    paddingBottom: theme.spacing.sm,
+    borderBottomWidth: 0,
     backgroundColor: 'transparent',
   },
   closeButton: {
