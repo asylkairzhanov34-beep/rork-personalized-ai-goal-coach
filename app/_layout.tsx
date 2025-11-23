@@ -127,7 +127,8 @@ function RootLayoutNav() {
         options={{ 
           headerShown: false,
           presentation: 'fullScreenModal',
-          animation: 'fade'
+          animation: 'fade',
+          gestureEnabled: false
         }} 
       />
       <Stack.Screen 

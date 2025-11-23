@@ -10,6 +10,7 @@ import { useGoalStore } from '@/hooks/use-goal-store';
 import { useAuth } from '@/hooks/use-auth-store';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
 import { useSubscription } from '@/hooks/use-subscription-store';
+import { supabase } from '@/lib/supabase';
 
 
 
@@ -125,12 +126,15 @@ export default function ProfileScreen() {
           style: 'destructive', 
           onPress: async () => {
             try {
-              // Call backend deletion if implemented
-              // await trpcClient.auth.deleteAccount.mutate();
+              if (user?.id) {
+                 const { error } = await supabase.from('profiles').delete().eq('id', user.id);
+                 if (error) throw error;
+              }
               await logout();
               router.replace('/auth');
               Alert.alert('Аккаунт удален');
             } catch (error) {
+              console.error(error);
               Alert.alert('Ошибка', 'Не удалось удалить аккаунт');
             }
           }
