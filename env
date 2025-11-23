@@ -33,3 +33,8 @@ EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
 # Supabase Configuration
 EXPO_PUBLIC_SUPABASE_URL=https://lcdrxhwkuyobxroclmhi.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZHJ4aHdrdXlvYnhyb2NsbWhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4OTg2MjAsImV4cCI6MjA3OTQ3NDYyMH0.3gOjzrzYBgYyhykOY7fAHMzSaxyxic1a7-U6pAvI-44
+
+# Database URL for Drizzle ORM (backend)
+# Get this from Supabase: Project Settings -> Database -> Connection string -> URI
+# Format: postgresql://postgres:[YOUR-PASSWORD]@db.lcdrxhwkuyobxroclmhi.supabase.co:5432/postgres
+DATABASE_URL=

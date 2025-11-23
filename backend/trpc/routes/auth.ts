@@ -61,9 +61,8 @@ export const authRouter = createTRPCRouter({
       const appleId = 'apple_' + identityToken.substring(0, 20); 
 
       // 2. Find or Create User in DB
-      let user = await db.query.users.findFirst({
-        where: eq(users.appleId, appleId)
-      });
+      const existingUsers = await db.select().from(users).where(eq(users.appleId, appleId)).limit(1);
+      let user = existingUsers[0];
 
       if (!user) {
         console.log('Creating new user for Apple ID:', appleId);
