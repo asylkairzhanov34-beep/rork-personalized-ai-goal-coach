@@ -3,28 +3,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useAuth } from '@/hooks/use-auth-store';
 import { supabase } from '@/lib/supabase';
 import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
-
-// ──────────────────────────────────────────────────────────────
-// Обновлённые типы — это главное, что убирает все ошибки TS
-// ──────────────────────────────────────────────────────────────
-export interface FirstTimeProfile {
-  nickname: string;
-  birthdate?: Date; // может быть ещё не заполнено
-  avatar?: string;
-  primaryGoal?: 'ambition' | 'calm' | 'discipline' | 'focus';
-  productivityTime?: 'morning' | 'afternoon' | 'evening' | 'unknown';
-
-  // Новые поля из Supabase
-  goals: any[];                    // или точнее — Goal[] если есть тип
-  biorhythm: Record<string, number> | null; // например { physical: 85, emotional: 60, ... }
-  isCompleted: boolean;
-}
-
-export interface FirstTimeSetupState {
-  profile: FirstTimeProfile | null;
-  currentStep: number;
-  isLoading: boolean;
-}
+import { FirstTimeProfile, FirstTimeSetupState } from '@/types/first-time-setup';
 
 // ──────────────────────────────────────────────────────────────
 const getFirstTimeSetupKey = (userId: string) => `first_time_setup_${userId}`;
