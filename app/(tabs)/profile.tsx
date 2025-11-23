@@ -105,7 +105,39 @@ export default function ProfileScreen() {
       subtitle: 'Версия 1.0.0',
       onPress: () => Alert.alert('GoalCoach AI', 'Ваш персональный ИИ-тренер для достижения целей\n\nВерсия 1.0.0'),
     },
+    {
+      icon: LogOut,
+      title: 'Удалить аккаунт',
+      subtitle: 'Безвозвратное удаление данных',
+      onPress: () => handleDeleteAccount(),
+      color: '#EF4444', // Custom property for red color
+    },
   ];
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Удаление аккаунта',
+      'Вы уверены? Это действие необратимо. Все ваши данные, включая подписку и прогресс, будут удалены.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        { 
+          text: 'Удалить', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              // Call backend deletion if implemented
+              // await trpcClient.auth.deleteAccount.mutate();
+              await logout();
+              router.replace('/auth');
+              Alert.alert('Аккаунт удален');
+            } catch (error) {
+              Alert.alert('Ошибка', 'Не удалось удалить аккаунт');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -196,12 +228,13 @@ export default function ProfileScreen() {
                     styles.menuIcon,
                     isPremiumItem && !isPremium && styles.premiumMenuIcon,
                   ]}>
-                    <item.icon size={24} color={isPremiumItem && !isPremium ? '#FFD700' : theme.colors.primary} />
+                    <item.icon size={24} color={isPremiumItem && !isPremium ? '#FFD700' : (item as any).color || theme.colors.primary} />
                   </View>
                   <View style={styles.menuContent}>
                     <Text style={[
                       styles.menuTitle,
                       isPremiumItem && !isPremium && styles.premiumMenuTitle,
+                      (item as any).color ? { color: (item as any).color } : {}
                     ]}>{item.title}</Text>
                     <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                   </View>

@@ -12,6 +12,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Sparkles, Lock, Crown, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useSubscription } from '@/hooks/use-subscription-store';
+import { Alert } from 'react-native';
 
 const FEATURES = [
   'Ежедневный ИИ-коуч — ИИ анализирует ваш день и подбирает оптимальные шаги.',
@@ -59,6 +61,7 @@ export default function PaywallModal({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
   const ctaScale = useRef(new Animated.Value(1)).current;
+  const { restorePurchases } = useSubscription();
 
   useEffect(() => {
     if (visible) {
@@ -131,6 +134,16 @@ export default function PaywallModal({
       stiffness: 200,
       useNativeDriver: true,
     }).start();
+  };
+
+  const handleRestore = async () => {
+    const success = await restorePurchases();
+    if (success) {
+      Alert.alert('Успешно', 'Подписка восстановлена');
+      onRequestClose?.();
+    } else {
+      Alert.alert('Ошибка', 'Активная подписка не найдена');
+    }
   };
 
   const cards = useMemo(() => FEATURES.slice(0, 5), []);
@@ -227,6 +240,14 @@ export default function PaywallModal({
                 <Text style={styles.secondaryText}>{secondaryLabel || 'Не сейчас'}</Text>
               </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+              onPress={handleRestore}
+              style={styles.restoreButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={styles.restoreText}>Восстановить покупки</Text>
+            </TouchableOpacity>
           </View>
         </Animated.View>
       </View>
@@ -357,5 +378,14 @@ const styles = StyleSheet.create({
   secondaryText: {
     fontSize: 15,
     color: 'rgba(255,255,255,0.6)',
+  },
+  restoreButton: {
+    marginTop: 16,
+    padding: 4,
+  },
+  restoreText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
+    textDecorationLine: 'underline',
   },
 });

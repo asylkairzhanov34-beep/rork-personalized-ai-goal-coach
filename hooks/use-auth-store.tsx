@@ -28,6 +28,8 @@ interface StoredUser {
   createdAt: string;
 }
 
+import { trpcClient } from '@/lib/trpc';
+
 // Create provider and hook
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const [authState, setAuthState] = useState<AuthState>({
@@ -240,17 +242,24 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       });
 
       if (!credential.identityToken) {
-        throw new Error('Apple Sign In failed');
+        throw new Error('Apple Sign In failed: No identity token');
       }
 
-      const user: User = {
-        id: credential.user,
-        email: credential.email || `${credential.user}@privaterelay.appleid.com`,
-        name: credential.fullName ? 
+      // Call backend to verify and login
+      const response = await trpcClient.auth.loginWithApple.mutate({
+        identityToken: credential.identityToken,
+        email: credential.email || undefined,
+        fullName: credential.fullName ? 
           `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
           undefined,
+      });
+
+      const user: User = {
+        id: response.user.id,
+        email: response.user.email || `${credential.user}@privaterelay.appleid.com`,
+        name: response.user.name || undefined,
         provider: 'apple',
-        createdAt: new Date(),
+        createdAt: new Date(), // In real app, get this from backend
       };
 
       await saveUser(user);
@@ -260,6 +269,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         // User canceled the sign-in flow
         return;
       }
+      console.error('Apple Login Error:', error);
       throw error;
     }
   }, [saveUser]);

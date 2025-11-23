@@ -1,25 +1,14 @@
-// backend/db.ts
-// Это заготовка для подключения к PostgreSQL.
-// Раскомментируйте код после установки зависимостей: npm install postgres drizzle-orm
-
-/*
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import * as schema from './schema';
 
-// URL подключения берется из переменных окружения
+// Connection string from environment variables
 const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
-  // Это нормально при сборке без env, но в рантайме нужна ошибка
-  console.warn('DATABASE_URL is not set. Database features will not work.');
-}
+// If DATABASE_URL is not set, we'll use a null client to prevent crash during build,
+// but runtime operations will fail if not handled.
+const client = connectionString ? postgres(connectionString, { prepare: false }) : null;
 
-// Создаем клиент
-// prepare: false нужен для совместимости с Serverless (Neon, Supabase через пул)
-const client = postgres(connectionString || '', { prepare: false });
+export const db = client ? drizzle(client, { schema }) : null;
 
-export const db = drizzle(client);
-*/
-
-// Временная заглушка, чтобы файл компилировался
-export const db = null;
+export const isDbReady = !!db;
