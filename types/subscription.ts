@@ -24,4 +24,4 @@ export interface CustomerInfo {
   };
 }
 
-export type SubscriptionStatus = 'free' | 'premium' | 'loading';
+export type SubscriptionStatus = 'free' | 'trial' | 'premium' | 'loading';

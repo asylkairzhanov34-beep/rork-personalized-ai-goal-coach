@@ -11,6 +11,22 @@ import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_STORAGE_KEY = 'auth_user';
+const AUTH_SESSIONS_KEY = 'auth_sessions';
+const CURRENT_SESSION_KEY = 'current_session';
+
+// Email validation regex
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+// Simple in-memory store for auth (in production, use backend)
+const AUTH_DB_KEY = 'registered_users';
+
+interface StoredUser {
+  id: string;
+  email: string;
+  passwordHash: string;
+  name?: string;
+  createdAt: string;
+}
 
 // Create provider and hook
 export const [AuthProvider, useAuth] = createContextHook(() => {
@@ -68,24 +84,60 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      // Simulate API call - replace with your actual authentication logic
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Validate email format
+      if (!credentials.email || !EMAIL_REGEX.test(credentials.email)) {
+        throw new Error('Invalid email format');
+      }
       
-      // For demo purposes, accept any email/password combination
-      // In production, you would validate against your backend
-      if (!credentials.email || !credentials.password) {
-        throw new Error('Email and password are required');
+      if (!credentials.password || credentials.password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+      
+      // Get registered users
+      const usersJson = await safeStorageGet<string | null>(AUTH_DB_KEY, null);
+      const users: Record<string, StoredUser> = usersJson ? JSON.parse(usersJson) : {};
+      
+      // Find user by email
+      const userEntry = Object.values(users).find(u => u.email.toLowerCase() === credentials.email.toLowerCase());
+      
+      if (!userEntry) {
+        throw new Error('User not found. Please register first.');
+      }
+      
+      // Hash the password for comparison
+      const passwordHash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        credentials.email.toLowerCase() + credentials.password
+      );
+      
+      if (userEntry.passwordHash !== passwordHash) {
+        throw new Error('Incorrect password');
       }
 
       const user: User = {
-        id: await Crypto.digestStringAsync(
-          Crypto.CryptoDigestAlgorithm.SHA256,
-          credentials.email
-        ),
-        email: credentials.email,
+        id: userEntry.id,
+        email: userEntry.email,
+        name: userEntry.name,
         provider: 'email',
-        createdAt: new Date(),
+        createdAt: new Date(userEntry.createdAt),
       };
+      
+      // Store session
+      const sessionId = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        `${userEntry.id}-${Date.now()}`
+      );
+      
+      await safeStorageSet(CURRENT_SESSION_KEY, sessionId);
+      
+      // Store session data
+      const sessions = await safeStorageGet<Record<string, any>>(AUTH_SESSIONS_KEY, {});
+      sessions[sessionId] = {
+        userId: userEntry.id,
+        email: userEntry.email,
+        loginAt: new Date().toISOString(),
+      };
+      await safeStorageSet(AUTH_SESSIONS_KEY, sessions);
 
       await saveUser(user);
     } catch (error) {
@@ -98,23 +150,72 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      // Simulate API call - replace with your actual registration logic
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (!credentials.email || !credentials.password) {
-        throw new Error('Email and password are required');
+      // Validate email format
+      if (!credentials.email || !EMAIL_REGEX.test(credentials.email)) {
+        throw new Error('Please enter a valid email address');
       }
+      
+      if (!credentials.password || credentials.password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+      
+      // Get existing users
+      const usersJson = await safeStorageGet<string | null>(AUTH_DB_KEY, null);
+      const users: Record<string, StoredUser> = usersJson ? JSON.parse(usersJson) : {};
+      
+      // Check if user already exists
+      const exists = Object.values(users).some(u => u.email.toLowerCase() === credentials.email.toLowerCase());
+      if (exists) {
+        throw new Error('An account with this email already exists');
+      }
+      
+      // Create new user
+      const userId = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        credentials.email.toLowerCase()
+      );
+      
+      const passwordHash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        credentials.email.toLowerCase() + credentials.password
+      );
+      
+      const newUser: StoredUser = {
+        id: userId,
+        email: credentials.email,
+        passwordHash,
+        name: credentials.name,
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Save to storage
+      users[userId] = newUser;
+      await safeStorageSet(AUTH_DB_KEY, JSON.stringify(users));
 
       const user: User = {
-        id: await Crypto.digestStringAsync(
-          Crypto.CryptoDigestAlgorithm.SHA256,
-          credentials.email
-        ),
+        id: userId,
         email: credentials.email,
         name: credentials.name,
         provider: 'email',
         createdAt: new Date(),
       };
+      
+      // Create session
+      const sessionId = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        `${userId}-${Date.now()}`
+      );
+      
+      await safeStorageSet(CURRENT_SESSION_KEY, sessionId);
+      
+      // Store session data
+      const sessions = await safeStorageGet<Record<string, any>>(AUTH_SESSIONS_KEY, {});
+      sessions[sessionId] = {
+        userId,
+        email: credentials.email,
+        loginAt: new Date().toISOString(),
+      };
+      await safeStorageSet(AUTH_SESSIONS_KEY, sessions);
 
       await saveUser(user);
     } catch (error) {
@@ -236,8 +337,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const logout = useCallback(async (): Promise<void> => {
     try {
-      // Use the safe storage helper instead of direct AsyncStorage
+      // Clear current session
+      const sessionId = await safeStorageGet<string | null>(CURRENT_SESSION_KEY, null);
+      if (sessionId) {
+        const sessions = await safeStorageGet<Record<string, any>>(AUTH_SESSIONS_KEY, {});
+        delete sessions[sessionId];
+        await safeStorageSet(AUTH_SESSIONS_KEY, sessions);
+      }
+      
+      // Clear auth data
       await safeStorageSet(AUTH_STORAGE_KEY, null);
+      await safeStorageSet(CURRENT_SESSION_KEY, null);
+      
       setAuthState({
         user: null,
         isLoading: false,

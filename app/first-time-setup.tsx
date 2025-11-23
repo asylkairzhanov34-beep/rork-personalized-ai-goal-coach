@@ -54,6 +54,11 @@ export default function FirstTimeSetupScreen() {
     router.replace('/(tabs)/home');
   };
 
+  const sanitizedProductivityTime: 'morning' | 'afternoon' | 'evening' | undefined =
+    profile?.productivityTime && profile.productivityTime !== 'unknown'
+      ? profile.productivityTime
+      : undefined;
+
   const renderStep = () => {
     switch (localStep) {
       case 0:
@@ -79,7 +84,7 @@ export default function FirstTimeSetupScreen() {
           <Step3Biorhythm
             onNext={handleStep3Next}
             onSkip={handleStep3Skip}
-            initialTime={profile?.productivityTime}
+            initialTime={sanitizedProductivityTime}
           />
         );
       case 3:

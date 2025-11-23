@@ -1,38 +1,41 @@
-import React, { useState, ReactNode } from 'react';
+import React, { useEffect, useState, ReactNode } from 'react';
+import { useRouter } from 'expo-router';
 import { useSubscription } from '@/hooks/use-subscription-store';
-import SubscriptionPaywall from './SubscriptionPaywall';
+import PaywallModal from './PaywallModal';
 
 interface PremiumGateProps {
   children: ReactNode;
   feature?: string;
-  message?: string;
   fallback?: ReactNode;
 }
 
 export default function PremiumGate({
   children,
   feature = 'эта функция',
-  message = 'Получите полный доступ к GoalForge',
   fallback = null,
 }: PremiumGateProps) {
+  const router = useRouter();
   const { canAccessPremiumFeatures } = useSubscription();
-  const [showPaywall, setShowPaywall] = useState(false);
-
   const hasAccess = canAccessPremiumFeatures();
+  const [showPaywall, setShowPaywall] = useState(!hasAccess);
+
+  useEffect(() => {
+    setShowPaywall(!hasAccess);
+  }, [hasAccess]);
 
   if (!hasAccess) {
-    if (fallback) {
-      return <>{fallback}</>;
-    }
-
     return (
       <>
-        <SubscriptionPaywall
+        {fallback}
+        <PaywallModal
           visible={showPaywall}
-          onClose={() => setShowPaywall(false)}
-          feature={feature}
-          message={message}
-          fullscreen={false}
+          variant="feature"
+          featureName={feature}
+          onPrimaryAction={() => router.push('/subscription')}
+          onSecondaryAction={() => setShowPaywall(false)}
+          onRequestClose={() => setShowPaywall(false)}
+          primaryLabel="Оформить Premium"
+          secondaryLabel="Позже"
         />
       </>
     );
@@ -42,28 +45,39 @@ export default function PremiumGate({
 }
 
 export function usePremiumGate() {
+  const router = useRouter();
   const { canAccessPremiumFeatures, getFeatureAccess } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
 
   const checkAccess = (featureName?: string): boolean => {
-    const hasAccess = canAccessPremiumFeatures();
-    if (!hasAccess) {
+    const allowed = canAccessPremiumFeatures();
+    if (!allowed) {
       setShowPaywall(true);
       console.log('[PremiumGate] Access denied:', featureName || 'premium feature');
     }
-    return hasAccess;
+    return allowed;
   };
+
+  const Paywall = () => (
+    <PaywallModal
+      visible={showPaywall}
+      variant="feature"
+      featureName="GoalForge Premium"
+      onPrimaryAction={() => {
+        setShowPaywall(false);
+        router.push('/subscription');
+      }}
+      onSecondaryAction={() => setShowPaywall(false)}
+      onRequestClose={() => setShowPaywall(false)}
+      primaryLabel="Оформить Premium"
+      secondaryLabel="Не сейчас"
+    />
+  );
 
   return {
     checkAccess,
     hasAccess: canAccessPremiumFeatures(),
     featureAccess: getFeatureAccess(),
-    PaywallModal: () => (
-      <SubscriptionPaywall
-        visible={showPaywall}
-        onClose={() => setShowPaywall(false)}
-        fullscreen={false}
-      />
-    ),
+    PaywallModal: Paywall,
   };
 }

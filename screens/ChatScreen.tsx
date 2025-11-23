@@ -12,12 +12,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Send, Bot, MoreHorizontal, Sparkles, User } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Send, Bot, MoreHorizontal, Sparkles } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
 import { ChatMessage } from '@/types/chat';
 import { theme } from '@/constants/theme';
 import { useSubscription } from '@/hooks/use-subscription-store';
-import SubscriptionPaywall from '@/components/SubscriptionPaywall';
+import PaywallModal from '@/components/PaywallModal';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -42,7 +43,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, showAvatar }) =>
         useNativeDriver: true,
       })
     ]).start();
-  }, []);
+  }, [fadeAnim, scaleAnim]);
 
   return (
     <Animated.View 
@@ -87,11 +88,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, showAvatar }) =>
   );
 };
 
-import { useLocalSearchParams } from 'expo-router';
 
 const ChatScreen: React.FC = () => {
   const { messages, sendMessage, clearChat, isLoading } = useChat();
   const params = useLocalSearchParams<{ initialMessage?: string }>();
+  const router = useRouter();
   const [inputText, setInputText] = useState<string>(params.initialMessage || '');
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
@@ -150,11 +151,16 @@ const ChatScreen: React.FC = () => {
             </View>
           </View>
         </SafeAreaView>
-        <SubscriptionPaywall 
-          visible={true} 
-          fullscreen={false}
-          feature="ИИ-чат помощник GoalForge"
-          message="Получайте персональные советы и анализ прогресса от ИИ"
+        <PaywallModal
+          visible
+          variant="feature"
+          featureName="ИИ-чат GoalForge"
+          onPrimaryAction={() => router.push('/subscription')}
+          onSecondaryAction={() => router.back()}
+          onRequestClose={() => router.back()}
+          primaryLabel="Оформить Premium"
+          secondaryLabel="Вернуться"
+          testID="chat-paywall"
         />
       </View>
     );
@@ -162,11 +168,18 @@ const ChatScreen: React.FC = () => {
 
   return (
     <>
-      <SubscriptionPaywall 
-        visible={showPaywall} 
-        onClose={() => setShowPaywall(false)}
-        feature="ИИ-чат помощник GoalForge"
-        message="Получайте персональные советы и анализ прогресса от ИИ"
+      <PaywallModal
+        visible={showPaywall}
+        variant="feature"
+        featureName="ИИ-чат GoalForge"
+        onPrimaryAction={() => {
+          setShowPaywall(false);
+          router.push('/subscription');
+        }}
+        onSecondaryAction={() => setShowPaywall(false)}
+        onRequestClose={() => setShowPaywall(false)}
+        primaryLabel="Оформить Premium"
+        secondaryLabel="Не сейчас"
       />
       <KeyboardAvoidingView 
       style={styles.container}

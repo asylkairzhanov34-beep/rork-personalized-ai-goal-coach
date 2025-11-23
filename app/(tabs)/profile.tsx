@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { User, Settings, Bell, Target, ChevronRight, Info, LogOut, MessageCircle, RotateCcw, Sparkles, Edit3, X } from 'lucide-react-native';
+import { User, Settings, Bell, ChevronRight, Info, LogOut, MessageCircle, RotateCcw, Sparkles, Edit3, X } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
 
@@ -17,19 +17,22 @@ export default function ProfileScreen() {
   const store = useGoalStore();
   const { user, logout } = useAuth();
   const { profile: setupProfile, updateProfile: updateSetupProfile } = useFirstTimeSetup();
-  const { isPremium, status } = useSubscription();
+  const { isPremium } = useSubscription();
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [newNickname, setNewNickname] = useState('');
+  const insets = useSafeAreaInsets();
+  const safeAreaTop = insets.top;
+  const contentTopPadding = theme.spacing.lg;
 
   
   if (!store || !store.isReady) {
     return (
       <GradientBackground>
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={[styles.container, { paddingTop: insets.top }]}> 
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>Загрузка...</Text>
           </View>
-        </SafeAreaView>
+        </View>
       </GradientBackground>
     );
   }
@@ -148,9 +151,9 @@ export default function ProfileScreen() {
 
   return (
     <GradientBackground>
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: contentTopPadding }]}
           showsVerticalScrollIndicator={false}
 
         >
@@ -217,11 +220,22 @@ export default function ProfileScreen() {
               <LogOut size={24} color="#EF4444" />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.logoutTitle}>Выйти из аккаунта</Text>
+              <Text style={styles.logoutTitle}>В��йти из аккаунта</Text>
               <Text style={styles.menuSubtitle}>Завершить сеанс</Text>
             </View>
             <ChevronRight size={20} color={theme.colors.textLight} />
           </TouchableOpacity>
+
+          {__DEV__ && (
+            <TouchableOpacity
+              style={styles.devEntry}
+              onPress={() => router.push('/dev-subscription-tools')}
+              activeOpacity={0.8}
+              testID="dev-subscription-entry"
+            >
+              <Text style={styles.devEntryText}>Subscription QA Tools</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
 
         <Modal
@@ -266,7 +280,7 @@ export default function ProfileScreen() {
             </View>
           </View>
         </Modal>
-      </SafeAreaView>
+      </View>
     </GradientBackground>
   );
 }
@@ -381,6 +395,20 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.medium,
     color: '#EF4444',
+  },
+  devEntry: {
+    marginTop: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.4)',
+    backgroundColor: 'rgba(255,215,0,0.08)',
+  },
+  devEntryText: {
+    color: '#FFD700',
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
   },
   loadingContainer: {
     flex: 1,

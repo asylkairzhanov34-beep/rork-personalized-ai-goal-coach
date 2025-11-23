@@ -1,156 +1,233 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Modal,
   Animated,
-  Dimensions,
+  TouchableOpacity,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Sparkles, Calendar, FileText } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { BlurView } from 'expo-blur';
+import { Sparkles, Lock, Crown, X } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+
+const FEATURES = [
+  'Ежедневный ИИ-коуч — ИИ анализирует ваш день и подбирает оптимальные шаги.',
+  'Полный недельный/месячный план — Видна картина прогресса и расписание.',
+  'Weekly AI Report — Точные инсайты и рекомендации.',
+  'Все персональные советы — Под задания подстроены под ваш профиль.',
+  'Умные задачи — ИИ генерирует задачи под цель.',
+  'История 7–90 дней — Аналитика и тренды.',
+  'Уровни и награды — Рост мотивации и достижения.',
+  'ИИ-чат помощник — Быстрые ответы и поддержка.',
+  'Приоритетная скорость — Функции работают быстрее.',
+  'Умный Pomodoro таймер с аналитикой — Детальная статистика фокуса.',
+  'Все будущие функции — Доступ ко всем обновлениям.',
+];
+
+export type PaywallVariant = 'trial' | 'blocking' | 'feature';
 
 interface PaywallModalProps {
   visible: boolean;
-  onClose: () => void;
+  variant?: PaywallVariant;
+  featureName?: string;
+  onPrimaryAction: () => void;
+  onSecondaryAction?: () => void;
+  onRequestClose?: () => void;
+  primaryLabel?: string;
+  secondaryLabel?: string;
+  loading?: boolean;
+  testID?: string;
 }
 
-const { width } = Dimensions.get('window');
+const CTA_SCALE = 0.96;
 
-export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
-  const router = useRouter();
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
+export default function PaywallModal({
+  visible,
+  variant = 'trial',
+  featureName,
+  onPrimaryAction,
+  onSecondaryAction,
+  onRequestClose,
+  primaryLabel,
+  secondaryLabel,
+  loading = false,
+  testID,
+}: PaywallModalProps) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.92)).current;
+  const ctaScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.timing(scaleAnim, {
+        Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 200,
           useNativeDriver: true,
-          easing: (t) => t * (2 - t), // Ease out quad
         }),
-        Animated.timing(opacityAnim, {
+        Animated.spring(scaleAnim, {
           toValue: 1,
-          duration: 300,
+          damping: 14,
+          stiffness: 180,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 0.9,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.92);
     }
-  }, [visible, scaleAnim, opacityAnim]);
+  }, [fadeAnim, scaleAnim, visible]);
 
-  const handleContinue = () => {
-    onClose();
-    router.push('/subscription');
+  const title = useMemo(() => {
+    if (variant === 'blocking') {
+      return 'Пробный период завершён';
+    }
+    if (variant === 'feature') {
+      return 'Premium функция';
+    }
+    return 'Попробуй GoalForge Premium — 1 день бесплатно';
+  }, [variant]);
+
+  const subtitle = useMemo(() => {
+    if (variant === 'blocking') {
+      return 'Оформи подписку, чтобы сохранить доступ к GoalForge и аналитике.';
+    }
+    if (variant === 'feature') {
+      return featureName
+        ? `${featureName} доступна только в GoalForge Premium.`
+        : 'Эта функция доступна только в GoalForge Premium.';
+    }
+    return 'Разблокируй весь функционал, персональные отчёты и приоритетную скорость.';
+  }, [featureName, variant]);
+
+  const handlePrimary = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    }
+    onPrimaryAction();
   };
 
-  if (!visible) return null;
+  const handleSecondary = () => {
+    onSecondaryAction?.();
+    onRequestClose?.();
+  };
+
+  const handleCTAIn = () => {
+    Animated.spring(ctaScale, {
+      toValue: CTA_SCALE,
+      speed: 20,
+      bounciness: 0,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleCTAOut = () => {
+    Animated.spring(ctaScale, {
+      toValue: 1,
+      damping: 10,
+      stiffness: 200,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const cards = useMemo(() => FEATURES.slice(0, 5), []);
+
+  if (!visible) {
+    return null;
+  }
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        <Animated.View 
-          style={[
-            styles.backdrop, 
-            { opacity: opacityAnim }
-          ]} 
-        >
-            <BlurView intensity={20} style={StyleSheet.absoluteFill} tint="dark" />
-        </Animated.View>
-
+    <Modal visible transparent animationType="fade" onRequestClose={onRequestClose}>
+      <View style={styles.overlay}>
+        <LinearGradient
+          colors={['rgba(255, 215, 0, 0.2)', 'rgba(0,0,0,0)']}
+          style={styles.glow}
+          start={{ x: 0.3, y: 0 }}
+          end={{ x: 0.7, y: 1 }}
+        />
         <Animated.View
-          style={[
-            styles.modal,
-            {
-              transform: [{ scale: scaleAnim }],
-              opacity: opacityAnim,
-            },
-          ]}
+          style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}
+          testID={testID}
         >
-          <LinearGradient
-            colors={['#1A1A1A', '#000000']}
-            style={styles.gradient}
-          >
-            <View style={styles.content}>
-                <View style={styles.headerIcon}>
-                    <Sparkles size={32} color="#FFD700" />
-                </View>
+          {variant !== 'blocking' && onRequestClose && (
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={onRequestClose}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Закрыть"
+            >
+              <X size={20} color="rgba(255,255,255,0.5)" />
+            </TouchableOpacity>
+          )}
 
-              <Text style={styles.title}>
-                Попробуй GoalForge Premium — 1 день бесплатно
-              </Text>
-              
-              <Text style={styles.subtitle}>
-                Раскройте полный потенциал вашей продуктивности с эксклюзивными функциями
-              </Text>
-
-              <View style={styles.features}>
-                <View style={styles.featureRow}>
-                  <View style={styles.iconBg}>
-                    <Sparkles size={20} color="#FFD700" />
-                  </View>
-                  <Text style={styles.featureText}>Ежедневный ИИ-коуч</Text>
-                </View>
-                <View style={styles.featureRow}>
-                  <View style={styles.iconBg}>
-                    <Calendar size={20} color="#FFD700" />
-                  </View>
-                  <Text style={styles.featureText}>Полный недельный план</Text>
-                </View>
-                <View style={styles.featureRow}>
-                  <View style={styles.iconBg}>
-                    <FileText size={20} color="#FFD700" />
-                  </View>
-                  <Text style={styles.featureText}>Weekly AI Report</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={handleContinue}
-                activeOpacity={0.9}
-              >
-                <LinearGradient
-                    colors={['#FFD700', '#FFB300']}
-                    style={styles.buttonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                >
-                    <Text style={styles.primaryButtonText}>Попробовать бесплатно</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={onClose}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.secondaryButtonText}>Продолжить без Premium</Text>
-              </TouchableOpacity>
+          <View style={styles.iconWrapper}>
+            <LinearGradient
+              colors={['#FFD700', '#FFB300']}
+              style={styles.iconGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              {variant === 'blocking' ? (
+                <Lock size={32} color="#000" />
+              ) : (
+                <Crown size={32} color="#000" />
+              )}
+            </LinearGradient>
+            <View style={styles.sparklesBadge}>
+              <Sparkles size={14} color="#000" />
             </View>
-          </LinearGradient>
+          </View>
+
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
+
+          <View style={styles.featureList}>
+            {cards.map((text, index) => (
+              <View key={text} style={styles.featureCard}>
+                <View style={styles.featureIcon}>
+                  <Sparkles size={18} color="#FFD700" />
+                </View>
+                <Text style={styles.featureText}>{text}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.ctaZone}>
+            <Animated.View style={{ transform: [{ scale: ctaScale }] }}>
+              <TouchableOpacity
+                style={styles.ctaButton}
+                onPress={handlePrimary}
+                onPressIn={handleCTAIn}
+                onPressOut={handleCTAOut}
+                disabled={loading}
+                accessibilityLabel={primaryLabel ?? 'Разблокировать Premium'}
+                testID="paywall-primary-cta"
+              >
+                {loading ? (
+                  <ActivityIndicator color="#000" />
+                ) : (
+                  <Text style={styles.ctaText}>
+                    {primaryLabel || (variant === 'trial' ? 'Начать бесплатный период' : 'Разблокировать Premium')}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+
+            {onSecondaryAction && (
+              <TouchableOpacity
+                onPress={handleSecondary}
+                style={styles.secondaryButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel={secondaryLabel ?? 'Не сейчас'}
+                testID="paywall-secondary-cta"
+              >
+                <Text style={styles.secondaryText}>{secondaryLabel || 'Не сейчас'}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -158,109 +235,127 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  overlay: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.9)',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
   },
-  backdrop: {
+  glow: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  modal: {
-    width: width - 48,
-    maxWidth: 400,
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.15)',
-    backgroundColor: '#000',
-  },
-  gradient: {
-    padding: 24,
   },
   content: {
-    alignItems: 'center',
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 28,
+    padding: 28,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.12)',
   },
-  headerIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  closeButton: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    padding: 6,
+  },
+  iconWrapper: {
+    alignSelf: 'center',
+    marginBottom: 24,
+  },
+  iconGradient: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    shadowColor: '#FFD700',
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+  },
+  sparklesBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFD700',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 12,
-    lineHeight: 30,
   },
   subtitle: {
     fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
   },
-  features: {
-    width: '100%',
-    gap: 16,
-    marginBottom: 32,
+  featureList: {
+    gap: 12,
+    marginBottom: 28,
   },
-  featureRow: {
+  featureCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     padding: 12,
-    borderRadius: 16,
-  },
-  iconBg: {
-    width: 36,
-    height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  featureIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,215,0,0.12)',
     marginRight: 12,
   },
   featureText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
-  primaryButton: {
-    width: '100%',
-    height: 56,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  buttonGradient: {
     flex: 1,
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  ctaZone: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  ctaButton: {
+    height: 64,
+    borderRadius: 40,
+    paddingHorizontal: 24,
+    backgroundColor: '#FFD700',
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
+    shadowColor: '#FFD700',
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
   },
-  primaryButtonText: {
+  ctaText: {
     fontSize: 17,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#000000',
   },
   secondaryButton: {
+    marginTop: 12,
     paddingVertical: 8,
-    paddingHorizontal: 16,
   },
-  secondaryButtonText: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontWeight: '500',
+  secondaryText: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.6)',
   },
 });

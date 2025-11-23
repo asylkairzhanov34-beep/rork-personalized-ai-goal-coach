@@ -1,5 +1,31 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const extractErrorText = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message ?? '';
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (typeof error === 'object' && error !== null) {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return '';
+    }
+  }
+  return '';
+};
+
+const isIgnorableStorageClearError = (error: unknown) => {
+  const message = extractErrorText(error);
+  return (
+    message.includes('No such file or directory') ||
+    message.includes('couldn’t be removed') ||
+    message.includes('couldn\'t be removed')
+  );
+};
+
 // Simple function to clear all storage if there are any issues
 export const clearAllStorageIfCorrupted = async () => {
   try {
@@ -7,6 +33,10 @@ export const clearAllStorageIfCorrupted = async () => {
     console.log('Storage cleared successfully');
     return true;
   } catch (error) {
+    if (isIgnorableStorageClearError(error)) {
+      console.log('Storage directory already removed, ignoring error');
+      return true;
+    }
     console.error('Failed to clear storage:', error);
     return false;
   }
@@ -57,7 +87,10 @@ export const clearCorruptedStorage = async () => {
             corruptedKeys.push(key);
           }
         } catch (error) {
-          console.log(`JSON parse error in key: ${key}, value preview: ${value.substring(0, 50)}...`);
+          console.log(
+            `JSON parse error in key: ${key}, value preview: ${value.substring(0, 50)}...`,
+            error,
+          );
           corruptedKeys.push(key);
         }
       }
@@ -76,7 +109,11 @@ export const clearCorruptedStorage = async () => {
       await AsyncStorage.clear();
       console.log('Cleared all storage due to critical error');
     } catch (clearError) {
-      console.error('Failed to clear storage:', clearError);
+      if (isIgnorableStorageClearError(clearError)) {
+        console.log('Storage directory already removed, ignoring error');
+      } else {
+        console.error('Failed to clear storage:', clearError);
+      }
     }
     return [];
   }

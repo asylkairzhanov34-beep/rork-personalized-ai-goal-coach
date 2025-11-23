@@ -26,6 +26,8 @@ import {
   Zap, 
   Timer, 
   Infinity,
+  CreditCard,
+  AlertTriangle
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -57,6 +59,9 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
     isPurchasing,
     purchasePackage,
     restorePurchases,
+    isPremium,
+    customerInfo,
+    cancelSubscriptionForDev,
   } = useSubscription();
 
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
@@ -111,6 +116,92 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
       Alert.alert('Информация', 'Активные подписки не найдены');
     }
   };
+
+  if (isPremium) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.background}>
+          <LinearGradient
+            colors={['rgba(255, 215, 0, 0.1)', 'rgba(0,0,0,0)']}
+            style={styles.glowEffect}
+          />
+        </View>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.header}>
+            <View style={styles.headerLeft} />
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => router.back()}
+            >
+              <X size={24} color="rgba(255,255,255,0.8)" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.successContainer}>
+            <View style={styles.successIconWrapper}>
+              <LinearGradient
+                colors={['#FFD700', '#FFB300']}
+                style={styles.successIconBadge}
+              >
+                <Check size={48} color="#000" />
+              </LinearGradient>
+            </View>
+            
+            <Text style={styles.heroTitle}>Вы уже с нами!</Text>
+            <Text style={styles.heroSubtitle}>
+              Ваша Premium подписка активна. Наслаждайтесь полным доступом ко всем функциям GoalForge.
+            </Text>
+
+            <View style={styles.activePlanCard}>
+              <View style={styles.planRow}>
+                <CreditCard size={20} color="#FFD700" />
+                <Text style={styles.planLabel}>Статус подписки</Text>
+              </View>
+              <Text style={styles.planValue}>Активна</Text>
+              
+              {customerInfo?.entitlements.active.premium?.productIdentifier && (
+                 <Text style={styles.planId}>
+                   {customerInfo.entitlements.active.premium.productIdentifier}
+                 </Text>
+              )}
+            </View>
+
+            <TouchableOpacity style={styles.manageButton} onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}>
+              <Text style={styles.manageButtonText}>Управление подпиской</Text>
+            </TouchableOpacity>
+
+            {/* Test Cancel Button */}
+            <View style={styles.devZone}>
+              <TouchableOpacity 
+                style={styles.devCancelButton} 
+                onPress={() => {
+                  Alert.alert(
+                    'Отмена подписки (Тест)',
+                    'Это действие доступно только для тестирования. Оно сбросит локальный статус подписки.',
+                    [
+                      { text: 'Отмена', style: 'cancel' },
+                      { 
+                        text: 'Сбросить', 
+                        style: 'destructive', 
+                        onPress: async () => {
+                          await cancelSubscriptionForDev();
+                          Alert.alert('Сброшено', 'Подписка деактивирована');
+                          router.back();
+                        }
+                      }
+                    ]
+                  );
+                }}
+              >
+                 <AlertTriangle size={16} color="#FF4500" />
+                 <Text style={styles.devCancelText}>Cancel Subscription (Test)</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -431,8 +522,88 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.4)',
   },
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 80,
+  },
+  successIconWrapper: {
+    marginBottom: 32,
+    shadowColor: '#FFD700',
+    shadowOpacity: 0.4,
+    shadowRadius: 30,
+  },
+  successIconBadge: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activePlanCard: {
+    marginTop: 40,
+    width: '100%',
+    padding: 24,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.2)',
+  },
+  planRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  planLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  planValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  planId: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  manageButton: {
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  manageButtonText: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  devZone: {
+    marginTop: 48,
+    alignItems: 'center',
+  },
+  devCancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: 'rgba(255, 69, 0, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 69, 0, 0.3)',
+  },
+  devCancelText: {
+    color: '#FF4500',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   policyDivider: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.2)',
+    color: 'rgba(255, 255, 255, 0.4)',
+    marginHorizontal: 4,
   },
 });

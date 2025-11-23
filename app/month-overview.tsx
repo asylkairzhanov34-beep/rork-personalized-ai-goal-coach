@@ -322,6 +322,14 @@ export default function MonthOverviewScreen() {
 
   const currentMonth = MONTHS[new Date().getMonth()];
   const currentYear = new Date().getFullYear();
+  const premiumDescription = 'Получите полный обзор ваших задач на месяц вперёд';
+  const safeAreaSpacing = useMemo(
+    () => ({
+      paddingTop: insets.top,
+      paddingBottom: Math.max(insets.bottom, 16),
+    }),
+    [insets.bottom, insets.top]
+  );
 
   if (!store || !store.isReady) {
     return (
@@ -335,10 +343,15 @@ export default function MonthOverviewScreen() {
 
   return (
     <PremiumGate 
-      feature="Месячный обзор" 
-      message="Получите полный обзор ваших задач на месяц вперёд"
+      feature="Месячный обзор"
+      fallback={
+        <View style={styles.gatedPlaceholder}>
+          <Text style={styles.gatedTitle}>Только для GoalForge Premium</Text>
+          <Text style={styles.gatedMessage}>{premiumDescription}</Text>
+        </View>
+      }
     >
-      <View style={styles.container}>
+      <View style={[styles.container, safeAreaSpacing]}>
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton}
@@ -552,6 +565,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold' as const,
     color: '#000000',
+  },
+  gatedPlaceholder: {
+    flex: 1,
+    backgroundColor: '#050505',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  gatedTitle: {
+    fontSize: 20,
+    fontWeight: 'bold' as const,
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  gatedMessage: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.75)',
+    textAlign: 'center',
+    lineHeight: 22,
   },
   loadingContainer: {
     flex: 1,

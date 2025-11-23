@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, Component, ReactNode, useState } from "react";
-import { StyleSheet, Text, View, LogBox, ActivityIndicator } from "react-native";
+import React, { useEffect, Component, ReactNode, useState, useCallback } from "react";
+import { StyleSheet, Text, View, LogBox } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { clearAllStorageIfCorrupted } from '@/utils/storage-helper';
 import { GoalProvider } from '@/hooks/use-goal-store';
@@ -13,6 +13,8 @@ import { ManifestationProvider } from '@/hooks/use-manifestation-store';
 import { FirstTimeSetupProvider } from '@/hooks/use-first-time-setup';
 import { SubscriptionProvider } from '@/hooks/use-subscription-store';
 import { trpc, trpcClient } from '@/lib/trpc';
+
+import { GlobalSubscriptionGate } from '@/components/GlobalSubscriptionGate';
 
 // Error Boundary to catch inspector and other development errors
 class ErrorBoundary extends Component<
@@ -192,70 +194,75 @@ function RootLayoutNav() {
           animation: 'slide_from_bottom'
         }} 
       />
+      <Stack.Screen 
+        name="subscription-success" 
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'fade'
+        }} 
+      />
+      <Stack.Screen 
+        name="dev-subscription-tools" 
+        options={{ 
+          headerShown: true,
+          title: 'Developer Tools',
+          presentation: 'modal',
+          animation: 'slide_from_bottom'
+        }} 
+      />
     </Stack>
   );
 }
 
 export default function RootLayout() {
-  const [isReady, setIsReady] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    // Mark as client side for hydration
-    setIsClient(true);
-  }, []);
+    let isMounted = true;
 
-  useEffect(() => {
-    if (!isClient) return;
-    
-    const initializeApp = async () => {
+    const prepareApp = async () => {
       try {
-        console.log('[RootLayout] Starting initialization...');
-        
-        // Reduced timeout to prevent hydration timeout
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        console.log('[RootLayout] Initialization complete');
-        setIsReady(true);
-        
-        // Hide splash screen after mount
-        requestAnimationFrame(async () => {
-          try {
-            await SplashScreen.hideAsync();
-            console.log('[RootLayout] Splash screen hidden');
-          } catch (error) {
-            console.error('[RootLayout] Failed to hide splash:', error);
-          }
-        });
+        console.log('[RootLayout] Preparing app for hydration');
+        await clearAllStorageIfCorrupted();
       } catch (error) {
-        console.error('[RootLayout] Initialization error:', error);
-        setIsReady(true);
-        
-        try {
-          await SplashScreen.hideAsync();
-        } catch (splashError) {
-          console.error('[RootLayout] Failed to hide splash on error:', splashError);
+        console.error('[RootLayout] Preparation error:', error);
+      } finally {
+        if (isMounted) {
+          setAppReady(true);
         }
       }
     };
-    
-    initializeApp();
-  }, [isClient]);
 
-  if (!isClient || !isReady) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FFD700" />
-      </View>
-    );
+    prepareApp();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLayout = useCallback(async () => {
+    if (appReady) {
+      try {
+        await SplashScreen.hideAsync();
+        console.log('[RootLayout] Splash screen hidden after layout');
+      } catch (error) {
+        console.error('[RootLayout] Failed to hide splash:', error);
+      }
+    }
+  }, [appReady]);
+
+  if (!appReady) {
+    return null;
   }
 
   return (
     <ErrorBoundary>
-      <GestureHandlerRootView style={styles.container}>
+      <GestureHandlerRootView style={styles.container} onLayout={handleLayout}>
         <trpc.Provider client={trpcClient} queryClient={queryClient}>
           <QueryClientProvider client={queryClient}>
             <SubscriptionProvider>
+              <GlobalSubscriptionGate />
               <AuthProvider>
                 <FirstTimeSetupProvider>
                   <GoalProvider>
@@ -280,12 +287,6 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
   },
 });
 
