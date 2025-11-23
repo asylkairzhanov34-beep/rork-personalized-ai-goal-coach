@@ -1,10 +1,29 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
-import { FirstTimeProfile, FirstTimeSetupState } from '@/types/first-time-setup';
 import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
 import { useAuth } from '@/hooks/use-auth-store';
-
 import { supabase } from '@/lib/supabase';
+
+// РАСШИРЕННЫЙ ТИП — именно то, что хранится в Supabase + локально
+export interface FirstTimeProfile {
+  nickname: string;
+  birthdate?: Date;                    // может быть только на этапе онбординга
+  avatar?: string;
+  primaryGoal?: 'ambition' | 'calm' | 'discipline' | 'focus';
+  productivityTime?: 'morning' | 'afternoon' | 'evening' | 'unknown';
+  
+  // Эти два поля ОБЯЗАТЕЛЬНО должны быть в типе!
+  goals: any[];                         // или более точный тип Goal[], если есть
+  biorhythm: Record<string, number>;    // например { physical: 85, emotional: 60, ... }
+
+  isCompleted: boolean;
+}
+
+export interface FirstTimeSetupState {
+  profile: FirstTimeProfile | null;
+  currentStep: number;
+  isLoading: boolean;
+}
 
 const getFirstTimeSetupKey = (userId: string) => `first_time_setup_${userId}`;
 
@@ -22,8 +41,8 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
     try {
       console.log('[FirstTimeSetupProvider] Loading profile...');
       let stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
-      
-      // Try to load from Supabase if user is logged in
+
+      // Загружаем из Supabase, если пользователь авторизован
       if (user?.id) {
         try {
           const { data, error } = await supabase
@@ -32,16 +51,20 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
             .eq('id', user.id)
             .single();
 
-          if (data && !error) {
+          if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
+            console.warn('[FirstTimeSetupProvider] Supabase error:', error);
+          }
+
+          if (data) {
             console.log('[FirstTimeSetupProvider] Remote profile found');
             const remoteProfile: FirstTimeProfile = {
-              nickname: data.nickname,
-              goals: data.goals || [],
-              biorhythm: data.biorhythm || undefined,
+              nickname: data.nickname ?? '',
+              goals: (data.goals as any[]) || [],
+              biorhythm: (data.biorhythm as Record<string, number>) || {},
               isCompleted: data.is_completed ?? false,
             };
 
-            // If local is empty or we want to prefer remote on first load
+            // Если локально пусто — перезаписываем из Supabase
             if (!stored) {
               stored = remoteProfile;
               await safeStorageSet(FIRST_TIME_SETUP_KEY, stored);
@@ -52,9 +75,6 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
         }
       }
 
-      console.log('[FirstTimeSetupProvider] Profile loaded:', stored ? 'Yes' : 'No');
-      
-      // Use requestAnimationFrame to prevent blocking
       requestAnimationFrame(() => {
         setState({
           profile: stored,
@@ -76,14 +96,18 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
 
   const updateProfile = useCallback(async (updates: Partial<FirstTimeProfile>) => {
     setState(prev => {
-      const newProfile = {
-        ...prev.profile,
+      const newProfile: FirstTimeProfile = {
+        ...prev.profile!,
         ...updates,
-      } as FirstTimeProfile;
+        // Гарантируем, что поля всегда существуют
+        goals: updates.goals ?? prev.profile?.goals ?? [],
+        biorhythm: updates.biorhythm ?? prev.profile?.biorhythm ?? {},
+      };
 
+      // Сохраняем локально
       safeStorageSet(FIRST_TIME_SETUP_KEY, newProfile);
-      
-      // Sync to Supabase
+
+      // Синхронизируем с Supabase
       if (user?.id) {
         const payload = {
           id: user.id,
@@ -93,48 +117,49 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
           is_completed: newProfile.isCompleted,
           updated_at: new Date().toISOString(),
         };
-        
-        supabase.from('profiles').upsert(payload).then(({ error }) => {
-           if (error) console.error('[FirstTimeSetupProvider] Sync error:', error);
-        });
+
+        supabase
+          .from('profiles')
+          .upsert(payload)
+          .then(({ error }) => {
+            if (error) console.error('[FirstTimeSetupProvider] Sync error:', error);
+          });
       }
 
-      return {
-        ...prev,
-        profile: newProfile,
-      };
+      return { ...prev, profile: newProfile };
     });
   }, [FIRST_TIME_SETUP_KEY, user?.id]);
 
   const completeSetup = useCallback(async () => {
     setState(prev => {
-      const completed = {
-        ...prev.profile!,
+      if (!prev.profile) return prev;
+
+      const completed: FirstTimeProfile = {
+        ...prev.profile,
         isCompleted: true,
+        goals: prev.profile.goals ?? [],
+        biorhythm: prev.profile.biorhythm ?? {},
       };
-      
+
       safeStorageSet(FIRST_TIME_SETUP_KEY, completed);
-      
-      // Sync to Supabase
+
       if (user?.id) {
-        const payload = {
-          id: user.id,
-          nickname: completed.nickname,
-          goals: completed.goals,
-          biorhythm: completed.biorhythm,
-          is_completed: true,
-          updated_at: new Date().toISOString(),
-        };
-        
-        supabase.from('profiles').upsert(payload).then(({ error }) => {
-           if (error) console.error('[FirstTimeSetupProvider] Sync error:', error);
-        });
+        supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            nickname: completed.nickname,
+            goals: completed.goals,
+            biorhythm: completed.biorhythm,
+            is_completed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .then(({ error }) => {
+            if (error) console.error('[FirstTimeSetupProvider] Complete sync error:', error);
+          });
       }
-      
-      return {
-        ...prev,
-        profile: completed,
-      };
+
+      return { ...prev, profile: completed };
     });
   }, [FIRST_TIME_SETUP_KEY, user?.id]);
 
@@ -152,27 +177,17 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
   }, [FIRST_TIME_SETUP_KEY]);
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        await loadProfile();
-      } catch (error) {
-        console.error('[FirstTimeSetupProvider] Init error:', error);
-        setState({
-          profile: null,
-          currentStep: 0,
-          isLoading: false,
-        });
-      }
-    };
-    
-    init();
+    loadProfile();
   }, [loadProfile]);
 
-  return useMemo(() => ({
-    ...state,
-    updateProfile,
-    completeSetup,
-    setStep,
-    resetSetup,
-  }), [state, updateProfile, completeSetup, setStep, resetSetup]);
+  return useMemo(
+    () => ({
+      ...state,
+      updateProfile,
+      completeSetup,
+      setStep,
+      resetSetup,
+    }),
+    [state, updateProfile, completeSetup, setStep, resetSetup]
+  );
 });
