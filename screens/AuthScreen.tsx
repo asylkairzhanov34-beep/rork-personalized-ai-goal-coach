@@ -92,9 +92,10 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       // Check if it is a cancellation error
       const err = error as any;
       if (err.code === 'ERR_REQUEST_CANCELED' || err.message?.includes('canceled')) {
-        // Do nothing on cancel
+        console.log('[AuthScreen] Apple Sign In cancelled by user');
         return;
       }
+      console.error('[AuthScreen] Apple Sign In error:', error);
       Alert.alert('Error', (error as Error).message);
     } finally {
       setIsLoading(false);
