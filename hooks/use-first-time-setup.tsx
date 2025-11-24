@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
-import { useAuth } from '@/hooks/use-auth-store';
-import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
 import { FirstTimeProfile, FirstTimeSetupState } from '@/types/first-time-setup';
+import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
+import { useAuth } from '@/hooks/use-auth-store';
 
-// ──────────────────────────────────────────────────────────────
 const getFirstTimeSetupKey = (userId: string) => `first_time_setup_${userId}`;
 
 export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() => {
@@ -15,50 +14,63 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
     isLoading: true,
   });
 
-  const FIRST_TIME_SETUP_KEY = user?.id ? getFirstTimeSetupKey(user.id) : 'default';
+  const FIRST_TIME_SETUP_KEY = getFirstTimeSetupKey(user?.id || 'default');
 
   const loadProfile = useCallback(async () => {
     try {
       console.log('[FirstTimeSetupProvider] Loading profile...');
       const stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
-
+      console.log('[FirstTimeSetupProvider] Profile loaded:', stored ? 'Yes' : 'No');
+      
+      // Use requestAnimationFrame to prevent blocking
       requestAnimationFrame(() => {
         setState({
           profile: stored,
-          currentStep: stored?.isCompleted ? 0 : 0,
+          currentStep: 0,
           isLoading: false,
         });
       });
-    } catch (err) {
-      console.error('[FirstTimeSetupProvider] Load error:', err);
+    } catch (error) {
+      console.error('[FirstTimeSetupProvider] Error loading profile:', error);
       requestAnimationFrame(() => {
-        setState({ profile: null, currentStep: 0, isLoading: false });
+        setState({
+          profile: null,
+          currentStep: 0,
+          isLoading: false,
+        });
       });
     }
-  }, [user?.id, FIRST_TIME_SETUP_KEY]);
+  }, [FIRST_TIME_SETUP_KEY]);
 
-  const updateProfile = useCallback(
-    async (updates: Partial<FirstTimeProfile>) => {
-      setState(prev => {
-        const newProfile = { ...prev.profile, ...updates } as FirstTimeProfile;
-        safeStorageSet(FIRST_TIME_SETUP_KEY, newProfile);
-        return { ...prev, profile: newProfile };
-      });
-    },
-    [FIRST_TIME_SETUP_KEY]
-  );
+  const updateProfile = useCallback(async (updates: Partial<FirstTimeProfile>) => {
+    setState(prev => {
+      const newProfile = {
+        ...prev.profile,
+        ...updates,
+      } as FirstTimeProfile;
+
+      safeStorageSet(FIRST_TIME_SETUP_KEY, newProfile);
+      
+      return {
+        ...prev,
+        profile: newProfile,
+      };
+    });
+  }, [FIRST_TIME_SETUP_KEY]);
 
   const completeSetup = useCallback(async () => {
     setState(prev => {
-      if (!prev.profile) return prev;
-
-      const completed: FirstTimeProfile = {
-        ...prev.profile,
+      const completed = {
+        ...prev.profile!,
         isCompleted: true,
       };
-
+      
       safeStorageSet(FIRST_TIME_SETUP_KEY, completed);
-      return { ...prev, profile: completed };
+      
+      return {
+        ...prev,
+        profile: completed,
+      };
     });
   }, [FIRST_TIME_SETUP_KEY]);
 
@@ -68,21 +80,35 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
 
   const resetSetup = useCallback(async () => {
     await safeStorageSet(FIRST_TIME_SETUP_KEY, null);
-    setState({ profile: null, currentStep: 0, isLoading: false });
+    setState({
+      profile: null,
+      currentStep: 0,
+      isLoading: false,
+    });
   }, [FIRST_TIME_SETUP_KEY]);
 
   useEffect(() => {
-    loadProfile();
+    const init = async () => {
+      try {
+        await loadProfile();
+      } catch (error) {
+        console.error('[FirstTimeSetupProvider] Init error:', error);
+        setState({
+          profile: null,
+          currentStep: 0,
+          isLoading: false,
+        });
+      }
+    };
+    
+    init();
   }, [loadProfile]);
 
-  return useMemo(
-    () => ({
-      ...state,
-      updateProfile,
-      completeSetup,
-      setStep,
-      resetSetup,
-    }),
-    [state, updateProfile, completeSetup, setStep, resetSetup]
-  );
+  return useMemo(() => ({
+    ...state,
+    updateProfile,
+    completeSetup,
+    setStep,
+    resetSetup,
+  }), [state, updateProfile, completeSetup, setStep, resetSetup]);
 });

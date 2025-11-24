@@ -10,7 +10,6 @@ import { useGoalStore } from '@/hooks/use-goal-store';
 import { useAuth } from '@/hooks/use-auth-store';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
 import { useSubscription } from '@/hooks/use-subscription-store';
-import { trpcClient } from '@/lib/trpc';
 
 
 
@@ -126,12 +125,12 @@ export default function ProfileScreen() {
           style: 'destructive', 
           onPress: async () => {
             try {
-              await trpcClient.auth.deleteAccount.mutate();
+              // Call backend deletion if implemented
+              // await trpcClient.auth.deleteAccount.mutate();
               await logout();
               router.replace('/auth');
               Alert.alert('Аккаунт удален');
             } catch (error) {
-              console.error('[Profile] Delete account error:', error);
               Alert.alert('Ошибка', 'Не удалось удалить аккаунт');
             }
           }

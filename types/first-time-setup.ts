@@ -1,11 +1,9 @@
 export interface FirstTimeProfile {
   nickname: string;
-  birthdate?: Date;
+  birthdate: Date;
   avatar?: string;
   primaryGoal?: 'focus' | 'discipline' | 'calm' | 'ambition';
   productivityTime?: 'morning' | 'afternoon' | 'evening' | 'unknown';
-  goals: any[];
-  biorhythm: Record<string, number> | null;
   isCompleted: boolean;
 }
 
