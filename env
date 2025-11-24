@@ -36,4 +36,4 @@ EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
 # 3. Скопируйте Connection String из Dashboard
 # 4. Выполните SQL для создания таблиц (см. инструкцию в консоли)
 # Format: postgresql://user:password@ep-xxx-xxx.region.neon.tech/dbname?sslmode=require
-DATABASE_URL=
+DATABASE_URL=postgresql://neondb_owner:npg_sh2lOTPgKDq4@ep-soft-glitter-agdsyh9z-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
