@@ -266,8 +266,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     } catch (error) {
       setAuthState(prev => ({ ...prev, isLoading: false }));
       if ((error as any)?.code === 'ERR_REQUEST_CANCELED') {
-        // User canceled the sign-in flow
-        return;
+        // Rethrow cancellation so the caller knows the flow was stopped
+        throw error;
       }
       console.error('Apple Login Error:', error);
       throw error;
