@@ -29,5 +29,3 @@ EXPO_PUBLIC_REVENUECAT_WEB_KEY=
 
 EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_pGJTtesULqilYeJAacVcVDjjUGb
 EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
-
-DATABASE_URL=postgresql://neondb_owner:****************@ep-soft-glitter-agdsyh9z-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
