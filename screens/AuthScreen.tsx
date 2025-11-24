@@ -98,14 +98,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       console.error('[AuthScreen] Apple Sign In error:', error);
       
       const errorMessage = (error as Error).message;
-      if (errorMessage.includes('Provider') && errorMessage.includes('not enabled')) {
-         Alert.alert(
-           'Configuration Error', 
-           'Apple Sign In is not enabled in Supabase.\n\nPlease go to Supabase Dashboard -> Authentication -> Providers -> Apple and enable it.'
-         );
-      } else {
-         Alert.alert('Error', errorMessage);
-      }
+      Alert.alert('Ошибка входа', errorMessage);
     } finally {
       setIsLoading(false);
     }

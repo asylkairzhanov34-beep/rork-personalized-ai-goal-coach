@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { useAuth } from '@/hooks/use-auth-store';
-import { supabase } from '@/lib/supabase';
 import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
 import { FirstTimeProfile, FirstTimeSetupState } from '@/types/first-time-setup';
 
@@ -21,34 +20,7 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
   const loadProfile = useCallback(async () => {
     try {
       console.log('[FirstTimeSetupProvider] Loading profile...');
-      let stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
-
-      // Загружаем из Supabase, если пользователь авторизован
-      if (user?.id) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .maybeSingle(); // важно: может не существовать
-
-        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
-          console.warn('[FirstTimeSetupProvider] Supabase error:', error);
-        }
-
-        if (data) {
-          console.log('[FirstTimeSetupProvider] Remote profile loaded');
-          const remoteProfile: FirstTimeProfile = {
-            nickname: data.nickname ?? '',
-            goals: data.goals ?? [],
-            biorhythm: data.biorhythm ?? null,
-            isCompleted: data.is_completed ?? false,
-            // остальные поля (birthdate, avatar и т.д.) могут подтягиваться из других мест
-          };
-
-          stored = remoteProfile;
-          await safeStorageSet(FIRST_TIME_SETUP_KEY, stored);
-        }
-      }
+      const stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
 
       requestAnimationFrame(() => {
         setState({
@@ -69,31 +41,11 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
     async (updates: Partial<FirstTimeProfile>) => {
       setState(prev => {
         const newProfile = { ...prev.profile, ...updates } as FirstTimeProfile;
-
-        // Сохраняем локально
         safeStorageSet(FIRST_TIME_SETUP_KEY, newProfile);
-
-        // Синхронизируем с Supabase
-        if (user?.id) {
-          supabase
-            .from('profiles')
-            .upsert({
-              id: user.id,
-              nickname: newProfile.nickname,
-              goals: newProfile.goals,
-              biorhythm: newProfile.biorhythm,
-              is_completed: newProfile.isCompleted,
-              updated_at: new Date().toISOString(),
-            })
-            .then(({ error }) => {
-              if (error) console.error('[FirstTimeSetupProvider] Upsert error:', error);
-            });
-        }
-
         return { ...prev, profile: newProfile };
       });
     },
-    [user?.id, FIRST_TIME_SETUP_KEY]
+    [FIRST_TIME_SETUP_KEY]
   );
 
   const completeSetup = useCallback(async () => {
@@ -106,26 +58,9 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
       };
 
       safeStorageSet(FIRST_TIME_SETUP_KEY, completed);
-
-      if (user?.id) {
-        supabase
-          .from('profiles')
-          .upsert({
-            id: user.id,
-            nickname: completed.nickname,
-            goals: completed.goals,
-            biorhythm: completed.biorhythm,
-            is_completed: true,
-            updated_at: new Date().toISOString(),
-          })
-          .then(({ error }) => {
-            if (error) console.error('[FirstTimeSetupProvider] Complete sync error:', error);
-          });
-      }
-
       return { ...prev, profile: completed };
     });
-  }, [user?.id, FIRST_TIME_SETUP_KEY]);
+  }, [FIRST_TIME_SETUP_KEY]);
 
   const setStep = useCallback((step: number) => {
     setState(prev => ({ ...prev, currentStep: step }));

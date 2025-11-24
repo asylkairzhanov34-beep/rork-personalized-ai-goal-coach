@@ -18,7 +18,7 @@ try {
   } else {
     console.warn('[DB] DATABASE_URL not set. Database operations will not be available.');
     console.warn('[DB] Please add DATABASE_URL to your env file.');
-    console.warn('[DB] Get it from: Supabase Dashboard -> Project Settings -> Database -> Connection string -> URI');
+    console.warn('[DB] Get it from: Neon Dashboard -> Connection String (copy the full connection string)');
   }
 } catch (error) {
   console.error('[DB] Failed to initialize database:', error);
