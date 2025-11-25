@@ -1,12 +1,49 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import type {
-  CustomerInfo,
-  PurchasesOfferings,
-  PurchasesPackage,
-} from 'react-native-purchases';
 
-type PurchasesModule = any;
+export interface RevenueCatCustomerInfo {
+  activeSubscriptions: string[];
+  allPurchasedProductIdentifiers: string[];
+  entitlements: {
+    active: Record<string, {
+      identifier: string;
+      productIdentifier: string;
+      isActive: boolean;
+    }>;
+  };
+}
+
+export interface RevenueCatProduct {
+  identifier: string;
+  title: string;
+  description: string;
+  price: number;
+  priceString: string;
+  currencyCode: string;
+}
+
+export interface RevenueCatPackage {
+  identifier: string;
+  product: RevenueCatProduct;
+}
+
+export interface RevenueCatOfferings {
+  current: {
+    identifier: string;
+    availablePackages: RevenueCatPackage[];
+  } | null;
+  all: Record<string, unknown>;
+}
+
+type PurchasesModule = {
+  configure: (config: { apiKey: string }) => Promise<void>;
+  setLogLevel: (level: unknown) => Promise<void>;
+  LOG_LEVEL: { DEBUG: unknown; VERBOSE: unknown };
+  getOfferings: () => Promise<RevenueCatOfferings>;
+  getCustomerInfo: () => Promise<RevenueCatCustomerInfo>;
+  purchasePackage: (pkg: RevenueCatPackage) => Promise<{ customerInfo: RevenueCatCustomerInfo }>;
+  restorePurchases: () => Promise<RevenueCatCustomerInfo>;
+};
 
 const API_KEYS = {
   ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '',
@@ -16,166 +53,182 @@ const API_KEYS = {
 const isExpoGoRuntime = Constants?.appOwnership === 'expo';
 const canUseNativeRevenueCat = Platform.OS !== 'web' && !isExpoGoRuntime;
 
-let hasLoggedNativeDisable = false;
-const logNativeDisabled = (reason: string) => {
-  if (hasLoggedNativeDisable) {
-    return;
-  }
-  hasLoggedNativeDisable = true;
-  console.info(`[RevenueCat] Native SDK disabled: ${reason}`);
+let hasLoggedStatus = false;
+const logStatus = (message: string) => {
+  if (hasLoggedStatus) return;
+  hasLoggedStatus = true;
+  console.log(`[RevenueCat] ${message}`);
 };
 
 let moduleRef: PurchasesModule | null = null;
-let initializationPromise: Promise<PurchasesModule | null> | null = null;
+let isConfigured = false;
 
-const loadModule = async (): Promise<PurchasesModule | null> => {
-  if (Platform.OS === 'web') {
-    logNativeDisabled('web platform is not supported');
-    return null;
-  }
-
-  if (!canUseNativeRevenueCat) {
-    logNativeDisabled('Expo Go runtime does not expose native store APIs');
-    return null;
-  }
-
-  if (moduleRef) {
-    return moduleRef;
-  }
-
-  try {
-    const Purchases = require('react-native-purchases').default || require('react-native-purchases');
-    moduleRef = Purchases as PurchasesModule;
-    return moduleRef;
-  } catch (error) {
-    console.error('[RevenueCat] Failed to import react-native-purchases', error);
-    moduleRef = null;
-    return null;
-  }
-};
-
-const getApiKey = () => {
-  if (Platform.OS === 'ios') {
-    return API_KEYS.ios;
-  }
-
-  if (Platform.OS === 'android') {
-    return API_KEYS.android;
-  }
-
+const getApiKey = (): string => {
+  if (Platform.OS === 'ios') return API_KEYS.ios;
+  if (Platform.OS === 'android') return API_KEYS.android;
   return '';
 };
 
-export const initializeSubscriptionFlow = async (): Promise<PurchasesModule | null> => {
-  if (initializationPromise) {
-    return initializationPromise;
-  }
-
-  initializationPromise = (async () => {
-    if (Platform.OS === 'web' || !canUseNativeRevenueCat) {
-      logNativeDisabled(
-        Platform.OS === 'web'
-          ? 'web platform is not supported'
-          : 'Expo Go runtime does not expose native store APIs',
-      );
-      return null;
-    }
-
-    const module = await loadModule();
-    if (!module) {
-      return null;
-    }
-
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      console.warn('[RevenueCat] Missing API key for current platform');
-      return null;
-    }
-
-    try {
-      if (__DEV__ && module?.setLogLevel) {
-        await module.setLogLevel(module.LOG_LEVEL.DEBUG);
-      }
-      if (module?.configure) {
-        await module.configure({ apiKey });
-      }
-      return module;
-    } catch (error) {
-      console.error('[RevenueCat] configure failed', error);
-      return null;
-    }
-  })();
-
-  return initializationPromise;
-};
-
-export const getPurchasesModule = () => moduleRef;
-
-export const fetchOfferings = async (): Promise<PurchasesOfferings | null> => {
-  const module = await initializeSubscriptionFlow();
-  if (!module) {
+const loadPurchasesModule = (): PurchasesModule | null => {
+  if (moduleRef) return moduleRef;
+  
+  if (Platform.OS === 'web') {
+    logStatus('Web platform - using mock mode');
     return null;
   }
-
+  
+  if (!canUseNativeRevenueCat) {
+    logStatus('Expo Go detected - using mock mode (RevenueCat requires development build)');
+    return null;
+  }
+  
   try {
-    return await module.getOfferings();
+    const RNPurchases = require('react-native-purchases');
+    moduleRef = RNPurchases.default ?? RNPurchases;
+    console.log('[RevenueCat] Module loaded successfully');
+    return moduleRef;
   } catch (error) {
-    console.error('[RevenueCat] getOfferings failed', error);
+    console.log('[RevenueCat] Module not available - using mock mode');
     return null;
   }
 };
 
-export const fetchCustomerInfo = async (): Promise<CustomerInfo | null> => {
-  const module = await initializeSubscriptionFlow();
-  if (!module) {
-    return null;
+export const initializeRevenueCat = async (): Promise<boolean> => {
+  if (isConfigured) {
+    console.log('[RevenueCat] Already configured');
+    return true;
   }
-
+  
+  const module = loadPurchasesModule();
+  if (!module) {
+    return false;
+  }
+  
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    console.warn('[RevenueCat] No API key for platform:', Platform.OS);
+    return false;
+  }
+  
   try {
-    return await module.getCustomerInfo();
+    console.log('[RevenueCat] Configuring with API key...');
+    
+    if (__DEV__ && module.LOG_LEVEL) {
+      await module.setLogLevel(module.LOG_LEVEL.DEBUG);
+    }
+    
+    await module.configure({ apiKey });
+    isConfigured = true;
+    console.log('[RevenueCat] Configuration successful');
+    return true;
   } catch (error) {
-    console.error('[RevenueCat] getCustomerInfo failed', error);
-    return null;
+    console.error('[RevenueCat] Configuration failed:', error);
+    return false;
   }
 };
 
-export const purchasePackageByIdentifier = async (
-  identifier: string,
-): Promise<{ info: CustomerInfo; purchasedPackage: PurchasesPackage } | null> => {
-  const module = await initializeSubscriptionFlow();
-  if (!module) {
+export const isRevenueCatAvailable = (): boolean => {
+  return canUseNativeRevenueCat && !!loadPurchasesModule();
+};
+
+export const getOfferings = async (): Promise<RevenueCatOfferings | null> => {
+  const module = loadPurchasesModule();
+  if (!module || !isConfigured) {
+    console.log('[RevenueCat] getOfferings - module not ready');
     return null;
   }
-
+  
   try {
     const offerings = await module.getOfferings();
-    const available = offerings.current?.availablePackages.find(
-      (pkg: PurchasesPackage) => pkg.identifier === identifier,
-    );
-
-    if (!available) {
-      console.warn('[RevenueCat] Package not found in offerings', identifier);
-      return null;
-    }
-
-    const result = await module.purchasePackage(available);
-    return { info: result.customerInfo, purchasedPackage: available };
+    console.log('[RevenueCat] Offerings fetched:', offerings?.current?.identifier);
+    return offerings;
   } catch (error) {
-    console.error('[RevenueCat] purchasePackage failed', error);
-    throw error;
-  }
-};
-
-export const restorePurchasesFromRevenueCat = async (): Promise<CustomerInfo | null> => {
-  const module = await initializeSubscriptionFlow();
-  if (!module) {
+    console.error('[RevenueCat] getOfferings failed:', error);
     return null;
   }
+};
 
+export const getCustomerInfo = async (): Promise<RevenueCatCustomerInfo | null> => {
+  const module = loadPurchasesModule();
+  if (!module || !isConfigured) {
+    console.log('[RevenueCat] getCustomerInfo - module not ready');
+    return null;
+  }
+  
   try {
-    return await module.restorePurchases();
+    const info = await module.getCustomerInfo();
+    console.log('[RevenueCat] Customer info fetched, active subs:', info?.activeSubscriptions?.length ?? 0);
+    return info;
   } catch (error) {
-    console.error('[RevenueCat] restorePurchases failed', error);
+    console.error('[RevenueCat] getCustomerInfo failed:', error);
+    return null;
+  }
+};
+
+export const purchasePackage = async (
+  pkg: RevenueCatPackage
+): Promise<{ customerInfo: RevenueCatCustomerInfo } | null> => {
+  const module = loadPurchasesModule();
+  if (!module || !isConfigured) {
+    console.log('[RevenueCat] purchasePackage - module not ready');
+    return null;
+  }
+  
+  try {
+    console.log('[RevenueCat] Purchasing package:', pkg.identifier);
+    const result = await module.purchasePackage(pkg);
+    console.log('[RevenueCat] Purchase successful');
+    return result;
+  } catch (error: any) {
+    if (error?.userCancelled) {
+      console.log('[RevenueCat] Purchase cancelled by user');
+      throw { userCancelled: true };
+    }
+    console.error('[RevenueCat] Purchase failed:', error);
     throw error;
   }
 };
+
+export const restorePurchases = async (): Promise<RevenueCatCustomerInfo | null> => {
+  const module = loadPurchasesModule();
+  if (!module || !isConfigured) {
+    console.log('[RevenueCat] restorePurchases - module not ready');
+    return null;
+  }
+  
+  try {
+    console.log('[RevenueCat] Restoring purchases...');
+    const info = await module.restorePurchases();
+    console.log('[RevenueCat] Restore successful, active subs:', info?.activeSubscriptions?.length ?? 0);
+    return info;
+  } catch (error) {
+    console.error('[RevenueCat] Restore failed:', error);
+    throw error;
+  }
+};
+
+// Legacy exports for compatibility
+export const initializeSubscriptionFlow = initializeRevenueCat;
+export const fetchOfferings = getOfferings;
+export const fetchCustomerInfo = getCustomerInfo;
+export const purchasePackageByIdentifier = async (
+  identifier: string
+): Promise<{ info: RevenueCatCustomerInfo; purchasedPackage: RevenueCatPackage } | null> => {
+  const offerings = await getOfferings();
+  if (!offerings?.current?.availablePackages) {
+    console.warn('[RevenueCat] No offerings available');
+    return null;
+  }
+  
+  const pkg = offerings.current.availablePackages.find(p => p.identifier === identifier);
+  if (!pkg) {
+    console.warn('[RevenueCat] Package not found:', identifier);
+    return null;
+  }
+  
+  const result = await purchasePackage(pkg);
+  if (!result) return null;
+  
+  return { info: result.customerInfo, purchasedPackage: pkg };
+};
+export const restorePurchasesFromRevenueCat = restorePurchases;

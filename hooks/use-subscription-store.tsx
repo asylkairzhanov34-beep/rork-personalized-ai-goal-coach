@@ -2,15 +2,16 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import type { CustomerInfo as RCCustomerInfo, PurchasesPackage } from 'react-native-purchases';
 import createContextHook from '@nkzw/create-context-hook';
 import { CustomerInfo, SubscriptionPackage, SubscriptionStatus } from '@/types/subscription';
 import {
-  initializeSubscriptionFlow,
-  fetchOfferings,
-  fetchCustomerInfo,
+  initializeRevenueCat,
+  getOfferings,
+  getCustomerInfo,
   purchasePackageByIdentifier,
-  restorePurchasesFromRevenueCat,
+  restorePurchases as restorePurchasesRC,
+  RevenueCatCustomerInfo,
+  RevenueCatPackage,
 } from '@/lib/revenuecat';
 
 const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -197,16 +198,16 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     trialStateRef.current = trialState;
   }, [trialState]);
 
-  const mapCustomerInfo = useCallback((info: RCCustomerInfo | null): CustomerInfo | null => {
+  const mapCustomerInfo = useCallback((info: RevenueCatCustomerInfo | null): CustomerInfo | null => {
     if (!info) {
       return null;
     }
 
     return {
-      activeSubscriptions: info.activeSubscriptions,
-      allPurchasedProductIdentifiers: info.allPurchasedProductIdentifiers,
+      activeSubscriptions: info.activeSubscriptions ?? [],
+      allPurchasedProductIdentifiers: info.allPurchasedProductIdentifiers ?? [],
       entitlements: {
-        active: Object.entries(info.entitlements.active).reduce((acc, [key, value]) => {
+        active: Object.entries(info.entitlements?.active ?? {}).reduce((acc, [key, value]) => {
           acc[key] = {
             identifier: value.identifier,
             productIdentifier: value.productIdentifier,
@@ -219,7 +220,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, []);
 
   const persistCustomerInfo = useCallback(
-    async (info: RCCustomerInfo | null) => {
+    async (info: RevenueCatCustomerInfo | null) => {
       const mapped = mapCustomerInfo(info);
       if (mapped) {
         setCustomerInfo(mapped);
@@ -227,7 +228,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         setCustomerInfo(null);
       }
 
-      const hasActive = info ? Object.keys(info.entitlements.active).length > 0 : false;
+      const hasActive = info ? Object.keys(info.entitlements?.active ?? {}).length > 0 : false;
 
       if (hasActive) {
         setStatus('premium');
@@ -317,9 +318,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, []);
 
   const loadOfferingsFromRevenueCat = useCallback(async () => {
-    const offerings = await fetchOfferings();
+    const offerings = await getOfferings();
     if (offerings?.current?.availablePackages?.length) {
-      const formatted = offerings.current.availablePackages.map((pkg: PurchasesPackage) => ({
+      const formatted = offerings.current.availablePackages.map((pkg: RevenueCatPackage) => ({
         identifier: pkg.identifier,
         product: {
           identifier: pkg.product.identifier,
@@ -331,20 +332,24 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         },
       }));
       setPackages(formatted);
+      console.log('[SubscriptionProvider] Loaded offerings:', formatted.length, 'packages');
     } else if (isMockMode || Platform.OS === 'web') {
       setPackages(WEB_MOCK_PACKAGES);
+      console.log('[SubscriptionProvider] Using mock packages');
     }
   }, [isMockMode]);
 
   useEffect(() => {
     const bootstrap = async () => {
       try {
+        console.log('[SubscriptionProvider] Starting initialization...');
         await hydratePaywallSeen();
         const securePremium = await hydrateSecurePremiumFlag();
         const trial = await hydrateTrialState();
         await checkFirstLaunch();
 
         if (Platform.OS === 'web') {
+          console.log('[SubscriptionProvider] Web platform - using mock mode');
           setIsMockMode(true);
           setPackages(WEB_MOCK_PACKAGES);
           if (!securePremium && !trial.isActive) {
@@ -354,8 +359,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           return;
         }
 
-        const module = await initializeSubscriptionFlow();
-        if (!module) {
+        const initialized = await initializeRevenueCat();
+        if (!initialized) {
+          console.log('[SubscriptionProvider] RevenueCat not available - using mock mode');
           setIsMockMode(true);
           setPackages(WEB_MOCK_PACKAGES);
           if (!securePremium && !trial.isActive) {
@@ -365,8 +371,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           return;
         }
 
+        console.log('[SubscriptionProvider] RevenueCat initialized successfully');
         setIsMockMode(false);
-        const info = await fetchCustomerInfo();
+        const info = await getCustomerInfo();
         if (info) {
           await persistCustomerInfo(info);
         } else if (!securePremium && !trial.isActive) {
@@ -375,6 +382,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
         await loadOfferingsFromRevenueCat();
         setIsInitialized(true);
+        console.log('[SubscriptionProvider] Initialization complete');
       } catch (error) {
         console.error('[SubscriptionProvider] Initialization error', error);
         setPackages(WEB_MOCK_PACKAGES);
@@ -512,6 +520,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       emitAnalytics(ANALYTICS_EVENTS.PURCHASE_INITIATED, { packageIdentifier });
 
       try {
+        console.log('[SubscriptionProvider] Initiating purchase for:', packageIdentifier);
         const purchase = await purchasePackageByIdentifier(packageIdentifier);
         if (!purchase) {
           Alert.alert('Ошибка', 'Выбранный пакет недоступен.');
@@ -534,6 +543,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           console.log('[SubscriptionProvider] Purchase cancelled by user');
           return null;
         }
+        console.error('[SubscriptionProvider] Purchase failed', error);
         Alert.alert('Ошибка', 'Не удалось оформить подписку. Попробуйте снова.');
         return null;
       } finally {
@@ -556,10 +566,11 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
     setIsRestoring(true);
     try {
-      const info = await restorePurchasesFromRevenueCat();
+      console.log('[SubscriptionProvider] Restoring purchases...');
+      const info = await restorePurchasesRC();
       if (info) {
         await persistCustomerInfo(info);
-        return Object.keys(info.entitlements.active).length > 0;
+        return Object.keys(info.entitlements?.active ?? {}).length > 0;
       }
       return false;
     } catch (error) {
@@ -577,7 +588,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       return;
     }
 
-    const info = await fetchCustomerInfo();
+    const info = await getCustomerInfo();
     if (info) {
       await persistCustomerInfo(info);
     }
