@@ -15,6 +15,11 @@ function initializeDb() {
 
   console.log('[DB] Initializing database connection...');
   console.log('[DB] DATABASE_URL exists:', !!connectionString);
+  
+  if (connectionString) {
+    const maskedUrl = connectionString.replace(/:[^:@]+@/, ':***@');
+    console.log('[DB] Connection string (masked):', maskedUrl);
+  }
 
   if (!connectionString) {
     console.warn('[DB] No DATABASE_URL found - database features will be disabled');
@@ -28,6 +33,7 @@ function initializeDb() {
       connect_timeout: 10,
       idle_timeout: 20,
       max_lifetime: 60 * 30,
+      ssl: 'require',
     });
     dbInstance = drizzle(client, { schema });
     console.log('[DB] Postgres client created successfully');

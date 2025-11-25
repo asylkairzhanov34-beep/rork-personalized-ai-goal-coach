@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../create-context';
+import { eq } from 'drizzle-orm';
 
-// Lazy load database to prevent initialization errors from crashing the router
 let dbModule: typeof import('../../db') | null = null;
 let schemaModule: typeof import('../../schema') | null = null;
 
@@ -28,7 +28,6 @@ const getSchema = async () => {
 };
 
 export const authRouter = createTRPCRouter({
-  // Health check route for debugging
   health: publicProcedure.query(async () => {
     try {
       const dbMod = await getDb();
@@ -49,7 +48,6 @@ export const authRouter = createTRPCRouter({
     }
   }),
 
-  // Route for Apple Sign In
   loginWithApple: publicProcedure
     .input(z.object({
       identityToken: z.string(),
@@ -61,24 +59,80 @@ export const authRouter = createTRPCRouter({
 
       console.log('[Auth] Apple Login attempt');
       console.log('[Auth] Token length:', identityToken.length);
+      console.log('[Auth] Email:', email);
+      console.log('[Auth] Full name:', fullName);
 
-      // Generate a stable user ID from the token
-      const userId = 'apple_' + identityToken.substring(0, 20);
+      const appleId = 'apple_' + identityToken.substring(0, 32);
       
-      console.log('[Auth] Returning user with ID:', userId);
+      try {
+        const dbMod = await getDb();
+        const schemaMod = await getSchema();
+        
+        if (dbMod?.isDbReady && dbMod?.db && schemaMod?.users) {
+          const database = dbMod.db as any;
+          
+          const existingUsers = await database
+            .select()
+            .from(schemaMod.users)
+            .where(eq(schemaMod.users.appleId, appleId))
+            .limit(1);
+          
+          if (existingUsers && existingUsers.length > 0) {
+            const user = existingUsers[0];
+            console.log('[Auth] Found existing user:', user.id);
+            
+            return {
+              token: 'session_' + user.id,
+              user: {
+                id: user.id,
+                email: user.email || email || 'user@privaterelay.appleid.com',
+                name: user.name || fullName || null,
+                isPremium: user.isPremium || false,
+              },
+            };
+          }
+          
+          const newUser = await database
+            .insert(schemaMod.users)
+            .values({
+              email: email || null,
+              name: fullName || null,
+              appleId: appleId,
+              isPremium: false,
+            })
+            .returning();
+          
+          if (newUser && newUser.length > 0) {
+            const user = newUser[0];
+            console.log('[Auth] Created new user:', user.id);
+            
+            return {
+              token: 'session_' + user.id,
+              user: {
+                id: user.id,
+                email: user.email || email || 'user@privaterelay.appleid.com',
+                name: user.name || fullName || null,
+                isPremium: false,
+              },
+            };
+          }
+        }
+      } catch (dbError) {
+        console.error('[Auth] Database error:', dbError);
+      }
       
+      console.log('[Auth] Returning fallback user with appleId:', appleId);
       return {
-        token: 'session_' + userId,
+        token: 'session_' + appleId,
         user: {
-          id: userId,
+          id: appleId,
           email: email || 'user@privaterelay.appleid.com',
           name: fullName || null,
-          isPremium: false
-        }
+          isPremium: false,
+        },
       };
     }),
 
-  // Delete Account (Required for App Store)
   deleteAccount: protectedProcedure
     .mutation(async ({ ctx }) => {
       const userId = ctx.user.id;
@@ -87,7 +141,6 @@ export const authRouter = createTRPCRouter({
       try {
         const dbMod = await getDb();
         const schemaMod = await getSchema();
-        const { eq } = await import('drizzle-orm');
         
         if (dbMod?.isDbReady && dbMod?.db && schemaMod?.users) {
           const database = dbMod.db as any;
