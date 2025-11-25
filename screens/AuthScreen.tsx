@@ -9,16 +9,12 @@ import {
   Animated,
   Dimensions,
   Linking,
-  TextInput,
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/hooks/use-auth-store';
 import { Ionicons } from '@expo/vector-icons';
-
-
 
 interface AuthScreenProps {
   onAuthSuccess?: () => void;
@@ -28,9 +24,6 @@ const { width, height } = Dimensions.get('window');
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [showEmailForm, setShowEmailForm] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   
   // Анимации
   const logoScale = useRef(new Animated.Value(0)).current;
@@ -38,7 +31,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const buttonSlide = useRef(new Animated.Value(50)).current;
   const glowAnim = useRef(new Animated.Value(0.95)).current;
 
-  const { loginWithApple, loginWithEmail } = useAuth();
+  const { loginWithApple } = useAuth();
 
 
 
@@ -89,29 +82,16 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
     setIsLoading(true);
     try {
-      await loginWithApple();
+      const result = await loginWithApple();
+      if (result === 'canceled') {
+        console.log('[AuthScreen] Apple Sign-In was canceled by user');
+        return;
+      }
       onAuthSuccess?.();
     } catch (error) {
       if ((error as any)?.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Error', (error as Error).message);
+        Alert.alert('Ошибка', 'Не удалось войти через Apple. Попробуйте ещё раз.');
       }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleEmailAuth = async () => {
-    if (!email || !password) {
-      Alert.alert('Ошибка', 'Заполните все поля');
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      await loginWithEmail({ email, password });
-      onAuthSuccess?.();
-    } catch (error) {
-      Alert.alert('Ошибка', (error as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +100,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const isAppleSignInAvailable = Platform.OS === 'ios';
 
   const handlePrivacyPress = () => {
-    Linking.openURL('https://example.com/privacy');
+    Linking.openURL('https://www.notion.so/PRIVACY-POLICY-AND-COOKIES-2b44e106d5d0807aaff8e5765d4b8539');
   };
 
   return (
@@ -185,7 +165,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             ]}
           >
             {/* Apple Sign In Button */}
-            {isAppleSignInAvailable && (
+            {isAppleSignInAvailable ? (
               <TouchableOpacity
                 style={styles.appleButton}
                 onPress={handleAppleAuth}
@@ -203,83 +183,13 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
-            )}
-
-            {/* Разделитель */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>или</Text>
-              <View style={styles.divider} />
-            </View>
-
-            {/* Email Button */}
-            <TouchableOpacity
-              style={styles.emailToggleButton}
-              onPress={() => setShowEmailForm(!showEmailForm)}
-              activeOpacity={0.9}
-              testID="email-toggle-button"
-            >
-              <Text style={styles.emailToggleButtonText}>Войти по Email</Text>
-            </TouchableOpacity>
-
-            {/* Email Form - Collapsible */}
-            {showEmailForm && (
-              <Animated.View style={styles.emailFormContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  placeholderTextColor="#666666"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  testID="email-input"
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Пароль"
-                  placeholderTextColor="#666666"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoComplete="password"
-                  testID="password-input"
-                />
-                <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={handleEmailAuth}
-                  disabled={isLoading}
-                  activeOpacity={0.9}
-                  testID="email-login-button"
-                >
-                  <LinearGradient
-                    colors={['#FFD700', '#FFA500']}
-                    style={styles.buttonGradient}
-                  >
-                    <Text style={styles.primaryButtonText}>
-                      {isLoading ? 'Входим...' : 'Войти'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                {/* Links Row */}
-                <View style={styles.linksRow}>
-                  <TouchableOpacity
-                    onPress={() => Alert.alert('Создать аккаунт', 'Функция в разработке')}
-                    testID="create-account-link"
-                  >
-                    <Text style={styles.linkTextSmall}>Создать аккаунт</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => Alert.alert('Забыли пароль?', 'Функция в разработке')}
-                    testID="forgot-password-link"
-                  >
-                    <Text style={styles.linkTextSmall}>Забыли пароль?</Text>
-                  </TouchableOpacity>
-                </View>
-              </Animated.View>
+            ) : (
+              <View style={styles.webNotice}>
+                <Ionicons name="information-circle-outline" size={24} color="#FFD700" />
+                <Text style={styles.webNoticeText}>
+                  Вход через Apple доступен только на iOS устройствах
+                </Text>
+              </View>
             )}
           </Animated.View>
 
@@ -447,15 +357,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000000',
   },
-  linksRow: {
+  webNotice: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderRadius: 16,
+    gap: 12,
   },
-  linkTextSmall: {
+  webNoticeText: {
+    color: '#FFFFFF',
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontWeight: '500',
+    textAlign: 'center',
+    flex: 1,
   },
   footer: {
     alignItems: 'center',

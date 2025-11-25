@@ -226,7 +226,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     }
   }, [saveUser]);
 
-  const loginWithApple = useCallback(async (): Promise<void> => {
+  const loginWithApple = useCallback(async (): Promise<'success' | 'canceled'> => {
     if (Platform.OS !== 'ios') {
       throw new Error('Apple Sign In is only available on iOS');
     }
@@ -242,6 +242,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       });
 
       if (!credential.identityToken) {
+        setAuthState(prev => ({ ...prev, isLoading: false }));
         throw new Error('Apple Sign In failed: No identity token');
       }
 
@@ -259,15 +260,16 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         email: response.user.email || `${credential.user}@privaterelay.appleid.com`,
         name: response.user.name || undefined,
         provider: 'apple',
-        createdAt: new Date(), // In real app, get this from backend
+        createdAt: new Date(),
       };
 
       await saveUser(user);
+      return 'success';
     } catch (error) {
       setAuthState(prev => ({ ...prev, isLoading: false }));
       if ((error as any)?.code === 'ERR_REQUEST_CANCELED') {
-        // User canceled the sign-in flow
-        return;
+        console.log('[AuthProvider] Apple Sign-In canceled by user');
+        return 'canceled';
       }
       console.error('Apple Login Error:', error);
       throw error;
