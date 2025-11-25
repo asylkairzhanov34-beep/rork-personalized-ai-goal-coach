@@ -27,6 +27,6 @@ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=769966215817-92j42af735k7005djr2aes0vuvs1m9h1.a
 # На реальном iPhone будет использоваться IOS ключ выше
 EXPO_PUBLIC_REVENUECAT_WEB_KEY=
 
-EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_pGJTtesULqilYeJAacVcVDjjUGb
+EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_NIzzmGwASbGFsnfAddnshynSnsG
 EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
 DATABASE_URL=postgresql://neondb_owner:****************@ep-soft-glitter-agdsyh9z-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
