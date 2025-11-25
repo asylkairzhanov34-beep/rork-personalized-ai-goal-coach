@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../create-context';
 import { db, isDbReady, getDbStatus } from '../../db';
 import { users } from '../../schema';
@@ -24,16 +25,17 @@ export const authRouter = createTRPCRouter({
       fullName: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const { identityToken, email, fullName } = input;
+      try {
+        const { identityToken, email, fullName } = input;
 
-      console.log('[Auth] Apple Login attempt');
-      console.log('[Auth] Token length:', identityToken.length);
-      console.log('[Auth] DB Ready:', isDbReady);
-      console.log('[Auth] DB Status:', getDbStatus());
+        console.log('[Auth] Apple Login attempt');
+        console.log('[Auth] Token length:', identityToken.length);
+        console.log('[Auth] DB Ready:', isDbReady);
+        console.log('[Auth] DB Status:', JSON.stringify(getDbStatus()));
 
-      if (!isDbReady || !db) {
-         console.warn('[Auth] Database not connected. Returning mock user.');
-         return {
+        if (!isDbReady || !db) {
+          console.warn('[Auth] Database not connected. Returning mock user.');
+          return {
             token: 'dev_session_token',
             user: {
               id: 'dev_user_id',
@@ -41,8 +43,8 @@ export const authRouter = createTRPCRouter({
               name: fullName,
               isPremium: false
             }
-         };
-      }
+          };
+        }
 
       // 1. Token Verification
       // REAL AUTH: Uncomment this block to verify the token with Apple
@@ -93,15 +95,22 @@ export const authRouter = createTRPCRouter({
       // You should implement a proper session mechanism here (e.g., signing a JWT)
       const sessionToken = 'session_' + user.id; // Replace with jwt.sign(...)
 
-      return {
-        token: sessionToken,
-        user: {
+        return {
+          token: sessionToken,
+          user: {
             id: user.id,
             email: user.email,
             name: user.name,
             isPremium: user.isPremium
-        }
-      };
+          }
+        };
+      } catch (error) {
+        console.error('[Auth] loginWithApple error:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error instanceof Error ? error.message : 'Login failed',
+        });
+      }
     }),
 
   // Delete Account (Required for App Store)
