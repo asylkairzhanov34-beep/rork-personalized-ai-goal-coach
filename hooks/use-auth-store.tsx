@@ -248,6 +248,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       
       let response;
       try {
+        console.log('[AuthProvider] Attempting backend auth.loginWithApple...');
         response = await trpcClient.auth.loginWithApple.mutate({
           identityToken: credential.identityToken,
           email: credential.email || undefined,
@@ -255,10 +256,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
             undefined,
         });
-        console.log('[AuthProvider] Backend response received:', !!response);
+        console.log('[AuthProvider] Backend response received:', JSON.stringify(response, null, 2));
       } catch (backendError: any) {
-        console.error('[AuthProvider] Backend call failed:', backendError.message);
-        // If backend fails, create local user
+        console.error('[AuthProvider] Backend call failed:', backendError);
+        console.error('[AuthProvider] Backend error message:', backendError?.message);
+        console.error('[AuthProvider] Backend error cause:', backendError?.cause);
+        
+        // If backend fails, create local user (fallback)
+        console.log('[AuthProvider] Using local fallback user');
         const localUser: User = {
           id: `apple_${credential.user}`,
           email: credential.email || `${credential.user}@privaterelay.appleid.com`,

@@ -1,11 +1,21 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../create-context';
-import { db, isDbReady } from '../../db';
+import { db, isDbReady, getDbStatus } from '../../db';
 import { users } from '../../schema';
 import { eq } from 'drizzle-orm';
-// import verifyAppleToken from 'verify-apple-id-token'; // Uncomment after installing: npm install verify-apple-id-token
 
 export const authRouter = createTRPCRouter({
+  // Health check route for debugging
+  health: publicProcedure.query(() => {
+    const dbStatus = getDbStatus();
+    console.log('[Auth] Health check - DB status:', dbStatus);
+    return {
+      status: 'ok',
+      database: dbStatus,
+      timestamp: new Date().toISOString(),
+    };
+  }),
+
   // Route for Apple Sign In
   loginWithApple: publicProcedure
     .input(z.object({
@@ -16,11 +26,13 @@ export const authRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const { identityToken, email, fullName } = input;
 
-      console.log('Attempting Apple Login with token length:', identityToken.length);
+      console.log('[Auth] Apple Login attempt');
+      console.log('[Auth] Token length:', identityToken.length);
+      console.log('[Auth] DB Ready:', isDbReady);
+      console.log('[Auth] DB Status:', getDbStatus());
 
       if (!isDbReady || !db) {
-         // Fallback for development without DB
-         console.warn('Database not connected. Returning mock user.');
+         console.warn('[Auth] Database not connected. Returning mock user.');
          return {
             token: 'dev_session_token',
             user: {
