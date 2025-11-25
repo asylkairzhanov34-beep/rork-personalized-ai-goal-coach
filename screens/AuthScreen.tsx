@@ -83,12 +83,17 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     setIsLoading(true);
     try {
       const result = await loginWithApple();
-      if (result === 'canceled') {
-        console.log('[AuthScreen] Apple Sign-In was canceled by user');
-        return;
+      
+      // Only proceed if login was successful
+      if (result === 'success') {
+        console.log('[AuthScreen] Apple Sign-In successful, proceeding to app');
+        onAuthSuccess?.();
+      } else if (result === 'canceled') {
+        console.log('[AuthScreen] Apple Sign-In was canceled by user - staying on auth screen');
+        // Do nothing - user stays on auth screen
       }
-      onAuthSuccess?.();
     } catch (error) {
+      console.error('[AuthScreen] Apple Sign-In error:', error);
       if ((error as any)?.code !== 'ERR_REQUEST_CANCELED') {
         Alert.alert('Ошибка', 'Не удалось войти через Apple. Попробуйте ещё раз.');
       }
