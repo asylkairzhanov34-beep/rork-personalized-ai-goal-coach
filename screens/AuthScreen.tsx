@@ -9,6 +9,7 @@ import {
   Animated,
   Dimensions,
   Linking,
+  TextInput,
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
@@ -27,6 +28,9 @@ const { width, height } = Dimensions.get('window');
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   
   // Анимации
   const logoScale = useRef(new Animated.Value(0)).current;
@@ -34,7 +38,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const buttonSlide = useRef(new Animated.Value(50)).current;
   const glowAnim = useRef(new Animated.Value(0.95)).current;
 
-  const { loginWithApple } = useAuth();
+  const { loginWithApple, loginWithEmail } = useAuth();
 
 
 
@@ -96,10 +100,27 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     }
   };
 
+  const handleEmailAuth = async () => {
+    if (!email || !password) {
+      Alert.alert('Ошибка', 'Заполните все поля');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await loginWithEmail({ email, password });
+      onAuthSuccess?.();
+    } catch (error) {
+      Alert.alert('Ошибка', (error as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const isAppleSignInAvailable = Platform.OS === 'ios';
 
   const handlePrivacyPress = () => {
-    Linking.openURL('https://www.notion.so/PRIVACY-POLICY-AND-COOKIES-2b44e106d5d0807aaff8e5765d4b8539?source=copy_link');
+    Linking.openURL('https://example.com/privacy');
   };
 
   return (
@@ -184,13 +205,81 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               </TouchableOpacity>
             )}
 
-            {/* Запасной вариант для симулятора/разработки если не iOS */}
-            {!isAppleSignInAvailable && (
-               <View>
-                 <Text style={{color: 'white', textAlign: 'center'}}>
-                    Apple Sign In доступен только на iOS
-                 </Text>
-               </View>
+            {/* Разделитель */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>или</Text>
+              <View style={styles.divider} />
+            </View>
+
+            {/* Email Button */}
+            <TouchableOpacity
+              style={styles.emailToggleButton}
+              onPress={() => setShowEmailForm(!showEmailForm)}
+              activeOpacity={0.9}
+              testID="email-toggle-button"
+            >
+              <Text style={styles.emailToggleButtonText}>Войти по Email</Text>
+            </TouchableOpacity>
+
+            {/* Email Form - Collapsible */}
+            {showEmailForm && (
+              <Animated.View style={styles.emailFormContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor="#666666"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  testID="email-input"
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Пароль"
+                  placeholderTextColor="#666666"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="password"
+                  testID="password-input"
+                />
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={handleEmailAuth}
+                  disabled={isLoading}
+                  activeOpacity={0.9}
+                  testID="email-login-button"
+                >
+                  <LinearGradient
+                    colors={['#FFD700', '#FFA500']}
+                    style={styles.buttonGradient}
+                  >
+                    <Text style={styles.primaryButtonText}>
+                      {isLoading ? 'Входим...' : 'Войти'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Links Row */}
+                <View style={styles.linksRow}>
+                  <TouchableOpacity
+                    onPress={() => Alert.alert('Создать аккаунт', 'Функция в разработке')}
+                    testID="create-account-link"
+                  >
+                    <Text style={styles.linkTextSmall}>Создать аккаунт</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => Alert.alert('Забыли пароль?', 'Функция в разработке')}
+                    testID="forgot-password-link"
+                  >
+                    <Text style={styles.linkTextSmall}>Забыли пароль?</Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
             )}
           </Animated.View>
 
@@ -294,6 +383,79 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    color: '#A9A9A9',
+    fontSize: 14,
+  },
+  emailToggleButton: {
+    width: '100%',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emailToggleButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  emailFormContainer: {
+    marginTop: 20,
+    width: '100%',
+    gap: 12,
+  },
+  input: {
+    width: '100%',
+    height: 56,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  primaryButton: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryButtonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  linksRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  linkTextSmall: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '500',
   },
   footer: {
     alignItems: 'center',
