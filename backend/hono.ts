@@ -13,12 +13,25 @@ app.use("*", cors({
   allowHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
 }));
 
-// Error handler
+// Error handler - always return valid JSON
 app.onError((err, c) => {
   console.error('[Hono] Error:', err);
+  const errorMessage = err instanceof Error ? err.message : 'Internal Server Error';
+  const errorStack = err instanceof Error ? err.stack : undefined;
+  
   return c.json({
-    error: err.message || 'Internal Server Error',
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    error: {
+      message: errorMessage,
+      json: {
+        message: errorMessage,
+        code: -32603,
+        data: {
+          code: 'INTERNAL_SERVER_ERROR',
+          httpStatus: 500,
+          stack: process.env.NODE_ENV === 'development' ? errorStack : undefined,
+        },
+      },
+    },
   }, 500);
 });
 
