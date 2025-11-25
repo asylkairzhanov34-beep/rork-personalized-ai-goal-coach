@@ -12,7 +12,7 @@ import { ChatProvider } from '@/hooks/use-chat-store';
 import { ManifestationProvider } from '@/hooks/use-manifestation-store';
 import { FirstTimeSetupProvider } from '@/hooks/use-first-time-setup';
 import { SubscriptionProvider } from '@/hooks/use-subscription-store';
-import { trpc, trpcClient } from '@/lib/trpc';
+import { trpc, trpcReactClient } from '@/lib/trpc';
 
 import { GlobalSubscriptionGate } from '@/components/GlobalSubscriptionGate';
 
@@ -259,7 +259,7 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={styles.container} onLayout={handleLayout}>
-        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <trpc.Provider client={trpcReactClient} queryClient={queryClient}>
           <QueryClientProvider client={queryClient}>
             <SubscriptionProvider>
               <GlobalSubscriptionGate />

@@ -1,5 +1,5 @@
 import { createTRPCReact } from "@trpc/react-query";
-import { httpLink } from "@trpc/client";
+import { createTRPCClient, httpLink } from "@trpc/client";
 import type { AppRouter } from "@/backend/trpc/app-router";
 import superjson from "superjson";
 
@@ -14,28 +14,22 @@ const getBaseUrl = () => {
   return 'https://fallback-url.com';
 };
 
-let trpcClientInstance: ReturnType<typeof trpc.createClient>;
+export const trpcReactClient = trpc.createClient({
+  links: [
+    httpLink({
+      url: `${getBaseUrl()}/api/trpc`,
+      transformer: superjson,
+    }),
+  ],
+});
 
-try {
-  trpcClientInstance = trpc.createClient({
-    links: [
-      httpLink({
-        url: `${getBaseUrl()}/api/trpc`,
-        transformer: superjson,
-      }),
-    ],
-  });
-  console.log('[trpc] Client created successfully');
-} catch (error) {
-  console.error('[trpc] Failed to create client:', error);
-  trpcClientInstance = trpc.createClient({
-    links: [
-      httpLink({
-        url: 'https://fallback-url.com/api/trpc',
-        transformer: superjson,
-      }),
-    ],
-  });
-}
+export const trpcClient = createTRPCClient<AppRouter>({
+  links: [
+    httpLink({
+      url: `${getBaseUrl()}/api/trpc`,
+      transformer: superjson,
+    }),
+  ],
+});
 
-export const trpcClient = trpcClientInstance;
+console.log('[trpc] Clients created, base URL:', getBaseUrl());

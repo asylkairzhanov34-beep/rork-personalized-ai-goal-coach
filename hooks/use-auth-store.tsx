@@ -7,6 +7,7 @@ import * as WebBrowser from 'expo-web-browser';
 import createContextHook from '@nkzw/create-context-hook';
 import { User, AuthState, LoginCredentials, RegisterCredentials } from '@/types/auth';
 import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
+import { trpcClient } from '@/lib/trpc';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -14,10 +15,8 @@ const AUTH_STORAGE_KEY = 'auth_user';
 const AUTH_SESSIONS_KEY = 'auth_sessions';
 const CURRENT_SESSION_KEY = 'current_session';
 
-// Email validation regex
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-// Simple in-memory store for auth (in production, use backend)
 const AUTH_DB_KEY = 'registered_users';
 
 interface StoredUser {
@@ -27,8 +26,6 @@ interface StoredUser {
   name?: string;
   createdAt: string;
 }
-
-import { trpcClient } from '@/lib/trpc';
 
 // Create provider and hook
 export const [AuthProvider, useAuth] = createContextHook(() => {
@@ -247,13 +244,33 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       }
 
       // Call backend to verify and login
-      const response = await trpcClient.auth.loginWithApple.mutate({
-        identityToken: credential.identityToken,
-        email: credential.email || undefined,
-        fullName: credential.fullName ? 
-          `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
-          undefined,
-      });
+      console.log('[AuthProvider] Calling backend auth.loginWithApple...');
+      
+      let response;
+      try {
+        response = await trpcClient.auth.loginWithApple.mutate({
+          identityToken: credential.identityToken,
+          email: credential.email || undefined,
+          fullName: credential.fullName ? 
+            `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
+            undefined,
+        });
+        console.log('[AuthProvider] Backend response received:', !!response);
+      } catch (backendError: any) {
+        console.error('[AuthProvider] Backend call failed:', backendError.message);
+        // If backend fails, create local user
+        const localUser: User = {
+          id: `apple_${credential.user}`,
+          email: credential.email || `${credential.user}@privaterelay.appleid.com`,
+          name: credential.fullName ? 
+            `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
+            undefined,
+          provider: 'apple',
+          createdAt: new Date(),
+        };
+        await saveUser(localUser);
+        return 'success';
+      }
 
       const user: User = {
         id: response.user.id,
