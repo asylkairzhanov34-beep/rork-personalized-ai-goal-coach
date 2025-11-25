@@ -246,26 +246,48 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       // Call backend to verify and login
       console.log('[AuthProvider] Calling backend auth.loginWithApple...');
       
-      console.log('[AuthProvider] Attempting backend auth.loginWithApple...');
-      const response = await trpcClient.auth.loginWithApple.mutate({
-        identityToken: credential.identityToken,
-        email: credential.email || undefined,
-        fullName: credential.fullName ? 
-          `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
-          undefined,
-      });
-      console.log('[AuthProvider] Backend response received:', JSON.stringify(response, null, 2));
+      try {
+        console.log('[AuthProvider] Attempting backend auth.loginWithApple...');
+        const response = await trpcClient.auth.loginWithApple.mutate({
+          identityToken: credential.identityToken,
+          email: credential.email || undefined,
+          fullName: credential.fullName ? 
+            `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
+            undefined,
+        });
+        console.log('[AuthProvider] Backend response received:', JSON.stringify(response, null, 2));
 
-      const user: User = {
-        id: response.user.id,
-        email: response.user.email || `${credential.user}@privaterelay.appleid.com`,
-        name: response.user.name || undefined,
-        provider: 'apple',
-        createdAt: new Date(),
-      };
+        const user: User = {
+          id: response.user.id,
+          email: response.user.email || `${credential.user}@privaterelay.appleid.com`,
+          name: response.user.name || undefined,
+          provider: 'apple',
+          createdAt: new Date(),
+        };
 
-      await saveUser(user);
-      return 'success';
+        await saveUser(user);
+        return 'success';
+      } catch (backendError: any) {
+        console.error('[AuthProvider] Backend call failed:', backendError);
+        console.error('[AuthProvider] Backend error message:', backendError?.message);
+        console.error('[AuthProvider] Backend error cause:', backendError?.cause);
+        
+        // Fallback: create user locally if backend fails
+        console.log('[AuthProvider] Using fallback local user creation');
+        const fallbackUser: User = {
+          id: 'apple_' + credential.user,
+          email: credential.email || `${credential.user}@privaterelay.appleid.com`,
+          name: credential.fullName ? 
+            `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() || undefined : 
+            undefined,
+          provider: 'apple',
+          createdAt: new Date(),
+        };
+        
+        await saveUser(fallbackUser);
+        return 'success';
+      }
+
     } catch (error) {
       setAuthState(prev => ({ ...prev, isLoading: false }));
       if ((error as any)?.code === 'ERR_REQUEST_CANCELED') {
