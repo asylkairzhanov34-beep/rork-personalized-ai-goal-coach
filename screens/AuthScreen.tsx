@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/hooks/use-auth-store';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,7 +75,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         }),
       ])
     ).start();
-  }, [logoScale, fadeAnim, buttonSlide, glowAnim]);
+  }, []);
 
   const handleAppleAuth = async () => {
     if (Platform.OS !== 'ios') {
@@ -84,13 +85,10 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
     setIsLoading(true);
     try {
-      const user = await loginWithApple();
-      if (user) {
-        onAuthSuccess?.();
-      }
+      await loginWithApple();
+      onAuthSuccess?.();
     } catch (error) {
-      const code = (error as { code?: string } | undefined)?.code;
-      if (code !== 'ERR_CANCELED' && code !== 'ERR_REQUEST_CANCELED') {
+      if ((error as any)?.code !== 'ERR_REQUEST_CANCELED') {
         Alert.alert('Error', (error as Error).message);
       }
     } finally {
