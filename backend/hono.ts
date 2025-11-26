@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { trpcServer } from "@hono/trpc-server";
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { cors } from "hono/cors";
 import { appRouter } from "./trpc/app-router";
 import { createContext } from "./trpc/create-context";
@@ -71,32 +71,25 @@ app.get("/api/ping", (c) => {
 });
 
 // tRPC middleware for all /api/trpc/* routes
-app.use(
+app.all(
   "/api/trpc/*",
-  async (c, next) => {
+  async (c) => {
     console.log('[Hono] tRPC request received:', c.req.url);
     console.log('[Hono] Request method:', c.req.method);
     console.log('[Hono] Request path:', c.req.path);
     
     try {
-      const handler = trpcServer({
+      const response = await fetchRequestHandler({
         endpoint: "/api/trpc",
+        req: c.req.raw,
         router: appRouter,
         createContext,
-        responseMeta: () => {
-          return {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          };
-        },
         onError: ({ error, path }) => {
           console.error(`[tRPC] Error on path ${path}:`, error);
         },
       });
-      const result = await handler(c, next);
       console.log('[Hono] tRPC request handled successfully');
-      return result;
+      return response;
     } catch (error) {
       console.error('[tRPC] Middleware error:', error);
       return c.json({
