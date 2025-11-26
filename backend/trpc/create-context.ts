@@ -1,15 +1,27 @@
 import { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
-import { initTRPC, TRPCError } from "@trpc/server";
+import { initTRPC } from "@trpc/server";
 import superjson from "superjson";
 
+console.log('[tRPC Context] Module loaded');
+
 export const createContext = async (opts: FetchCreateContextFnOptions) => {
-  // In a real app, you would verify the session token here
-  // const sessionToken = opts.req.headers.get('authorization');
-  // const user = await verifySession(sessionToken);
+  console.log('[tRPC Context] Creating context for request');
+  
+  const authHeader = opts.req.headers.get('authorization');
+  let user: { id: string } | null = null;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    if (token.startsWith('session_')) {
+      const userId = token.replace('session_', '');
+      user = { id: userId };
+      console.log('[tRPC Context] User authenticated:', userId);
+    }
+  }
   
   return {
     req: opts.req,
-    user: null as { id: string } | null, // Placeholder for user
+    user,
   };
 };
 
@@ -17,22 +29,30 @@ export type Context = Awaited<ReturnType<typeof createContext>>;
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
+  errorFormatter({ shape, error }) {
+    console.error('[tRPC] Error:', error.message);
+    return {
+      ...shape,
+      data: {
+        ...shape.data,
+        zodError: null,
+      },
+    };
+  },
 });
 
 export const createTRPCRouter = t.router;
 export const publicProcedure = t.procedure;
 
 const isAuthed = t.middleware(({ ctx, next }) => {
-  if (!ctx.user) {
-    // For now, we allow it because we don't have real session verification yet.
-    // In production: throw new TRPCError({ code: 'UNAUTHORIZED' });
-    console.warn('Accessing protected procedure without user (Dev Mode)');
-  }
+  console.log('[tRPC] Protected procedure - user:', ctx.user?.id || 'none');
   return next({
     ctx: {
-      user: ctx.user || { id: 'dev_user' }, // Fallback for dev
+      user: ctx.user || { id: 'anonymous' },
     },
   });
 });
 
 export const protectedProcedure = t.procedure.use(isAuthed);
+
+console.log('[tRPC Context] Procedures exported');

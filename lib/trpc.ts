@@ -1,33 +1,30 @@
 import { createTRPCReact } from "@trpc/react-query";
-import { createTRPCClient, httpLink } from "@trpc/client";
+import { createTRPCClient, httpLink, TRPCClientError } from "@trpc/client";
 import type { AppRouter } from "@/backend/trpc/app-router";
 import superjson from "superjson";
 
+console.log('[tRPC] Module initializing...');
+
 export const trpc = createTRPCReact<AppRouter>();
 
-const getBaseUrl = () => {
+function getBaseUrl(): string {
   const url = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
   
-  console.log('[trpc] Checking for API base URL...');
-  console.log('[trpc] EXPO_PUBLIC_RORK_API_BASE_URL:', url ? `"${url}"` : 'NOT SET');
+  console.log('[tRPC] EXPO_PUBLIC_RORK_API_BASE_URL:', url ? 'SET' : 'NOT SET');
   
-  if (url) {
-    // Ensure URL doesn't have trailing slash
-    const cleanUrl = url.replace(/\/$/, '');
-    console.log('[trpc] Using API base URL:', cleanUrl);
-    return cleanUrl;
+  if (!url) {
+    console.error('[tRPC] CRITICAL: No backend URL configured!');
+    console.error('[tRPC] Please enable backend in Rork project settings');
+    return '';
   }
-
-  console.error('[trpc] CRITICAL: No EXPO_PUBLIC_RORK_API_BASE_URL found!');
-  console.error('[trpc] Backend features will NOT work without this URL');
-  console.error('[trpc] Make sure the backend is enabled in your Rork project settings');
   
-  // Return empty string to make errors more obvious
-  return '';
-};
+  const cleanUrl = url.replace(/\/$/, '');
+  console.log('[tRPC] Base URL:', cleanUrl);
+  return cleanUrl;
+}
 
-const createHttpLink = (url: string) => {
-  console.log('[trpc] Creating HTTP link with URL:', url);
+function createLink(url: string) {
+  console.log('[tRPC] Creating HTTP link:', url);
   
   return httpLink({
     url,
@@ -35,22 +32,72 @@ const createHttpLink = (url: string) => {
     headers() {
       return {
         'Content-Type': 'application/json',
-        'x-trpc-source': 'react-native',
+        'x-trpc-source': 'expo-app',
       };
     },
+    fetch: async (input, init) => {
+      const requestUrl = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : input.url);
+      console.log('[tRPC] Fetching:', requestUrl);
+      
+      try {
+        const response = await fetch(input, {
+          ...init,
+          headers: {
+            ...init?.headers,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('[tRPC] Response status:', response.status);
+        console.log('[tRPC] Response content-type:', response.headers.get('content-type'));
+        
+        if (!response.ok) {
+          const text = await response.text();
+          console.error('[tRPC] Error response:', text.substring(0, 200));
+          throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
+        }
+        
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error('[tRPC] Non-JSON response:', text.substring(0, 200));
+          throw new Error(`Invalid content-type: ${contentType}`);
+        }
+        
+        return response;
+      } catch (error) {
+        console.error('[tRPC] Fetch error:', error);
+        throw error;
+      }
+    },
   });
-};
+}
 
 const baseUrl = getBaseUrl();
-const trpcUrl = `${baseUrl}/api/trpc`;
+const trpcUrl = baseUrl ? `${baseUrl}/api/trpc` : '/api/trpc';
+
+console.log('[tRPC] Full URL:', trpcUrl);
 
 export const trpcReactClient = trpc.createClient({
-  links: [createHttpLink(trpcUrl)],
+  links: [createLink(trpcUrl)],
 });
 
 export const trpcClient = createTRPCClient<AppRouter>({
-  links: [createHttpLink(trpcUrl)],
+  links: [createLink(trpcUrl)],
 });
 
-console.log('[trpc] Clients created, base URL:', baseUrl);
-console.log('[trpc] tRPC URL:', trpcUrl);
+export function isTRPCError(error: unknown): error is TRPCClientError<AppRouter> {
+  return error instanceof TRPCClientError;
+}
+
+export function getTRPCErrorMessage(error: unknown): string {
+  if (isTRPCError(error)) {
+    return error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Неизвестная ошибка';
+}
+
+console.log('[tRPC] Module initialized');

@@ -1,75 +1,124 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import createContextHook from '@nkzw/create-context-hook';
 import { User, AuthState } from '@/types/auth';
 import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
-import { trpcClient } from '@/lib/trpc';
+import { trpcClient, getTRPCErrorMessage } from '@/lib/trpc';
 
-const AUTH_STORAGE_KEY = 'auth_user';
+const AUTH_STORAGE_KEY = 'auth_user_v2';
+const AUTH_TOKEN_KEY = 'auth_token';
 
-// Create provider and hook
+interface BackendUser {
+  id: string;
+  email: string;
+  name: string | null;
+  isPremium: boolean;
+}
+
+interface LoginResponse {
+  success: boolean;
+  token: string;
+  user: BackendUser;
+}
+
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isLoading: true,
     isAuthenticated: false,
   });
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
   const loadStoredUser = useCallback(async () => {
+    console.log('[Auth] Loading stored user...');
     try {
-      console.log('[AuthProvider] Loading stored user from local cache...');
-      const user = await safeStorageGet<User | null>(AUTH_STORAGE_KEY, null);
-      console.log('[AuthProvider] Cached user loaded:', user ? 'Yes' : 'No');
+      const [storedUser, storedToken] = await Promise.all([
+        safeStorageGet<User | null>(AUTH_STORAGE_KEY, null),
+        safeStorageGet<string | null>(AUTH_TOKEN_KEY, null),
+      ]);
       
-      requestAnimationFrame(() => {
+      console.log('[Auth] Stored user:', storedUser ? storedUser.id : 'none');
+      console.log('[Auth] Stored token:', storedToken ? 'exists' : 'none');
+      
+      if (storedUser && storedToken) {
+        setAuthToken(storedToken);
         setAuthState({
-          user,
+          user: storedUser,
           isLoading: false,
-          isAuthenticated: !!user,
+          isAuthenticated: true,
         });
-      });
-    } catch (error) {
-      console.error('[AuthProvider] Error loading user:', error);
-      requestAnimationFrame(() => {
+      } else {
         setAuthState({
           user: null,
           isLoading: false,
           isAuthenticated: false,
         });
+      }
+    } catch (error) {
+      console.error('[Auth] Load error:', error);
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
       });
     }
   }, []);
 
-  const saveUserLocally = useCallback(async (user: User) => {
+  const saveUserData = useCallback(async (user: User, token: string) => {
+    console.log('[Auth] Saving user data...');
     try {
-      console.log('[AuthProvider] Caching user locally...');
-      const success = await safeStorageSet(AUTH_STORAGE_KEY, user);
-      if (success) {
-        console.log('[AuthProvider] User cached successfully');
-        setAuthState({
-          user,
-          isLoading: false,
-          isAuthenticated: true,
-        });
-      } else {
-        throw new Error('Failed to cache user data');
-      }
+      await Promise.all([
+        safeStorageSet(AUTH_STORAGE_KEY, user),
+        safeStorageSet(AUTH_TOKEN_KEY, token),
+      ]);
+      
+      setAuthToken(token);
+      setAuthState({
+        user,
+        isLoading: false,
+        isAuthenticated: true,
+      });
+      
+      console.log('[Auth] User data saved successfully');
     } catch (error) {
-      console.error('[AuthProvider] Error caching user:', error);
-      throw new Error('Failed to save user data');
+      console.error('[Auth] Save error:', error);
+      throw new Error('Не удалось сохранить данные пользователя');
+    }
+  }, []);
+
+  const clearUserData = useCallback(async () => {
+    console.log('[Auth] Clearing user data...');
+    try {
+      await Promise.all([
+        safeStorageSet(AUTH_STORAGE_KEY, null),
+        safeStorageSet(AUTH_TOKEN_KEY, null),
+      ]);
+      
+      setAuthToken(null);
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
+      
+      console.log('[Auth] User data cleared');
+    } catch (error) {
+      console.error('[Auth] Clear error:', error);
     }
   }, []);
 
   const loginWithApple = useCallback(async (): Promise<'success' | 'canceled'> => {
+    console.log('[Auth] ========== Apple Login Started ==========');
+    
     if (Platform.OS !== 'ios') {
       throw new Error('Apple Sign In доступен только на iOS');
     }
 
     setAuthState(prev => ({ ...prev, isLoading: true }));
-    
+
     try {
-      console.log('[AuthProvider] Starting Apple Sign In...');
+      console.log('[Auth] Requesting Apple credentials...');
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -77,168 +126,116 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         ],
       });
 
+      console.log('[Auth] Apple credential received');
+      console.log('[Auth] - User ID:', credential.user.substring(0, 20) + '...');
+      console.log('[Auth] - Has token:', !!credential.identityToken);
+      console.log('[Auth] - Email:', credential.email || 'hidden');
+
       if (!credential.identityToken) {
-        setAuthState(prev => ({ ...prev, isLoading: false }));
-        throw new Error('Apple Sign In failed: No identity token');
+        throw new Error('Apple не вернул токен авторизации');
       }
 
-      console.log('[AuthProvider] Apple credential received');
-      console.log('[AuthProvider] Token length:', credential.identityToken.length);
-      console.log('[AuthProvider] Email:', credential.email || 'not provided');
-      console.log('[AuthProvider] Calling backend auth...');
+      const fullName = credential.fullName
+        ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() || null
+        : null;
+
+      console.log('[Auth] Calling backend...');
+      console.log('[Auth] Backend URL check:', !!process.env.EXPO_PUBLIC_RORK_API_BASE_URL);
+
+      let response: LoginResponse;
       
-      // Check if backend URL is configured
-      const backendUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
-      if (!backendUrl) {
-        console.error('[AuthProvider] Backend URL not configured!');
-        console.error('[AuthProvider] EXPO_PUBLIC_RORK_API_BASE_URL is missing');
-        throw new Error('Сервер не настроен. Обратитесь к разработчику.');
-      }
-
-      let response;
       try {
-        console.log('[AuthProvider] Backend URL:', backendUrl);
-        
-        const fullName = credential.fullName 
-          ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() || null
-          : null;
-        
-        console.log('[AuthProvider] Sending auth request with:');
-        console.log('[AuthProvider] - identityToken length:', credential.identityToken.length);
-        console.log('[AuthProvider] - email:', credential.email || 'null');
-        console.log('[AuthProvider] - fullName:', fullName || 'null');
-        
         response = await trpcClient.auth.loginWithApple.mutate({
           identityToken: credential.identityToken,
           email: credential.email || null,
           fullName: fullName,
         });
         
-        console.log('[AuthProvider] Backend auth successful');
-        console.log('[AuthProvider] Response received:', !!response);
-        console.log('[AuthProvider] Response user:', response?.user?.id || 'no user');
-      } catch (backendError: any) {
-        console.error('[AuthProvider] Backend call failed:', backendError);
-        console.error('[AuthProvider] Error name:', backendError?.name);
-        console.error('[AuthProvider] Error message:', backendError?.message);
-        console.error('[AuthProvider] Error stack:', backendError?.stack);
-        
-        // Check for specific error types
-        const errorMsg = backendError?.message || '';
-        
-        if (errorMsg.includes('404') || errorMsg.includes('Not Found')) {
-          throw new Error('Сервер недоступен. Проверьте подключение к интернету.');
-        }
-        
-        if (errorMsg.includes('transform') || errorMsg.includes('parse') || errorMsg.includes('JSON')) {
-          // Create fallback user from Apple credential
-          console.log('[AuthProvider] Transform error - creating local user');
-          const credentialFullName = credential.fullName 
-            ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() || undefined
-            : undefined;
-          const fallbackUser: User = {
-            id: 'apple_' + credential.user.substring(0, 16),
-            email: credential.email || `${credential.user}@privaterelay.appleid.com`,
-            name: credentialFullName,
-            provider: 'apple',
-            createdAt: new Date(),
-          };
-          await saveUserLocally(fallbackUser);
-          return 'success';
-        }
+        console.log('[Auth] Backend response received');
+        console.log('[Auth] - Success:', response.success);
+        console.log('[Auth] - User ID:', response.user?.id);
+        console.log('[Auth] - Token:', response.token ? 'received' : 'missing');
+      } catch (backendError) {
+        console.error('[Auth] Backend error:', backendError);
+        const errorMsg = getTRPCErrorMessage(backendError);
+        console.error('[Auth] Error message:', errorMsg);
         
         if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('Network')) {
-          throw new Error('Ошибка сети. Проверьте подключение к интернету.');
+          throw new Error('Нет подключения к серверу. Проверьте интернет.');
         }
         
-        throw new Error('Ошибка авторизации. Попробуйте ещё раз.');
+        if (errorMsg.includes('404') || errorMsg.includes('Not Found')) {
+          throw new Error('Сервер авторизации недоступен.');
+        }
+        
+        throw new Error(`Ошибка сервера: ${errorMsg}`);
       }
-      
-      console.log('[AuthProvider] User ID:', response?.user?.id);
 
-      if (!response || !response.user) {
-        throw new Error('Invalid response from backend: missing user data');
+      if (!response || !response.success || !response.user || !response.token) {
+        console.error('[Auth] Invalid response structure:', response);
+        throw new Error('Сервер вернул некорректные данные');
       }
 
       const user: User = {
         id: response.user.id,
-        email: response.user.email || `${credential.user}@privaterelay.appleid.com`,
+        email: response.user.email,
         name: response.user.name || undefined,
         provider: 'apple',
         createdAt: new Date(),
       };
 
-      // Cache user locally for app state (but auth is always via Supabase)
-      await saveUserLocally(user);
+      await saveUserData(user, response.token);
+      
+      console.log('[Auth] ========== Login Success ==========');
       return 'success';
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error('[Auth] Login error:', error);
       setAuthState(prev => ({ ...prev, isLoading: false }));
-      
-      if (error?.code === 'ERR_REQUEST_CANCELED') {
-        console.log('[AuthProvider] Apple Sign-In canceled by user');
-        return 'canceled';
+
+      if (error && typeof error === 'object' && 'code' in error) {
+        const errorCode = (error as { code: string }).code;
+        if (errorCode === 'ERR_REQUEST_CANCELED' || errorCode === 'ERR_CANCELED') {
+          console.log('[Auth] User canceled login');
+          return 'canceled';
+        }
       }
-      
-      console.error('[AuthProvider] Auth error:', error?.message || error);
-      
-      // Show specific error message
-      let errorMessage = 'Не удалось войти. Попробуйте ещё раз.';
-      
-      if (error?.message?.includes('JSON Parse')) {
-        errorMessage = 'Ошибка сервера: неверный формат ответа. Проверьте подключение к интернету и попробуйте снова.';
-      } else if (error?.message?.includes('fetch')) {
-        errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert('Ошибка авторизации', errorMessage);
+
       throw error;
     }
-  }, [saveUserLocally]);
+  }, [saveUserData]);
 
   const logout = useCallback(async (): Promise<void> => {
+    console.log('[Auth] Logging out...');
+    await clearUserData();
+    console.log('[Auth] Logout complete');
+  }, [clearUserData]);
+
+  const deleteAccount = useCallback(async (): Promise<boolean> => {
+    console.log('[Auth] Deleting account...');
+    
     try {
-      console.log('[AuthProvider] Logging out...');
+      const result = await trpcClient.auth.deleteAccount.mutate();
+      console.log('[Auth] Delete result:', result);
       
-      // Clear local cache
-      await safeStorageSet(AUTH_STORAGE_KEY, null);
-      
-      setAuthState({
-        user: null,
-        isLoading: false,
-        isAuthenticated: false,
-      });
-      
-      console.log('[AuthProvider] Logout successful');
+      await clearUserData();
+      return true;
     } catch (error) {
-      console.error('[AuthProvider] Error during logout:', error);
-      throw new Error('Не удалось выйти из аккаунта');
+      console.error('[Auth] Delete error:', error);
+      await clearUserData();
+      return false;
     }
-  }, []);
+  }, [clearUserData]);
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        await loadStoredUser();
-      } catch (error) {
-        console.error('[AuthProvider] Init error:', error);
-        setAuthState({
-          user: null,
-          isLoading: false,
-          isAuthenticated: false,
-        });
-      }
-    };
-    
-    init();
+    loadStoredUser();
   }, [loadStoredUser]);
 
   return useMemo(() => ({
     ...authState,
+    authToken,
     loginWithApple,
     logout,
-  }), [authState, loginWithApple, logout]);
+    deleteAccount,
+  }), [authState, authToken, loginWithApple, logout, deleteAccount]);
 });
-
