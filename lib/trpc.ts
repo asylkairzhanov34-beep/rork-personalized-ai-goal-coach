@@ -6,12 +6,19 @@ import superjson from "superjson";
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_RORK_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+  const url = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+  
+  if (url) {
+    console.log('[trpc] Using API base URL:', url);
+    return url;
   }
 
-  console.warn('[trpc] No EXPO_PUBLIC_RORK_API_BASE_URL found');
-  return 'https://fallback-url.com';
+  console.error('[trpc] CRITICAL: No EXPO_PUBLIC_RORK_API_BASE_URL found!');
+  console.error('[trpc] Backend features will NOT work without this URL');
+  console.error('[trpc] Make sure the backend is enabled in your Rork project settings');
+  
+  // Return empty string to make errors more obvious
+  return '';
 };
 
 const createHttpLink = (url: string) => {

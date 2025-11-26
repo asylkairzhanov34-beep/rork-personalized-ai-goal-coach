@@ -87,9 +87,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[AuthProvider] Email:', credential.email || 'not provided');
       console.log('[AuthProvider] Calling backend auth...');
       
+      // Check if backend URL is configured
+      const backendUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+      if (!backendUrl) {
+        console.error('[AuthProvider] Backend URL not configured!');
+        console.error('[AuthProvider] EXPO_PUBLIC_RORK_API_BASE_URL is missing');
+        throw new Error('Сервер не настроен. Обратитесь к разработчику.');
+      }
+
       // ONLY use backend/Supabase for authentication - no local fallback
       let response;
       try {
+        console.log('[AuthProvider] Backend URL:', backendUrl);
         response = await trpcClient.auth.loginWithApple.mutate({
           identityToken: credential.identityToken,
           email: credential.email || undefined,
@@ -103,6 +112,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         console.error('[AuthProvider] Backend error cause:', backendError?.cause);
         console.error('[AuthProvider] Backend error shape:', backendError?.shape);
         console.error('[AuthProvider] Backend error data:', backendError?.data);
+        
+        // Check if it's a 404 error
+        if (backendError?.message?.includes('404')) {
+          throw new Error('Сервер недоступен. Проверьте настройки бэкенда.');
+        }
+        
         throw backendError;
       }
       
