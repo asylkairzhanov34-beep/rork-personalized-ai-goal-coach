@@ -6,6 +6,7 @@ let client: ReturnType<typeof postgres> | null = null;
 let dbInstance: PostgresJsDatabase<typeof schema> | null = null;
 let initError: string | null = null;
 let initialized = false;
+let connectionTested = false;
 
 function initializeDb() {
   if (initialized) return;
@@ -28,10 +29,9 @@ function initializeDb() {
   }
 
   try {
-    // Supabase pooler (port 6543) requires prepare: false and SSL
     client = postgres(connectionString, { 
       prepare: false,
-      ssl: { rejectUnauthorized: false },
+      ssl: 'require',
       connect_timeout: 30,
       idle_timeout: 20,
       max_lifetime: 60 * 30,
@@ -50,8 +50,28 @@ function initializeDb() {
 
 initializeDb();
 
-export const db = dbInstance;
+export const db: PostgresJsDatabase<typeof schema> | null = dbInstance;
 export const isDbReady = !!dbInstance;
+
+export async function testConnection(): Promise<boolean> {
+  if (connectionTested) return isDbReady;
+  connectionTested = true;
+  
+  if (!client) {
+    console.log('[DB] No client to test');
+    return false;
+  }
+  
+  try {
+    await client`SELECT 1`;
+    console.log('[DB] Connection test successful');
+    return true;
+  } catch (error) {
+    console.error('[DB] Connection test failed:', error);
+    initError = error instanceof Error ? error.message : 'Connection test failed';
+    return false;
+  }
+}
 
 export function getDbStatus(): { ready: boolean; error: string | null; hasUrl: boolean } {
   return {
