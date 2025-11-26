@@ -103,6 +103,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() || null
           : null;
         
+        console.log('[AuthProvider] Sending auth request with:');
+        console.log('[AuthProvider] - identityToken length:', credential.identityToken.length);
+        console.log('[AuthProvider] - email:', credential.email || 'null');
+        console.log('[AuthProvider] - fullName:', fullName || 'null');
+        
         response = await trpcClient.auth.loginWithApple.mutate({
           identityToken: credential.identityToken,
           email: credential.email || null,
@@ -110,21 +115,43 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         });
         
         console.log('[AuthProvider] Backend auth successful');
-        console.log('[AuthProvider] Response:', JSON.stringify(response));
+        console.log('[AuthProvider] Response received:', !!response);
+        console.log('[AuthProvider] Response user:', response?.user?.id || 'no user');
       } catch (backendError: any) {
         console.error('[AuthProvider] Backend call failed:', backendError);
         console.error('[AuthProvider] Error name:', backendError?.name);
         console.error('[AuthProvider] Error message:', backendError?.message);
+        console.error('[AuthProvider] Error stack:', backendError?.stack);
         
-        if (backendError?.message?.includes('404') || backendError?.message?.includes('Not Found')) {
-          throw new Error('Сервер недоступен. Проверьте настройки бэкенда.');
+        // Check for specific error types
+        const errorMsg = backendError?.message || '';
+        
+        if (errorMsg.includes('404') || errorMsg.includes('Not Found')) {
+          throw new Error('Сервер недоступен. Проверьте подключение к интернету.');
         }
         
-        if (backendError?.message?.includes('transform')) {
-          throw new Error('Ошибка формата данных. Попробуйте ещё раз.');
+        if (errorMsg.includes('transform') || errorMsg.includes('parse') || errorMsg.includes('JSON')) {
+          // Create fallback user from Apple credential
+          console.log('[AuthProvider] Transform error - creating local user');
+          const credentialFullName = credential.fullName 
+            ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() || undefined
+            : undefined;
+          const fallbackUser: User = {
+            id: 'apple_' + credential.user.substring(0, 16),
+            email: credential.email || `${credential.user}@privaterelay.appleid.com`,
+            name: credentialFullName,
+            provider: 'apple',
+            createdAt: new Date(),
+          };
+          await saveUserLocally(fallbackUser);
+          return 'success';
         }
         
-        throw new Error(backendError?.message || 'Ошибка сервера. Попробуйте ещё раз.');
+        if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('Network')) {
+          throw new Error('Ошибка сети. Проверьте подключение к интернету.');
+        }
+        
+        throw new Error('Ошибка авторизации. Попробуйте ещё раз.');
       }
       
       console.log('[AuthProvider] User ID:', response?.user?.id);

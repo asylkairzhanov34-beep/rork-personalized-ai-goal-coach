@@ -6,17 +6,19 @@ import { eq } from 'drizzle-orm';
 import { db, isDbReady, testConnection } from '../../db';
 import { users } from '../../schema';
 
-interface AuthUser {
-  id: string;
-  email: string;
-  name: string | null;
-  isPremium: boolean;
-}
+const AuthUserSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  name: z.string().nullable(),
+  isPremium: z.boolean(),
+});
 
-interface AuthResponse {
-  token: string;
-  user: AuthUser;
-}
+const AuthResponseSchema = z.object({
+  token: z.string(),
+  user: AuthUserSchema,
+});
+
+type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
 export const authRouter = createTRPCRouter({
   health: publicProcedure.query(async () => {
@@ -48,6 +50,7 @@ export const authRouter = createTRPCRouter({
       email: z.string().optional().nullable(),
       fullName: z.string().optional().nullable(),
     }))
+    .output(AuthResponseSchema)
     .mutation(async ({ input }): Promise<AuthResponse> => {
       const { identityToken, email, fullName } = input;
 
@@ -61,16 +64,18 @@ export const authRouter = createTRPCRouter({
       const userEmail = email || 'user@privaterelay.appleid.com';
       const userName = fullName || null;
       
-      const createResponse = (id: string, responseEmail: string, responseName: string | null, isPremium: boolean): AuthResponse => {
-        return {
-          token: 'session_' + id,
+      const createResponse = (id: string, responseEmail: string, responseName: string | null, premium: boolean): AuthResponse => {
+        const response: AuthResponse = {
+          token: 'session_' + String(id),
           user: {
-            id: id,
-            email: responseEmail,
-            name: responseName,
-            isPremium: isPremium,
+            id: String(id),
+            email: String(responseEmail),
+            name: responseName !== null ? String(responseName) : null,
+            isPremium: Boolean(premium),
           },
         };
+        console.log('[Auth] Creating response:', JSON.stringify(response));
+        return response;
       };
       
       if (!isDbReady || !db) {
@@ -91,11 +96,12 @@ export const authRouter = createTRPCRouter({
         if (existingUsers && existingUsers.length > 0) {
           const user = existingUsers[0];
           console.log('[Auth] Found existing user:', user.id);
+          console.log('[Auth] User data:', JSON.stringify(user));
           return createResponse(
             String(user.id),
             String(user.email || userEmail),
-            user.name ? String(user.name) : userName,
-            user.isPremium === true
+            user.name !== null && user.name !== undefined ? String(user.name) : null,
+            Boolean(user.isPremium)
           );
         }
         
@@ -115,10 +121,11 @@ export const authRouter = createTRPCRouter({
         if (newUser && newUser.length > 0) {
           const user = newUser[0];
           console.log('[Auth] Created new user:', user.id);
+          console.log('[Auth] New user data:', JSON.stringify(user));
           return createResponse(
             String(user.id),
             String(user.email || userEmail),
-            user.name ? String(user.name) : userName,
+            user.name !== null && user.name !== undefined ? String(user.name) : null,
             false
           );
         }
