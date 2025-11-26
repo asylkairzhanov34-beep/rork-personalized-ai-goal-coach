@@ -32,64 +32,11 @@ const createHttpLink = (url: string) => {
   return httpLink({
     url,
     transformer: superjson,
-    fetch: async (input, init) => {
-      const requestUrl = typeof input === 'string' ? input : (input instanceof URL ? input.href : (input as Request).url);
-      console.log('[trpc] ===== REQUEST START =====');
-      console.log('[trpc] Full URL:', requestUrl);
-      console.log('[trpc] Method:', init?.method || 'GET');
-      
-      if (!requestUrl || requestUrl.includes('undefined') || requestUrl.startsWith('/api')) {
-        console.error('[trpc] INVALID URL detected!');
-        console.error('[trpc] Base URL might be empty or undefined');
-        throw new Error('Invalid tRPC URL. Backend URL not configured properly.');
-      }
-      
-      try {
-        const response = await fetch(input, {
-          ...init,
-          headers: {
-            ...init?.headers,
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        console.log('[trpc] Response status:', response.status);
-        
-        // Clone the response to read it twice
-        const responseClone = response.clone();
-        const text = await responseClone.text();
-        console.log('[trpc] Response body (first 500 chars):', text.substring(0, 500));
-        
-        // If response is empty, return an error
-        if (!text || text.trim() === '') {
-          console.error('[trpc] Empty response from server');
-          throw new Error('Server returned empty response');
-        }
-        
-        // Try to parse the response as JSON
-        let jsonData: unknown;
-        try {
-          jsonData = JSON.parse(text);
-          console.log('[trpc] Response parsed successfully');
-        } catch (parseError) {
-          console.error('[trpc] Failed to parse response as JSON:', parseError);
-          console.error('[trpc] Raw response:', text.substring(0, 200));
-          throw new Error(`Server returned invalid JSON: ${text.substring(0, 100)}`);
-        }
-        
-        // Return a new response with the parsed data
-        return new Response(JSON.stringify(jsonData), {
-          status: response.status,
-          statusText: response.statusText,
-          headers: {
-            'content-type': 'application/json',
-          },
-        });
-      } catch (error) {
-        console.error('[trpc] ===== REQUEST FAILED =====');
-        console.error('[trpc] Fetch error:', error);
-        throw error;
-      }
+    headers() {
+      return {
+        'Content-Type': 'application/json',
+        'x-trpc-source': 'react-native',
+      };
     },
   });
 };

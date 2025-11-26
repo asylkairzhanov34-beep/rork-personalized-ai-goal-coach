@@ -6,6 +6,18 @@ import { eq } from 'drizzle-orm';
 import { db, isDbReady, testConnection } from '../../db';
 import { users } from '../../schema';
 
+interface AuthUser {
+  id: string;
+  email: string;
+  name: string | null;
+  isPremium: boolean;
+}
+
+interface AuthResponse {
+  token: string;
+  user: AuthUser;
+}
+
 export const authRouter = createTRPCRouter({
   health: publicProcedure.query(async () => {
     console.log('[Auth] Health check - DB ready:', isDbReady);
@@ -33,33 +45,37 @@ export const authRouter = createTRPCRouter({
   loginWithApple: publicProcedure
     .input(z.object({
       identityToken: z.string(),
-      email: z.string().optional(),
-      fullName: z.string().optional(),
+      email: z.string().optional().nullable(),
+      fullName: z.string().optional().nullable(),
     }))
-    .mutation(async ({ input }): Promise<{ token: string; user: { id: string; email: string; name: string | null; isPremium: boolean } }> => {
+    .mutation(async ({ input }): Promise<AuthResponse> => {
       const { identityToken, email, fullName } = input;
 
       console.log('[Auth] Apple Login attempt');
-      console.log('[Auth] Token length:', identityToken.length);
-      console.log('[Auth] Email:', email);
-      console.log('[Auth] Full name:', fullName);
+      console.log('[Auth] Token length:', identityToken?.length || 0);
+      console.log('[Auth] Email:', email || 'not provided');
+      console.log('[Auth] Full name:', fullName || 'not provided');
       console.log('[Auth] DB ready:', isDbReady);
 
-      const appleId = 'apple_' + identityToken.substring(0, 32);
+      const appleId = 'apple_' + (identityToken || '').substring(0, 32);
       const userEmail = email || 'user@privaterelay.appleid.com';
       const userName = fullName || null;
       
-      if (!isDbReady || !db) {
-        console.log('[Auth] Database not ready, returning fallback user');
+      const createResponse = (id: string, responseEmail: string, responseName: string | null, isPremium: boolean): AuthResponse => {
         return {
-          token: 'session_' + appleId,
+          token: 'session_' + id,
           user: {
-            id: appleId,
-            email: userEmail,
-            name: userName,
-            isPremium: false,
+            id: id,
+            email: responseEmail,
+            name: responseName,
+            isPremium: isPremium,
           },
         };
+      };
+      
+      if (!isDbReady || !db) {
+        console.log('[Auth] Database not ready, returning fallback user');
+        return createResponse(appleId, userEmail, userName, false);
       }
       
       try {
@@ -75,18 +91,12 @@ export const authRouter = createTRPCRouter({
         if (existingUsers && existingUsers.length > 0) {
           const user = existingUsers[0];
           console.log('[Auth] Found existing user:', user.id);
-          
-          const response = {
-            token: 'session_' + String(user.id),
-            user: {
-              id: String(user.id),
-              email: String(user.email || userEmail),
-              name: user.name ? String(user.name) : userName,
-              isPremium: Boolean(user.isPremium),
-            },
-          };
-          console.log('[Auth] Returning existing user response');
-          return response;
+          return createResponse(
+            String(user.id),
+            String(user.email || userEmail),
+            user.name ? String(user.name) : userName,
+            user.isPremium === true
+          );
         }
         
         console.log('[Auth] Creating new user...');
@@ -105,18 +115,12 @@ export const authRouter = createTRPCRouter({
         if (newUser && newUser.length > 0) {
           const user = newUser[0];
           console.log('[Auth] Created new user:', user.id);
-          
-          const response = {
-            token: 'session_' + String(user.id),
-            user: {
-              id: String(user.id),
-              email: String(user.email || userEmail),
-              name: user.name ? String(user.name) : userName,
-              isPremium: false,
-            },
-          };
-          console.log('[Auth] Returning new user response');
-          return response;
+          return createResponse(
+            String(user.id),
+            String(user.email || userEmail),
+            user.name ? String(user.name) : userName,
+            false
+          );
         }
         
         console.error('[Auth] Failed to create user - no rows returned');
@@ -128,29 +132,24 @@ export const authRouter = createTRPCRouter({
         const errorMessage = dbError instanceof Error ? dbError.message : 'Unknown database error';
         console.error('[Auth] Database error:', errorMessage);
         
-        // If it's already a TRPC error, rethrow it
         if (dbError instanceof TRPCError) {
           throw dbError;
         }
         
-        // Return fallback user on database error
         console.log('[Auth] Returning fallback user due to DB error');
-        return {
-          token: 'session_' + appleId,
-          user: {
-            id: appleId,
-            email: userEmail,
-            name: userName,
-            isPremium: false,
-          },
-        };
+        return createResponse(appleId, userEmail, userName, false);
       }
     }),
 
   deleteAccount: protectedProcedure
     .mutation(async ({ ctx }): Promise<{ success: boolean }> => {
-      const userId = ctx.user.id;
+      const userId = ctx.user?.id;
       console.log('[Auth] Deleting account for user:', userId);
+      
+      if (!userId) {
+        console.warn('[Auth] No user ID provided');
+        return { success: false };
+      }
       
       if (!isDbReady || !db) {
         console.warn('[Auth] Database not connected. Cannot delete from DB.');
@@ -160,11 +159,11 @@ export const authRouter = createTRPCRouter({
       try {
         await db.delete(users).where(eq(users.id, userId));
         console.log('[Auth] User deleted from database');
+        return { success: true };
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error('[Auth] Delete error:', errorMessage);
+        return { success: false };
       }
-      
-      return { success: true };
     }),
 });

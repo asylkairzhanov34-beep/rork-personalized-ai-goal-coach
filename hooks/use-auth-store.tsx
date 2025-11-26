@@ -95,33 +95,38 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error('Сервер не настроен. Обратитесь к разработчику.');
       }
 
-      // ONLY use backend/Supabase for authentication - no local fallback
       let response;
       try {
         console.log('[AuthProvider] Backend URL:', backendUrl);
+        
+        const fullName = credential.fullName 
+          ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() || null
+          : null;
+        
         response = await trpcClient.auth.loginWithApple.mutate({
           identityToken: credential.identityToken,
-          email: credential.email || undefined,
-          fullName: credential.fullName ? 
-            `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
-            undefined,
+          email: credential.email || null,
+          fullName: fullName,
         });
+        
+        console.log('[AuthProvider] Backend auth successful');
+        console.log('[AuthProvider] Response:', JSON.stringify(response));
       } catch (backendError: any) {
         console.error('[AuthProvider] Backend call failed:', backendError);
-        console.error('[AuthProvider] Backend error message:', backendError?.message);
-        console.error('[AuthProvider] Backend error cause:', backendError?.cause);
-        console.error('[AuthProvider] Backend error shape:', backendError?.shape);
-        console.error('[AuthProvider] Backend error data:', backendError?.data);
+        console.error('[AuthProvider] Error name:', backendError?.name);
+        console.error('[AuthProvider] Error message:', backendError?.message);
         
-        // Check if it's a 404 error
-        if (backendError?.message?.includes('404')) {
+        if (backendError?.message?.includes('404') || backendError?.message?.includes('Not Found')) {
           throw new Error('Сервер недоступен. Проверьте настройки бэкенда.');
         }
         
-        throw backendError;
+        if (backendError?.message?.includes('transform')) {
+          throw new Error('Ошибка формата данных. Попробуйте ещё раз.');
+        }
+        
+        throw new Error(backendError?.message || 'Ошибка сервера. Попробуйте ещё раз.');
       }
       
-      console.log('[AuthProvider] Backend auth successful');
       console.log('[AuthProvider] User ID:', response?.user?.id);
 
       if (!response || !response.user) {
