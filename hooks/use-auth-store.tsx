@@ -82,18 +82,36 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error('Apple Sign In failed: No identity token');
       }
 
-      console.log('[AuthProvider] Apple credential received, calling Supabase backend...');
+      console.log('[AuthProvider] Apple credential received');
+      console.log('[AuthProvider] Token length:', credential.identityToken.length);
+      console.log('[AuthProvider] Email:', credential.email || 'not provided');
+      console.log('[AuthProvider] Calling backend auth...');
       
       // ONLY use backend/Supabase for authentication - no local fallback
-      const response = await trpcClient.auth.loginWithApple.mutate({
-        identityToken: credential.identityToken,
-        email: credential.email || undefined,
-        fullName: credential.fullName ? 
-          `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
-          undefined,
-      });
+      let response;
+      try {
+        response = await trpcClient.auth.loginWithApple.mutate({
+          identityToken: credential.identityToken,
+          email: credential.email || undefined,
+          fullName: credential.fullName ? 
+            `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
+            undefined,
+        });
+      } catch (backendError: any) {
+        console.error('[AuthProvider] Backend call failed:', backendError);
+        console.error('[AuthProvider] Backend error message:', backendError?.message);
+        console.error('[AuthProvider] Backend error cause:', backendError?.cause);
+        console.error('[AuthProvider] Backend error shape:', backendError?.shape);
+        console.error('[AuthProvider] Backend error data:', backendError?.data);
+        throw backendError;
+      }
       
-      console.log('[AuthProvider] Supabase auth successful, user ID:', response.user.id);
+      console.log('[AuthProvider] Backend auth successful');
+      console.log('[AuthProvider] User ID:', response?.user?.id);
+
+      if (!response || !response.user) {
+        throw new Error('Invalid response from backend: missing user data');
+      }
 
       const user: User = {
         id: response.user.id,
@@ -118,9 +136,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.error('[AuthProvider] Auth error:', error?.message || error);
       
       // Show specific error message
-      const errorMessage = error?.message?.includes('JSON Parse') 
-        ? 'Ошибка сервера. Проверьте подключение к интернету.'
-        : error?.message || 'Не удалось войти. Попробуйте ещё раз.';
+      let errorMessage = 'Не удалось войти. Попробуйте ещё раз.';
+      
+      if (error?.message?.includes('JSON Parse')) {
+        errorMessage = 'Ошибка сервера: неверный формат ответа. Проверьте подключение к интернету и попробуйте снова.';
+      } else if (error?.message?.includes('fetch')) {
+        errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
       
       Alert.alert('Ошибка авторизации', errorMessage);
       throw error;

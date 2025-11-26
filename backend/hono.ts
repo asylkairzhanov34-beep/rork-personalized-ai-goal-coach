@@ -70,6 +70,13 @@ app.use(
         endpoint: "/api/trpc",
         router: appRouter,
         createContext,
+        responseMeta: () => {
+          return {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          };
+        },
         onError: ({ error, path }) => {
           console.error(`[tRPC] Error on path ${path}:`, error);
         },
