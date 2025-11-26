@@ -15,6 +15,7 @@ import { SubscriptionProvider } from '@/hooks/use-subscription-store';
 import { trpc, trpcReactClient } from '@/lib/trpc';
 
 import { GlobalSubscriptionGate } from '@/components/GlobalSubscriptionGate';
+import { useAppBackgroundInit } from '@/hooks/use-app-background-init';
 
 // Error Boundary to catch inspector and other development errors
 class ErrorBoundary extends Component<
@@ -84,6 +85,8 @@ const queryClient = new QueryClient({
 });
 
 function RootLayoutNav() {
+  useAppBackgroundInit();
+  
   return (
     <Stack 
       screenOptions={{ 
