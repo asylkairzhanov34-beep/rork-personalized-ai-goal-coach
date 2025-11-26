@@ -432,7 +432,7 @@ export function GoalCreationModal() {
         style={styles.keyboardView}
         keyboardVerticalOffset={insets.top + 8}
       >
-        <View style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 12 : 8) }]}>
+        <View style={[styles.header, { paddingTop: Platform.OS === 'android' ? 12 : 8 }]}>
           <TouchableOpacity
             onPress={() => {
               if (router.canGoBack()) {

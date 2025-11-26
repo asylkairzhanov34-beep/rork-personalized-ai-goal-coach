@@ -13,7 +13,7 @@ function initializeDb() {
 
   const connectionString = process.env.DATABASE_URL;
 
-  console.log('[DB] Initializing database connection...');
+  console.log('[DB] Initializing Supabase database connection...');
   console.log('[DB] DATABASE_URL exists:', !!connectionString);
   
   if (connectionString) {
@@ -23,29 +23,28 @@ function initializeDb() {
 
   if (!connectionString) {
     console.warn('[DB] No DATABASE_URL found - database features will be disabled');
-    initError = 'DATABASE_URL not configured';
+    initError = 'DATABASE_URL not configured. Set DATABASE_URL in environment variables.';
     return;
   }
 
   try {
     client = postgres(connectionString, { 
       prepare: false,
-      connect_timeout: 10,
+      connect_timeout: 15,
       idle_timeout: 20,
       max_lifetime: 60 * 30,
-      ssl: 'require',
+      ssl: { rejectUnauthorized: false },
     });
     dbInstance = drizzle(client, { schema });
-    console.log('[DB] Postgres client created successfully');
+    console.log('[DB] Supabase Postgres client created successfully');
   } catch (error) {
-    console.error('[DB] Failed to create postgres client:', error);
+    console.error('[DB] Failed to create Supabase postgres client:', error);
     initError = error instanceof Error ? error.message : 'Unknown error';
     client = null;
     dbInstance = null;
   }
 }
 
-// Initialize on first access
 initializeDb();
 
 export const db = dbInstance;
@@ -59,4 +58,4 @@ export function getDbStatus(): { ready: boolean; error: string | null; hasUrl: b
   };
 }
 
-console.log('[DB] Database ready:', isDbReady);
+console.log('[DB] Supabase database ready:', isDbReady);
