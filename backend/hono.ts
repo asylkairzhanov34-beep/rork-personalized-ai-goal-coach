@@ -64,14 +64,31 @@ app.get("/api/debug", (c) => {
 // tRPC middleware for all /api/trpc/* routes
 app.use(
   "/api/trpc/*",
-  trpcServer({
-    endpoint: "/api/trpc",
-    router: appRouter,
-    createContext,
-    onError: ({ error, path }) => {
-      console.error(`[tRPC] Error on path ${path}:`, error);
-    },
-  })
+  async (c, next) => {
+    try {
+      const handler = trpcServer({
+        endpoint: "/api/trpc",
+        router: appRouter,
+        createContext,
+        onError: ({ error, path }) => {
+          console.error(`[tRPC] Error on path ${path}:`, error);
+        },
+      });
+      return handler(c, next);
+    } catch (error) {
+      console.error('[tRPC] Middleware error:', error);
+      return c.json({
+        error: {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          json: {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            code: -32603,
+            data: { code: 'INTERNAL_SERVER_ERROR', httpStatus: 500 },
+          },
+        },
+      }, 500);
+    }
+  }
 );
 
 // Also handle /api/trpc without trailing slash

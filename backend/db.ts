@@ -28,14 +28,18 @@ function initializeDb() {
   }
 
   try {
+    // Supabase pooler (port 6543) requires prepare: false and SSL
     client = postgres(connectionString, { 
       prepare: false,
-      connect_timeout: 15,
+      ssl: { rejectUnauthorized: false },
+      connect_timeout: 30,
       idle_timeout: 20,
       max_lifetime: 60 * 30,
+      max: 10,
     });
     dbInstance = drizzle(client, { schema });
     console.log('[DB] Supabase Postgres client created successfully');
+    initError = null;
   } catch (error) {
     console.error('[DB] Failed to create Supabase postgres client:', error);
     initError = error instanceof Error ? error.message : 'Unknown error';
