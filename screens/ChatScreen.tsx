@@ -8,10 +8,10 @@ import {
   StyleSheet,
   Platform,
   Animated,
-  KeyboardAvoidingView,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Send, Bot, MessageSquarePlus, Sparkles } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
@@ -95,6 +95,8 @@ const ChatScreen: React.FC = () => {
   const router = useRouter();
   const [inputText, setInputText] = useState<string>(params.initialMessage || '');
   const scrollViewRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+  const insets = useSafeAreaInsets();
 
   const [isSending, setIsSending] = useState(false);
   const { getFeatureAccess } = useSubscription();
@@ -128,6 +130,28 @@ const ChatScreen: React.FC = () => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
   }, [messages]);
+
+  // Keyboard listeners
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (event) => {
+        setKeyboardHeight(event.endCoordinates.height);
+      }
+    );
+
+    const keyboardWillHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      keyboardWillShowListener.remove();
+      keyboardWillHideListener.remove();
+    };
+  }, []);
 
   // Show paywall if feature not available
   if (!featureAccess.aiChatAssistant) {
@@ -281,48 +305,49 @@ const ChatScreen: React.FC = () => {
         </ScrollView>
       </View>
       
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.inputKeyboardView}
-        keyboardVerticalOffset={0}
-      >
-        <SafeAreaView edges={['bottom']} style={styles.inputSafeArea}>
-          <View style={styles.inputContainer}>
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.input}
-                value={inputText}
-                onChangeText={setInputText}
-                placeholder="Написать сообщение..."
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                multiline
-                maxLength={1000}
-                returnKeyType="send"
-                blurOnSubmit={false}
-                onSubmitEditing={() => {
-                  if (inputText.trim()) {
-                    handleSend();
-                  }
-                }}
-              />
-              <TouchableOpacity
-                onPress={handleSend}
-                disabled={!inputText.trim()}
-                style={[
-                  styles.sendButton,
-                  !inputText.trim() && styles.sendButtonDisabled
-                ]}
-              >
-                {isSending ? (
-                    <ActivityIndicator size="small" color="#000000" />
-                ) : (
-                    <Send size={20} color="#000000" />
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+      <View style={[
+        styles.inputContainer,
+        {
+          paddingBottom: keyboardHeight > 0 ? 0 : Math.max(insets.bottom, 16),
+          position: keyboardHeight > 0 ? 'absolute' : 'relative',
+          bottom: keyboardHeight > 0 ? keyboardHeight : 0,
+          left: 0,
+          right: 0,
+        }
+      ]}>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Напишите сообщение..."
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            multiline
+            maxLength={1000}
+            returnKeyType="send"
+            blurOnSubmit={false}
+            onSubmitEditing={() => {
+              if (inputText.trim()) {
+                handleSend();
+              }
+            }}
+          />
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={!inputText.trim()}
+            style={[
+              styles.sendButton,
+              !inputText.trim() && styles.sendButtonDisabled
+            ]}
+          >
+            {isSending ? (
+                <ActivityIndicator size="small" color="#000000" />
+            ) : (
+                <Send size={20} color="#000000" />
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
     </>
   );
@@ -345,12 +370,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  inputKeyboardView: {
-    backgroundColor: '#000000',
-  },
-  inputSafeArea: {
-    backgroundColor: '#000000',
-  },
+
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
