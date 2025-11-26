@@ -427,12 +427,13 @@ export function GoalCreationModal() {
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-        keyboardVerticalOffset={insets.top + 8}
-      >
-        <View style={[styles.header, { paddingTop: Platform.OS === 'android' ? 12 : 8 }]}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+          keyboardVerticalOffset={0}
+        >
+          <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
               if (router.canGoBack()) {
@@ -624,7 +625,8 @@ export function GoalCreationModal() {
             </View>
           </SafeAreaView>
         </Modal>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -633,6 +635,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  safeArea: {
+    flex: 1,
   },
   keyboardView: {
     flex: 1,

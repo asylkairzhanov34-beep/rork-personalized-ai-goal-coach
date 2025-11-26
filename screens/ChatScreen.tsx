@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Send, Bot, MoreHorizontal, Sparkles } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
@@ -95,7 +95,7 @@ const ChatScreen: React.FC = () => {
   const router = useRouter();
   const [inputText, setInputText] = useState<string>(params.initialMessage || '');
   const scrollViewRef = useRef<ScrollView>(null);
-  const insets = useSafeAreaInsets();
+
   const [isSending, setIsSending] = useState(false);
   const { getFeatureAccess } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
@@ -285,7 +285,7 @@ const ChatScreen: React.FC = () => {
         </ScrollView>
       </View>
       
-      <View style={[styles.inputContainer, { paddingBottom: Platform.OS === 'ios' ? 8 : Math.max(insets.bottom, 8) }]}>
+      <View style={[styles.inputContainer, { paddingBottom: 8 }]}>
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}

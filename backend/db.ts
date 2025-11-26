@@ -33,7 +33,6 @@ function initializeDb() {
       connect_timeout: 15,
       idle_timeout: 20,
       max_lifetime: 60 * 30,
-      ssl: { rejectUnauthorized: false },
     });
     dbInstance = drizzle(client, { schema });
     console.log('[DB] Supabase Postgres client created successfully');
