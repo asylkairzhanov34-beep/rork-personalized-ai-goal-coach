@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../create-context';
 import { eq } from 'drizzle-orm';
 
@@ -35,7 +36,7 @@ export const authRouter = createTRPCRouter({
       email: z.string().optional(),
       fullName: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input }): Promise<{ token: string; user: { id: string; email: string; name: string | null; isPremium: boolean } }> => {
       const { identityToken, email, fullName } = input;
 
       console.log('[Auth] Apple Login attempt');
@@ -45,6 +46,8 @@ export const authRouter = createTRPCRouter({
       console.log('[Auth] DB ready:', isDbReady);
 
       const appleId = 'apple_' + identityToken.substring(0, 32);
+      const userEmail = email || 'user@privaterelay.appleid.com';
+      const userName = fullName || null;
       
       if (!isDbReady || !db) {
         console.log('[Auth] Database not ready, returning fallback user');
@@ -52,35 +55,41 @@ export const authRouter = createTRPCRouter({
           token: 'session_' + appleId,
           user: {
             id: appleId,
-            email: email || 'user@privaterelay.appleid.com',
-            name: fullName || null,
+            email: userEmail,
+            name: userName,
             isPremium: false,
           },
         };
       }
       
       try {
+        console.log('[Auth] Querying for existing user with appleId:', appleId);
         const existingUsers = await db
           .select()
           .from(users)
           .where(eq(users.appleId, appleId))
           .limit(1);
         
+        console.log('[Auth] Query result:', existingUsers?.length || 0, 'users found');
+        
         if (existingUsers && existingUsers.length > 0) {
           const user = existingUsers[0];
           console.log('[Auth] Found existing user:', user.id);
           
-          return {
-            token: 'session_' + user.id,
+          const response = {
+            token: 'session_' + String(user.id),
             user: {
-              id: user.id,
-              email: user.email || email || 'user@privaterelay.appleid.com',
-              name: user.name || fullName || null,
-              isPremium: user.isPremium || false,
+              id: String(user.id),
+              email: String(user.email || userEmail),
+              name: user.name ? String(user.name) : userName,
+              isPremium: Boolean(user.isPremium),
             },
           };
+          console.log('[Auth] Returning existing user response');
+          return response;
         }
         
+        console.log('[Auth] Creating new user...');
         const newUser = await db
           .insert(users)
           .values({
@@ -91,31 +100,47 @@ export const authRouter = createTRPCRouter({
           })
           .returning();
         
+        console.log('[Auth] Insert result:', newUser?.length || 0, 'rows');
+        
         if (newUser && newUser.length > 0) {
           const user = newUser[0];
-          console.log('[Auth] Created new user in Supabase:', user.id);
+          console.log('[Auth] Created new user:', user.id);
           
-          return {
-            token: 'session_' + user.id,
+          const response = {
+            token: 'session_' + String(user.id),
             user: {
-              id: user.id,
-              email: user.email || email || 'user@privaterelay.appleid.com',
-              name: user.name || fullName || null,
+              id: String(user.id),
+              email: String(user.email || userEmail),
+              name: user.name ? String(user.name) : userName,
               isPremium: false,
             },
           };
+          console.log('[Auth] Returning new user response');
+          return response;
         }
         
-        throw new Error('Failed to create user');
-      } catch (dbError: any) {
-        console.error('[Auth] Database error:', dbError?.message || dbError);
+        console.error('[Auth] Failed to create user - no rows returned');
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to create user in database',
+        });
+      } catch (dbError: unknown) {
+        const errorMessage = dbError instanceof Error ? dbError.message : 'Unknown database error';
+        console.error('[Auth] Database error:', errorMessage);
         
+        // If it's already a TRPC error, rethrow it
+        if (dbError instanceof TRPCError) {
+          throw dbError;
+        }
+        
+        // Return fallback user on database error
+        console.log('[Auth] Returning fallback user due to DB error');
         return {
           token: 'session_' + appleId,
           user: {
             id: appleId,
-            email: email || 'user@privaterelay.appleid.com',
-            name: fullName || null,
+            email: userEmail,
+            name: userName,
             isPremium: false,
           },
         };
@@ -123,7 +148,7 @@ export const authRouter = createTRPCRouter({
     }),
 
   deleteAccount: protectedProcedure
-    .mutation(async ({ ctx }) => {
+    .mutation(async ({ ctx }): Promise<{ success: boolean }> => {
       const userId = ctx.user.id;
       console.log('[Auth] Deleting account for user:', userId);
       
@@ -135,8 +160,9 @@ export const authRouter = createTRPCRouter({
       try {
         await db.delete(users).where(eq(users.id, userId));
         console.log('[Auth] User deleted from database');
-      } catch (error: any) {
-        console.error('[Auth] Delete error:', error?.message || error);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[Auth] Delete error:', errorMessage);
       }
       
       return { success: true };
