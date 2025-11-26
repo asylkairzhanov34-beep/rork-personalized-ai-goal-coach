@@ -288,13 +288,13 @@ const ChatScreen: React.FC = () => {
       >
         <SafeAreaView edges={['bottom']} style={styles.inputSafeArea}>
           <View style={styles.inputContainer}>
-            <View style={styles.inputWrapper}>
+            <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
                 value={inputText}
                 onChangeText={setInputText}
                 placeholder="Написать сообщение..."
-                placeholderTextColor={theme.colors.textSecondary}
+                placeholderTextColor="rgba(255,255,255,0.5)"
                 multiline
                 maxLength={1000}
                 returnKeyType="send"
@@ -314,9 +314,9 @@ const ChatScreen: React.FC = () => {
                 ]}
               >
                 {isSending ? (
-                    <ActivityIndicator size="small" color={theme.colors.background} />
+                    <ActivityIndicator size="small" color="#000000" />
                 ) : (
-                    <Send size={20} color={theme.colors.background} />
+                    <Send size={20} color="#000000" />
                 )}
               </TouchableOpacity>
             </View>
@@ -346,10 +346,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   inputKeyboardView: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#000000',
   },
   inputSafeArea: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#000000',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -524,11 +524,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   inputContainer: {
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: 16,
+    backgroundColor: '#000000',
+    paddingTop: 16,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 20,
     paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
   },
   headerContent: {
     flexDirection: 'row',
@@ -564,37 +567,32 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.success,
     marginRight: 4,
   },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: theme.colors.surfaceElevated,
-    borderRadius: 24,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
   input: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    backgroundColor: '#1E1E1E',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    color: '#FFFFFF',
     fontSize: 16,
-    color: theme.colors.text,
     maxHeight: 100,
-    minHeight: 40,
+    marginRight: 12,
   },
   sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#FFD600',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 2,
-    marginRight: 2,
+    shadowColor: '#FFD600',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 8,
   },
   sendButtonDisabled: {
-    backgroundColor: theme.colors.surface,
+    opacity: 0.5,
   },
   typingContainer: {
     flexDirection: 'row',
