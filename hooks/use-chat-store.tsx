@@ -91,21 +91,8 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   });
 
   const sendMessage = useCallback(async (text: string) => {
-    // Добавляем системный контекст к сообщению пользователя
-    const currentGoalTitle = goalStore.currentGoal?.title || 'не установлена';
-    const enrichedMessage = `
-Контекст: Ты - GoalForge, умный AI помощник для ан��лиза прогресса и продуктивности. Ты помогаешь с анализом целей, даешь советы по продуктивности и отслеживаешь прогресс пользователя.
-
-ВАЖНО:
-- Анализируй историю через getHistory для персонализированных советов
-- Давай конкретные советы по улучшению продуктивности
-- Учитывай текущую цель: ${currentGoalTitle}
-- НЕ предлагай создавать задачи через команды - просто давай советы и рекомендации
-
-Запрос пользователя: ${text}`;
-    
-    await rorkSendMessage(enrichedMessage);
-  }, [rorkSendMessage, goalStore.currentGoal]);
+    await rorkSendMessage(text);
+  }, [rorkSendMessage]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
@@ -120,24 +107,23 @@ export const [ChatProvider, useChat] = createContextHook(() => {
                 .map((p: any) => p.text)
                 .join('');
              
-             // Also show tool outputs if relevant, but usually we just show text.
-             // If text is empty, maybe it's a tool use.
-             // But the prompt example shows we should render tools too.
-             // For now, let's just extract text.
              const toolCalls = m.parts.filter((p: any) => p.type === 'tool');
              if (text === '' && toolCalls.length > 0) {
-                 text = 'Executing action...'; 
+                 text = 'Выполняю...'; 
              }
         } else {
-            // Fallback if parts is not array (though SDK says it is)
              text = (m as any).content || '';
+        }
+        
+        if (m.role === 'user') {
+            text = text.replace(/^\[SYSTEM:.*?\]\s*/s, '');
         }
 
         return {
             id: m.id,
             text: text,
             isBot: m.role === 'assistant',
-            timestamp: new Date(), // SDK doesn't give timestamp always, use current
+            timestamp: new Date(),
         };
     });
   }, [messages]);
