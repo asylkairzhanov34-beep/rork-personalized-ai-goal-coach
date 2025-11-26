@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Send, Bot, MoreHorizontal, Sparkles } from 'lucide-react-native';
+import { Send, Bot, MessageSquarePlus, Sparkles } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
 import { ChatMessage } from '@/types/chat';
 import { theme } from '@/constants/theme';
@@ -181,11 +181,7 @@ const ChatScreen: React.FC = () => {
         primaryLabel="Оформить Premium"
         secondaryLabel="Не сейчас"
       />
-      <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
+      <View style={styles.container}>
       <SafeAreaView style={styles.headerContainer} edges={['top']}>
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -207,7 +203,7 @@ const ChatScreen: React.FC = () => {
             style={styles.clearButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <MoreHorizontal size={24} color={theme.colors.textSecondary} />
+            <MessageSquarePlus size={24} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -285,41 +281,49 @@ const ChatScreen: React.FC = () => {
         </ScrollView>
       </View>
       
-      <View style={[styles.inputContainer, { paddingBottom: 8 }]}>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.input}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Написать сообщение..."
-            placeholderTextColor={theme.colors.textSecondary}
-            multiline
-            maxLength={1000}
-            returnKeyType="send"
-            blurOnSubmit={false}
-            onSubmitEditing={() => {
-              if (inputText.trim()) {
-                handleSend();
-              }
-            }}
-          />
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={!inputText.trim()}
-            style={[
-              styles.sendButton,
-              !inputText.trim() && styles.sendButtonDisabled
-            ]}
-          >
-            {isSending ? (
-                <ActivityIndicator size="small" color={theme.colors.background} />
-            ) : (
-                <Send size={20} color={theme.colors.background} />
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.inputKeyboardView}
+        keyboardVerticalOffset={0}
+      >
+        <SafeAreaView edges={['bottom']} style={styles.inputSafeArea}>
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder="Написать сообщение..."
+                placeholderTextColor={theme.colors.textSecondary}
+                multiline
+                maxLength={1000}
+                returnKeyType="send"
+                blurOnSubmit={false}
+                onSubmitEditing={() => {
+                  if (inputText.trim()) {
+                    handleSend();
+                  }
+                }}
+              />
+              <TouchableOpacity
+                onPress={handleSend}
+                disabled={!inputText.trim()}
+                style={[
+                  styles.sendButton,
+                  !inputText.trim() && styles.sendButtonDisabled
+                ]}
+              >
+                {isSending ? (
+                    <ActivityIndicator size="small" color={theme.colors.background} />
+                ) : (
+                    <Send size={20} color={theme.colors.background} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
       </KeyboardAvoidingView>
+    </View>
     </>
   );
 };
@@ -340,6 +344,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
+  },
+  inputKeyboardView: {
+    backgroundColor: theme.colors.background,
+  },
+  inputSafeArea: {
+    backgroundColor: theme.colors.background,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -516,7 +526,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     backgroundColor: theme.colors.background,
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },
