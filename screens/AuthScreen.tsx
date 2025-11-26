@@ -78,49 +78,65 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     console.log('[AuthScreen] Base URL:', baseUrl);
 
     if (!baseUrl) {
-      setDebugInfo('❌ Backend URL не настроен');
-      Alert.alert('Ошибка', 'EXPO_PUBLIC_RORK_API_BASE_URL не установлен');
+      setDebugInfo('❌ Backend URL не настроен\nВключите backend в настройках проекта Rork');
       return;
     }
 
     setIsTestingBackend(true);
     setDebugInfo('⏳ Тестирование...');
 
-    try {
-      const healthUrl = `${baseUrl}/health`;
-      console.log('[AuthScreen] Fetching:', healthUrl);
+    const endpoints = [
+      { url: `${baseUrl}/api/ping`, name: 'ping' },
+      { url: `${baseUrl}/health`, name: 'health' },
+      { url: `${baseUrl}/`, name: 'root' },
+    ];
 
-      const response = await fetch(healthUrl, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
+    let successEndpoint: string | null = null;
+    let lastError: string | null = null;
 
-      const text = await response.text();
-      console.log('[AuthScreen] Response:', response.status, text);
+    for (const endpoint of endpoints) {
+      try {
+        console.log('[AuthScreen] Trying:', endpoint.url);
+        const response = await fetch(endpoint.url, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+        });
 
-      if (response.ok) {
-        try {
-          const data = JSON.parse(text);
-          const dbStatus = data.database?.ready ? '✅' : '❌';
-          const dbConnection = data.database?.connectionOk ? '✅' : '⚠️';
-          setDebugInfo(
-            `✅ Backend OK\n` +
-            `DB Ready: ${dbStatus}\n` +
-            `DB Connected: ${dbConnection}\n` +
-            `Time: ${data.timestamp}`
-          );
-        } catch {
-          setDebugInfo(`✅ Backend доступен\nОтвет: ${text.substring(0, 50)}`);
+        const text = await response.text();
+        console.log('[AuthScreen] Response:', endpoint.name, response.status, text.substring(0, 100));
+
+        if (response.ok) {
+          successEndpoint = endpoint.name;
+          try {
+            const data = JSON.parse(text);
+            if (endpoint.name === 'health' && data.database) {
+              const dbStatus = data.database?.ready ? '✅' : '❌';
+              setDebugInfo(
+                `✅ Backend OK (${endpoint.name})\n` +
+                `DB Ready: ${dbStatus}\n` +
+                `Time: ${data.timestamp || 'N/A'}`
+              );
+            } else {
+              setDebugInfo(`✅ Backend OK (${endpoint.name})\n${JSON.stringify(data).substring(0, 80)}`);
+            }
+          } catch {
+            setDebugInfo(`✅ Backend доступен (${endpoint.name})`);
+          }
+          break;
+        } else {
+          lastError = `${endpoint.name}: HTTP ${response.status}`;
         }
-      } else {
-        setDebugInfo(`❌ HTTP ${response.status}\n${text.substring(0, 100)}`);
+      } catch (error) {
+        console.error('[AuthScreen] Endpoint error:', endpoint.name, error);
+        lastError = `${endpoint.name}: ${error instanceof Error ? error.message : 'Network error'}`;
       }
-    } catch (error) {
-      console.error('[AuthScreen] Test error:', error);
-      setDebugInfo(`❌ Ошибка: ${error instanceof Error ? error.message : 'Unknown'}`);
-    } finally {
-      setIsTestingBackend(false);
     }
+
+    if (!successEndpoint) {
+      setDebugInfo(`❌ Backend недоступен\n${lastError || 'Все endpoints вернули ошибку'}\n\nURL: ${baseUrl}`);
+    }
+
+    setIsTestingBackend(false);
   };
 
   const handleAppleAuth = async () => {
