@@ -32,6 +32,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const glowAnim = useRef(new Animated.Value(0.95)).current;
 
   const { loginWithApple } = useAuth();
+  const [backendStatus, setBackendStatus] = useState<string | null>(null);
 
 
 
@@ -104,6 +105,40 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   const isAppleSignInAvailable = Platform.OS === 'ios';
 
+  const testBackendConnection = async () => {
+    const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+    console.log('[AuthScreen] Testing backend connection...');
+    console.log('[AuthScreen] Base URL:', baseUrl);
+    
+    if (!baseUrl) {
+      setBackendStatus('❌ EXPO_PUBLIC_RORK_API_BASE_URL not set');
+      Alert.alert('Ошибка', 'Backend URL не настроен. Включите backend в настройках проекта.');
+      return;
+    }
+    
+    setBackendStatus('⏳ Проверка...');
+    
+    try {
+      // Test direct health endpoint
+      const healthUrl = `${baseUrl}/health`;
+      console.log('[AuthScreen] Fetching:', healthUrl);
+      
+      const healthResponse = await fetch(healthUrl);
+      const healthText = await healthResponse.text();
+      console.log('[AuthScreen] Health response:', healthResponse.status, healthText);
+      
+      if (healthResponse.ok) {
+        const healthData = JSON.parse(healthText);
+        setBackendStatus(`✅ Backend OK\nDB: ${healthData.database?.ready ? 'Connected' : 'Not connected'}`);
+      } else {
+        setBackendStatus(`❌ Health check failed: ${healthResponse.status}`);
+      }
+    } catch (error) {
+      console.error('[AuthScreen] Backend test error:', error);
+      setBackendStatus(`❌ Error: ${(error as Error).message}`);
+    }
+  };
+
   const handlePrivacyPress = () => {
     Linking.openURL('https://www.notion.so/PRIVACY-POLICY-AND-COOKIES-2b44e106d5d0807aaff8e5765d4b8539');
   };
@@ -169,6 +204,21 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               },
             ]}
           >
+            {/* Debug: Backend Test Button */}
+            {__DEV__ && (
+              <View style={styles.debugSection}>
+                <TouchableOpacity
+                  style={styles.debugButton}
+                  onPress={testBackendConnection}
+                >
+                  <Text style={styles.debugButtonText}>🔧 Тест подключения к серверу</Text>
+                </TouchableOpacity>
+                {backendStatus && (
+                  <Text style={styles.debugStatus}>{backendStatus}</Text>
+                )}
+              </View>
+            )}
+            
             {/* Apple Sign In Button */}
             {isAppleSignInAvailable ? (
               <TouchableOpacity
@@ -391,5 +441,25 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#FFD700',
     fontWeight: '500',
+  },
+  debugSection: {
+    marginBottom: 20,
+    width: '100%',
+  },
+  debugButton: {
+    backgroundColor: 'rgba(100, 100, 255, 0.3)',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  debugButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+  },
+  debugStatus: {
+    color: '#AAAAAA',
+    fontSize: 12,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

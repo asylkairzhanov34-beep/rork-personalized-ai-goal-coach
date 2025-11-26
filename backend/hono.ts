@@ -5,6 +5,9 @@ import { appRouter } from "./trpc/app-router";
 import { createContext } from "./trpc/create-context";
 import { getDbStatus } from "./db";
 
+console.log('[Hono] Server starting...');
+console.log('[Hono] Routes available: /health, /api/debug, /api/trpc/*');
+
 const app = new Hono();
 
 app.use("*", cors({
@@ -61,10 +64,20 @@ app.get("/api/debug", (c) => {
   });
 });
 
+// Simple ping endpoint
+app.get("/api/ping", (c) => {
+  console.log('[Hono] Ping endpoint hit');
+  return c.json({ pong: true, timestamp: Date.now() });
+});
+
 // tRPC middleware for all /api/trpc/* routes
 app.use(
   "/api/trpc/*",
   async (c, next) => {
+    console.log('[Hono] tRPC request received:', c.req.url);
+    console.log('[Hono] Request method:', c.req.method);
+    console.log('[Hono] Request path:', c.req.path);
+    
     try {
       const handler = trpcServer({
         endpoint: "/api/trpc",
@@ -81,7 +94,9 @@ app.use(
           console.error(`[tRPC] Error on path ${path}:`, error);
         },
       });
-      return handler(c, next);
+      const result = await handler(c, next);
+      console.log('[Hono] tRPC request handled successfully');
+      return result;
     } catch (error) {
       console.error('[tRPC] Middleware error:', error);
       return c.json({
@@ -107,5 +122,23 @@ app.all("/api/trpc", (c) => {
 app.get("/", (c) => {
   return c.json({ status: "ok", message: "API is running" });
 });
+
+// Catch-all for unmatched routes - helps debugging
+app.all("*", (c) => {
+  const path = c.req.path;
+  console.log('[Hono] 404 - Unmatched route:', path);
+  console.log('[Hono] Method:', c.req.method);
+  
+  // Return JSON 404 instead of plain text
+  return c.json({
+    error: {
+      message: `Route not found: ${path}`,
+      code: 'NOT_FOUND',
+      availableRoutes: ['/', '/health', '/api/debug', '/api/ping', '/api/trpc/*'],
+    },
+  }, 404);
+});
+
+console.log('[Hono] Server configured and ready');
 
 export default app;
