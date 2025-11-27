@@ -1,11 +1,15 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../create-context';
-import { eq } from 'drizzle-orm';
-import { db, isDbReady, testConnection } from '../../db';
-import { users } from '../../schema';
+import { 
+  findUserByAppleId, 
+  findUserById, 
+  createUser, 
+  deleteUser, 
+  getDbStatus 
+} from '../../db';
 
-console.log('[Auth Router] Module loaded, DB ready:', isDbReady);
+console.log('[Auth Router] Module loaded');
 
 const AppleLoginInputSchema = z.object({
   identityToken: z.string().min(1, 'Identity token is required'),
@@ -34,47 +38,27 @@ function createAuthResponse(
   name: string | null,
   isPremium: boolean
 ): AuthResponse {
-  const response: AuthResponse = {
+  return {
     success: true,
     token: `session_${id}`,
     user: {
       id: String(id),
-      email: String(email),
+      email: String(email || ''),
       name: name !== null && name !== undefined ? String(name) : null,
       isPremium: Boolean(isPremium),
     },
   };
-  
-  console.log('[Auth] Response created for user:', id);
-  return response;
 }
 
 export const authRouter = createTRPCRouter({
   health: publicProcedure
     .query(async () => {
-      console.log('[Auth Health] Check started');
-      
-      let connectionOk = false;
-      let connectionError: string | null = null;
-      
-      if (isDbReady) {
-        try {
-          connectionOk = await testConnection();
-          console.log('[Auth Health] DB connection test:', connectionOk ? 'OK' : 'Failed');
-        } catch (e) {
-          connectionError = e instanceof Error ? e.message : 'Unknown error';
-          console.error('[Auth Health] Connection test error:', connectionError);
-        }
-      }
+      console.log('[Auth Health] Check');
+      const status = getDbStatus();
       
       return {
         status: 'ok',
-        database: {
-          ready: isDbReady,
-          connectionOk,
-          error: connectionError,
-          hasUrl: !!process.env.DATABASE_URL,
-        },
+        database: status,
         timestamp: new Date().toISOString(),
       };
     }),
@@ -84,138 +68,70 @@ export const authRouter = createTRPCRouter({
     .mutation(async ({ input }): Promise<AuthResponse> => {
       const { identityToken, email, fullName } = input;
 
-      console.log('[Auth] ========== Apple Login Started ==========');
+      console.log('[Auth] ========== Apple Login ==========');
       console.log('[Auth] Token length:', identityToken.length);
-      console.log('[Auth] Email provided:', email || 'none');
-      console.log('[Auth] Name provided:', fullName || 'none');
-      console.log('[Auth] DB ready:', isDbReady);
+      console.log('[Auth] Email:', email || 'none');
+      console.log('[Auth] Name:', fullName || 'none');
 
       const appleId = generateAppleId(identityToken);
       const userEmail = email || `user_${appleId.substring(6, 14)}@privaterelay.appleid.com`;
       const userName = fullName || null;
 
-      if (!isDbReady || !db) {
-        console.log('[Auth] No database - returning local user');
-        return createAuthResponse(appleId, userEmail, userName, false);
-      }
-
       try {
-        console.log('[Auth] Searching for existing user with appleId:', appleId);
+        const existingUser = await findUserByAppleId(appleId);
         
-        const existingUsers = await db
-          .select()
-          .from(users)
-          .where(eq(users.appleId, appleId))
-          .limit(1);
-        
-        console.log('[Auth] Found users:', existingUsers.length);
-
-        if (existingUsers.length > 0) {
-          const user = existingUsers[0];
-          console.log('[Auth] Existing user found:', user.id);
-          
+        if (existingUser) {
+          console.log('[Auth] Existing user found:', existingUser.id);
           return createAuthResponse(
-            String(user.id),
-            user.email || userEmail,
-            user.name,
-            user.isPremium || false
+            existingUser.id,
+            existingUser.email || userEmail,
+            existingUser.name,
+            existingUser.isPremium
           );
         }
 
         console.log('[Auth] Creating new user...');
-        
-        const insertResult = await db
-          .insert(users)
-          .values({
-            email: email || null,
-            name: fullName || null,
-            appleId: appleId,
-            isPremium: false,
-          })
-          .returning();
-
-        console.log('[Auth] Insert result rows:', insertResult.length);
-
-        if (insertResult.length > 0) {
-          const newUser = insertResult[0];
-          console.log('[Auth] New user created:', newUser.id);
-          
-          return createAuthResponse(
-            String(newUser.id),
-            newUser.email || userEmail,
-            newUser.name,
-            false
-          );
-        }
-
-        console.error('[Auth] Insert returned no rows');
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to create user',
+        const newUser = await createUser({
+          email: email || null,
+          name: userName,
+          appleId: appleId,
         });
 
+        console.log('[Auth] New user created:', newUser.id);
+        return createAuthResponse(
+          newUser.id,
+          newUser.email || userEmail,
+          newUser.name,
+          newUser.isPremium
+        );
+
       } catch (error) {
-        if (error instanceof TRPCError) {
-          throw error;
-        }
-
-        const errorMessage = error instanceof Error ? error.message : 'Database error';
-        console.error('[Auth] Database error:', errorMessage);
-
-        if (errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint')) {
-          console.log('[Auth] Duplicate detected, trying to find user...');
-          
-          try {
-            const foundUsers = await db
-              .select()
-              .from(users)
-              .where(eq(users.appleId, appleId))
-              .limit(1);
-            
-            if (foundUsers.length > 0) {
-              const user = foundUsers[0];
-              return createAuthResponse(
-                String(user.id),
-                user.email || userEmail,
-                user.name,
-                user.isPremium || false
-              );
-            }
-          } catch (findError) {
-            console.error('[Auth] Find after duplicate failed:', findError);
-          }
-        }
-
-        console.log('[Auth] Fallback: returning local user due to error');
-        return createAuthResponse(appleId, userEmail, userName, false);
-      } finally {
-        console.log('[Auth] ========== Apple Login Finished ==========');
+        console.error('[Auth] Error:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error instanceof Error ? error.message : 'Login failed',
+        });
       }
     }),
 
   getUser: protectedProcedure
     .query(async ({ ctx }) => {
       const userId = ctx.user?.id;
-      console.log('[Auth] getUser for:', userId);
+      console.log('[Auth] getUser:', userId);
       
-      if (!userId || !isDbReady || !db) {
+      if (!userId || userId === 'anonymous') {
         return null;
       }
 
       try {
-        const foundUsers = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, userId))
-          .limit(1);
+        const user = await findUserById(userId);
         
-        if (foundUsers.length > 0) {
-          const user = foundUsers[0];
+        if (user) {
           return {
-            id: String(user.id),
+            id: user.id,
             email: user.email || '',
             name: user.name,
-            isPremium: user.isPremium || false,
+            isPremium: user.isPremium,
           };
         }
         
@@ -229,27 +145,21 @@ export const authRouter = createTRPCRouter({
   deleteAccount: protectedProcedure
     .mutation(async ({ ctx }) => {
       const userId = ctx.user?.id;
-      console.log('[Auth] deleteAccount for:', userId);
+      console.log('[Auth] deleteAccount:', userId);
       
-      if (!userId) {
+      if (!userId || userId === 'anonymous') {
         return { success: false, error: 'No user ID' };
       }
       
-      if (!isDbReady || !db) {
-        console.log('[Auth] No database - cannot delete');
-        return { success: true, message: 'Local user cleared' };
-      }
-      
       try {
-        await db.delete(users).where(eq(users.id, userId));
-        console.log('[Auth] User deleted from DB');
-        return { success: true };
+        const deleted = await deleteUser(userId);
+        console.log('[Auth] Delete result:', deleted);
+        return { success: deleted };
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error('[Auth] Delete error:', errorMessage);
-        return { success: false, error: errorMessage };
+        console.error('[Auth] Delete error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Delete failed' };
       }
     }),
 });
 
-console.log('[Auth Router] Exported');
+console.log('[Auth Router] Ready');
