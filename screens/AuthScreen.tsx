@@ -77,28 +77,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     setIsTestingBackend(true);
     setDebugInfo('⏳ Проверка Firebase...');
 
-    const config = {
-      apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-      authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-      appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-    };
-
-    const missing = Object.entries(config)
-      .filter(([_, value]) => !value)
-      .map(([key]) => key.replace('EXPO_PUBLIC_FIREBASE_', ''));
-
-    if (missing.length > 0) {
-      setDebugInfo(`❌ Отсутствуют переменные:\n${missing.join(', ')}\n\nДобавьте их в настройках проекта`);
-      setIsTestingBackend(false);
-      return;
-    }
-
     if (firebaseInitialized) {
       setDebugInfo(
         `✅ Firebase готов\n` +
-        `Project: ${config.projectId}\n` +
-        `Domain: ${config.authDomain}`
+        `Project: goalforge-ai-data\n` +
+        `Domain: goalforge-ai-data.firebaseapp.com`
       );
     } else if (initError) {
       setDebugInfo(`❌ Ошибка Firebase:\n${initError}`);
