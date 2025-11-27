@@ -11,12 +11,12 @@ import {
 } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyCscmFoWxkLzJaI7Ir3jkxp3Gko0lS0Hz0",
+  authDomain: "goalforge-ai-data.firebaseapp.com",
+  projectId: "goalforge-ai-data",
+  storageBucket: "goalforge-ai-data.firebasestorage.app",
+  messagingSenderId: "770805155894",
+  appId: "1:770805155894:web:79d078787b0c11aff93097"
 };
 
 let app: FirebaseApp;
