@@ -33,7 +33,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const buttonSlide = useRef(new Animated.Value(50)).current;
   const glowAnim = useRef(new Animated.Value(0.95)).current;
 
-  const { loginWithApple } = useAuth();
+  const { loginWithApple, firebaseInitialized, initError } = useAuth();
 
   useEffect(() => {
     Animated.parallel([
@@ -72,68 +72,38 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     ).start();
   }, [logoScale, fadeAnim, buttonSlide, glowAnim]);
 
-  const testBackendConnection = async () => {
-    const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
-    console.log('[AuthScreen] Testing backend...');
-    console.log('[AuthScreen] Base URL:', baseUrl);
+  const testFirebaseConnection = async () => {
+    console.log('[AuthScreen] Testing Firebase...');
+    setIsTestingBackend(true);
+    setDebugInfo('⏳ Проверка Firebase...');
 
-    if (!baseUrl) {
-      setDebugInfo('❌ Backend URL не настроен\nВключите backend в настройках проекта Rork');
+    const config = {
+      apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+      authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+      appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+    };
+
+    const missing = Object.entries(config)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key.replace('EXPO_PUBLIC_FIREBASE_', ''));
+
+    if (missing.length > 0) {
+      setDebugInfo(`❌ Отсутствуют переменные:\n${missing.join(', ')}\n\nДобавьте их в настройках проекта`);
+      setIsTestingBackend(false);
       return;
     }
 
-    setIsTestingBackend(true);
-    setDebugInfo('⏳ Тестирование...');
-
-    const endpoints = [
-      { url: `${baseUrl}/api/ping`, name: 'ping' },
-      { url: `${baseUrl}/health`, name: 'health' },
-      { url: `${baseUrl}/`, name: 'root' },
-    ];
-
-    let successEndpoint: string | null = null;
-    let lastError: string | null = null;
-
-    for (const endpoint of endpoints) {
-      try {
-        console.log('[AuthScreen] Trying:', endpoint.url);
-        const response = await fetch(endpoint.url, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' },
-        });
-
-        const text = await response.text();
-        console.log('[AuthScreen] Response:', endpoint.name, response.status, text.substring(0, 100));
-
-        if (response.ok) {
-          successEndpoint = endpoint.name;
-          try {
-            const data = JSON.parse(text);
-            if (endpoint.name === 'health' && data.database) {
-              const dbStatus = data.database?.ready ? '✅' : '❌';
-              setDebugInfo(
-                `✅ Backend OK (${endpoint.name})\n` +
-                `DB Ready: ${dbStatus}\n` +
-                `Time: ${data.timestamp || 'N/A'}`
-              );
-            } else {
-              setDebugInfo(`✅ Backend OK (${endpoint.name})\n${JSON.stringify(data).substring(0, 80)}`);
-            }
-          } catch {
-            setDebugInfo(`✅ Backend доступен (${endpoint.name})`);
-          }
-          break;
-        } else {
-          lastError = `${endpoint.name}: HTTP ${response.status}`;
-        }
-      } catch (error) {
-        console.error('[AuthScreen] Endpoint error:', endpoint.name, error);
-        lastError = `${endpoint.name}: ${error instanceof Error ? error.message : 'Network error'}`;
-      }
-    }
-
-    if (!successEndpoint) {
-      setDebugInfo(`❌ Backend недоступен\n${lastError || 'Все endpoints вернули ошибку'}\n\nURL: ${baseUrl}`);
+    if (firebaseInitialized) {
+      setDebugInfo(
+        `✅ Firebase готов\n` +
+        `Project: ${config.projectId}\n` +
+        `Domain: ${config.authDomain}`
+      );
+    } else if (initError) {
+      setDebugInfo(`❌ Ошибка Firebase:\n${initError}`);
+    } else {
+      setDebugInfo('⏳ Firebase инициализируется...');
     }
 
     setIsTestingBackend(false);
@@ -242,14 +212,14 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               <View style={styles.debugSection}>
                 <TouchableOpacity
                   style={styles.debugButton}
-                  onPress={testBackendConnection}
+                  onPress={testFirebaseConnection}
                   disabled={isTestingBackend}
                 >
                   {isTestingBackend ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={styles.debugButtonText}>
-                      🔧 Тест подключения к серверу
+                      🔧 Тест Firebase
                     </Text>
                   )}
                 </TouchableOpacity>
