@@ -29,4 +29,15 @@ EXPO_PUBLIC_REVENUECAT_WEB_KEY=
 
 EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_NIzzmGwASbGFsnfAddnshynSnsG
 EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
-DATABASE_URL=postgresql://postgres.lcdrxhwkuyobxroclmhi:1o1YAYGRAFTIXiLX@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
+# ========== TURSO DATABASE ==========
+# Создайте базу данных на https://turso.tech
+# 1. Зарегистрируйтесь на turso.tech
+# 2. Создайте базу данных (бесплатный план включает 500 баз)
+# 3. В консоли Turso выполните: turso db show <db-name> --url
+# 4. Создайте токен: turso db tokens create <db-name>
+
+# URL базы данных (libsql://your-db-name.turso.io)
+TURSO_DATABASE_URL=
+
+# Auth Token (получите через CLI или dashboard)
+TURSO_AUTH_TOKEN=
