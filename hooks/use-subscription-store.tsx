@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
 import createContextHook from '@nkzw/create-context-hook';
 import { CustomerInfo, SubscriptionPackage, SubscriptionStatus } from '@/types/subscription';
 import {
@@ -595,10 +596,18 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, [isMockMode, loadMockStatus, persistCustomerInfo]);
 
   const cancelSubscriptionForDev = useCallback(async () => {
-    if (!__DEV__) {
+    // Allow in dev, TestFlight, and Expo Go - but NOT in production App Store release
+    const isProductionRelease = !__DEV__ && 
+                                Constants.appOwnership !== 'expo' && 
+                                Constants.manifest?.releaseChannel !== undefined &&
+                                Constants.isDevice;
+    
+    if (isProductionRelease) {
+      console.log('[SubscriptionProvider] cancelSubscriptionForDev blocked in production');
       return;
     }
 
+    console.log('[SubscriptionProvider] Cancelling subscription (dev/test mode)');
     await secureDelete(SECURE_KEYS.subscriptionActive);
     setCustomerInfo(null);
     setStatus(trialStateRef.current.isActive ? 'trial' : 'free');

@@ -12,6 +12,7 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { 
   X, 
   Check, 
@@ -36,6 +37,19 @@ import { useSubscription } from '@/hooks/use-subscription-store';
 interface SubscriptionScreenProps {
   skipButton?: boolean;
 }
+
+const isProductionBuild = () => {
+  // Returns false for: dev builds, TestFlight, Expo Go
+  // Returns true only for: production release from App Store
+  if (__DEV__) return false;
+  
+  // TestFlight detection
+  const isTestFlight = Constants.appOwnership === 'expo' || 
+                       Constants.manifest?.releaseChannel === undefined ||
+                       Constants.isDevice === false;
+  
+  return !isTestFlight;
+};
 
 const FEATURE_LIST = [
   { title: 'Ежедневный ИИ-коуч', subtitle: 'ИИ анализирует ваш день и подбирает оптимальные шаги', icon: Bot },
@@ -95,7 +109,7 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
     });
 
     Animated.stagger(50, animations).start();
-  }, []);
+  }, [fadeAnims, translateYAnims]);
 
   const handlePurchase = async () => {
     if (!selectedPackage) {
@@ -170,33 +184,58 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
               <Text style={styles.manageButtonText}>Управление подпиской</Text>
             </TouchableOpacity>
 
-            {/* Test Cancel Button */}
-            <View style={styles.devZone}>
-              <TouchableOpacity 
-                style={styles.devCancelButton} 
-                onPress={() => {
-                  Alert.alert(
-                    'Отмена подписки (Тест)',
-                    'Это действие доступно только для тестирования. Оно сбросит локальный статус подписки.',
-                    [
-                      { text: 'Отмена', style: 'cancel' },
-                      { 
-                        text: 'Сбросить', 
-                        style: 'destructive', 
-                        onPress: async () => {
-                          await cancelSubscriptionForDev();
-                          Alert.alert('Сброшено', 'Подписка деактивирована');
-                          router.back();
+            {/* Test Cancel Button - Available in dev/testflight builds */}
+            {!isProductionBuild() && (
+              <View style={styles.devZone}>
+                <TouchableOpacity 
+                  style={styles.devCancelButton} 
+                  onPress={() => {
+                    Alert.alert(
+                      'Отмена подписки (Тест)',
+                      Platform.select({
+                        ios: 'TestFlight/Sandbox: Эта кнопка сбрасывает локальный статус подписки в приложении.\n\nДля полной отмены:\n1. Settings → [Your Name] → Subscriptions\n2. Найдите GoalForge → Cancel Subscription\n\nИли очистите историю в App Store Connect → Sandbox.',
+                        default: 'Это действие сбросит локальный статус подписки.'
+                      }),
+                      [
+                        { text: 'Отмена', style: 'cancel' },
+                        { 
+                          text: 'Сбросить', 
+                          style: 'destructive', 
+                          onPress: async () => {
+                            await cancelSubscriptionForDev();
+                            Alert.alert(
+                              'Сброшено',
+                              'Локальный статус подписки сброшен.\n\nДля полной отмены подписки в Sandbox используйте настройки iOS.'
+                            );
+                            router.back();
+                          }
                         }
-                      }
-                    ]
-                  );
-                }}
-              >
-                 <AlertTriangle size={16} color="#FF4500" />
-                 <Text style={styles.devCancelText}>Cancel Subscription (Test)</Text>
-              </TouchableOpacity>
-            </View>
+                      ]
+                    );
+                  }}
+                >
+                   <AlertTriangle size={16} color="#FF4500" />
+                   <Text style={styles.devCancelText}>
+                     {Platform.OS === 'ios' ? 'Reset Subscription (TestFlight)' : 'Cancel Subscription (Test)'}
+                   </Text>
+                </TouchableOpacity>
+                
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity 
+                    style={styles.sandboxButton}
+                    onPress={() => {
+                      Alert.alert(
+                        'Sandbox Testing',
+                        '📱 Как тестировать:\n\n1. Settings → App Store → Sign Out\n2. Купите подписку в приложении\n3. Войдите Sandbox аккаунтом\n4. Проверьте "[Sandbox Environment]"\n\nПодробнее: TESTFLIGHT_SANDBOX_GUIDE.md',
+                        [{ text: 'OK' }]
+                      );
+                    }}
+                  >
+                    <Text style={styles.sandboxButtonText}>📖 Sandbox Guide</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         </SafeAreaView>
       </View>
@@ -598,6 +637,22 @@ const styles = StyleSheet.create({
   },
   devCancelText: {
     color: '#FF4500',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sandboxButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    marginTop: 12,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.3)',
+  },
+  sandboxButtonText: {
+    color: '#007AFF',
     fontSize: 14,
     fontWeight: '600',
   },
