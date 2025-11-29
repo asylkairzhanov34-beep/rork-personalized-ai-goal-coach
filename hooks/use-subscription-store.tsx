@@ -191,7 +191,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [isMockMode, setIsMockMode] = useState(Platform.OS === 'web');
+  const [isMockMode, setIsMockMode] = useState(false);
   const [trialState, setTrialState] = useState<TrialState>(defaultTrialState);
   const [hasSeenPaywall, setHasSeenPaywall] = useState(false);
   const [isFirstLaunch, setIsFirstLaunch] = useState(false);
@@ -354,6 +354,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         const trial = await hydrateTrialState();
         await checkFirstLaunch();
 
+        // КРИТИЧНО: Для реальных устройств НИКОГДА не используем Mock Mode
+        const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
+        
         if (Platform.OS === 'web') {
           console.log('[SubscriptionProvider] Web platform - using mock mode');
           setIsMockMode(true);
@@ -365,8 +368,14 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           return;
         }
 
+        console.log('[SubscriptionProvider] Real device:', isRealDevice);
+        
         const initialized = await initializeRevenueCat();
         if (!initialized) {
+          if (isRealDevice) {
+            console.error('[SubscriptionProvider] ❌ CRITICAL: Real device but RevenueCat failed to initialize!');
+            throw new Error('RevenueCat is required for real devices');
+          }
           console.log('[SubscriptionProvider] RevenueCat not available - using mock mode');
           setIsMockMode(true);
           setPackages(WEB_MOCK_PACKAGES);
@@ -377,7 +386,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           return;
         }
 
-        console.log('[SubscriptionProvider] RevenueCat initialized successfully');
+        console.log('[SubscriptionProvider] ✅ RevenueCat initialized successfully');
+        console.log('[SubscriptionProvider] Mock Mode:', false);
         setIsMockMode(false);
         const info = await getCustomerInfo();
         if (info) {
@@ -494,6 +504,14 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   const purchasePackage = useCallback(
     async (packageIdentifier: string): Promise<PurchaseResult | null> => {
+      const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
+      
+      // КРИТИЧНО: Для реальных устройств НИКОГДА не используем Mock Mode
+      if (isRealDevice && isMockMode) {
+        console.error('[SubscriptionProvider] ❌ CRITICAL: Real device is in mock mode!');
+        throw new Error('Mock mode should never be active on real devices');
+      }
+      
       if (isMockMode || Platform.OS === 'web') {
         setIsPurchasing(true);
         try {
@@ -560,6 +578,14 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   );
 
   const restorePurchases = useCallback(async (): Promise<boolean> => {
+    const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
+    
+    // КРИТИЧНО: Для реальных устройств НИКОГДА не используем Mock Mode
+    if (isRealDevice && isMockMode) {
+      console.error('[SubscriptionProvider] ❌ CRITICAL: Real device is in mock mode!');
+      throw new Error('Mock mode should never be active on real devices');
+    }
+    
     if (isMockMode || Platform.OS === 'web') {
       setIsRestoring(true);
       try {

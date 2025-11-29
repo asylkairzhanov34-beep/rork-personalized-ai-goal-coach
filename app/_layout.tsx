@@ -224,42 +224,59 @@ export default function RootLayout() {
 
   useEffect(() => {
     const initRevenueCat = async () => {
-      if (Platform.OS === 'ios') {
-        const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY;
-        
-        console.log("📱 [RevenueCat] Запуск инициализации");
-        console.log("📱 [RevenueCat] API Key присутствует:", apiKey ? "ДА" : "НЕТ");
+      const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
+      
+      if (!isRealDevice) {
+        console.log("📱 [_layout.tsx] Пропуск инициализации (не iOS/Android, Platform:", Platform.OS, ")");
+        return;
+      }
+      
+      const apiKey = Platform.OS === 'ios' 
+        ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY 
+        : process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY;
+      
+      console.log("\n==================== REVENUECAT INIT ====================");
+      console.log("📱 [_layout.tsx] Платформа:", Platform.OS);
+      console.log("📱 [_layout.tsx] Реальное устройство:", isRealDevice);
+      console.log("📱 [_layout.tsx] API Key присутствует:", apiKey ? "ДА (" + apiKey.substring(0, 10) + "...)" : "НЕТ");
+      console.log("📱 [_layout.tsx] MOCK MODE:", false);
+      console.log("========================================================\n");
 
-        if (apiKey) {
-          try {
-            await Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
-            console.log("📱 [RevenueCat] Debug логирование включено");
-            
-            await Purchases.configure({ apiKey });
-            console.log("✅ [RevenueCat] Успешно инициализирован!");
-            
-            // Загружаем offerings и логируем информацию о пакетах
-            const offerings = await Purchases.getOfferings();
-            console.log("📦 [RevenueCat] Offerings загружены:", offerings.current?.identifier || "НЕТ ТЕКУЩЕГО OFFERING");
-            console.log("📦 [RevenueCat] Все offerings:", Object.keys(offerings.all));
-            
-            if (offerings.current?.availablePackages) {
-              console.log("📦 [RevenueCat] Доступные пакеты:");
-              offerings.current.availablePackages.forEach((pkg: any, idx: number) => {
-                console.log(`  ${idx + 1}. ${pkg.identifier} - ${pkg.product?.priceString || 'цена не указана'}`);
-                console.log(`     Product ID: ${pkg.product?.identifier}`);
-                console.log(`     Package type: ${typeof pkg}`);
-              });
-            }
-          } catch (e: any) {
-            console.error("❌ [RevenueCat] Ошибка инициализации:", e.message);
-            console.error("❌ [RevenueCat] Stack:", e.stack);
-          }
+      if (!apiKey) {
+        console.error("❌ [_layout.tsx] API ключ не найден в .env для платформы:", Platform.OS);
+        throw new Error('RevenueCat API key is required for real devices');
+      }
+
+      try {
+        console.log("📱 [_layout.tsx] Включение DEBUG логирования...");
+        await Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
+        console.log("✅ [_layout.tsx] Debug логирование включено");
+        
+        console.log("📱 [_layout.tsx] Конфигурация RevenueCat с ключом...");
+        await Purchases.configure({ apiKey });
+        console.log("✅ [_layout.tsx] RevenueCat успешно инициализирован!");
+        
+        console.log("📦 [_layout.tsx] Загрузка offerings...");
+        const offerings = await Purchases.getOfferings();
+        console.log("📦 [_layout.tsx] Offerings загружены:", offerings.current?.identifier || "НЕТ ТЕКУЩЕГО OFFERING");
+        console.log("📦 [_layout.tsx] Все offerings:", Object.keys(offerings.all));
+        
+        if (offerings.current?.availablePackages) {
+          console.log("📦 [_layout.tsx] Доступные пакеты (", offerings.current.availablePackages.length, "):");
+          offerings.current.availablePackages.forEach((pkg: any, idx: number) => {
+            console.log(`  ${idx + 1}. ${pkg.identifier} - ${pkg.product?.priceString || 'цена не указана'}`);
+            console.log(`     Product ID: ${pkg.product?.identifier}`);
+            console.log(`     Title: ${pkg.product?.title || 'не указан'}`);
+          });
         } else {
-          console.error("❌ [RevenueCat] API ключ не найден в .env");
+          console.warn("⚠️ [_layout.tsx] НЕТ доступных пакетов! Проверьте RevenueCat Dashboard.");
         }
-      } else {
-        console.log("📱 [RevenueCat] Пропуск инициализации (не iOS)");
+      } catch (e: any) {
+        console.error("\n==================== REVENUECAT ERROR ====================");
+        console.error("❌ [_layout.tsx] Ошибка инициализации:", e.message);
+        console.error("❌ [_layout.tsx] Stack:", e.stack);
+        console.error("==========================================================\n");
+        throw e;
       }
     };
 

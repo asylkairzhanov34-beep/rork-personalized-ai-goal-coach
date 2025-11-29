@@ -52,6 +52,7 @@ const API_KEYS = {
 
 const isExpoGoRuntime = Constants?.appOwnership === 'expo';
 const canUseNativeRevenueCat = Platform.OS !== 'web' && !isExpoGoRuntime;
+const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
 
 let hasLoggedStatus = false;
 const logStatus = (message: string) => {
@@ -75,6 +76,21 @@ const loadPurchasesModule = (): PurchasesModule | null => {
   if (Platform.OS === 'web') {
     logStatus('Web platform - using mock mode');
     return null;
+  }
+  
+  // КРИТИЧНО: Для реальных устройств ВСЕГДА загружаем модуль
+  // Mock Mode отключен для iOS и Android
+  if (isRealDevice) {
+    console.log('[RevenueCat] Real device detected - FORCING native RevenueCat (no mock mode)');
+    try {
+      const RNPurchases = require('react-native-purchases');
+      moduleRef = RNPurchases.default ?? RNPurchases;
+      console.log('[RevenueCat] ✅ Module loaded successfully for real device');
+      return moduleRef;
+    } catch (error) {
+      console.error('[RevenueCat] ❌ CRITICAL: Module failed to load on real device:', error);
+      throw new Error('RevenueCat module required for real devices but failed to load');
+    }
   }
   
   if (!canUseNativeRevenueCat) {
@@ -101,33 +117,51 @@ export const initializeRevenueCat = async (): Promise<boolean> => {
   
   const module = loadPurchasesModule();
   if (!module) {
+    if (isRealDevice) {
+      console.error('[RevenueCat] ❌ CRITICAL: Real device but no module!');
+      throw new Error('RevenueCat module is required for real devices');
+    }
     return false;
   }
   
   const apiKey = getApiKey();
   if (!apiKey) {
-    console.warn('[RevenueCat] No API key for platform:', Platform.OS);
+    console.warn('[RevenueCat] ❌ No API key for platform:', Platform.OS);
+    if (isRealDevice) {
+      throw new Error('RevenueCat API key is required for real devices');
+    }
     return false;
   }
   
   try {
     console.log('[RevenueCat] Configuring with API key...');
+    console.log('[RevenueCat] Platform:', Platform.OS);
+    console.log('[RevenueCat] Is real device:', isRealDevice);
     
-    if (__DEV__ && module.LOG_LEVEL) {
+    // Для реальных устройств ВСЕГДА включаем debug логи
+    if ((isRealDevice || __DEV__) && module.LOG_LEVEL) {
       await module.setLogLevel(module.LOG_LEVEL.DEBUG);
+      console.log('[RevenueCat] Debug logging enabled');
     }
     
     await module.configure({ apiKey });
     isConfigured = true;
-    console.log('[RevenueCat] Configuration successful');
+    console.log('[RevenueCat] ✅ Configuration successful');
     return true;
   } catch (error) {
-    console.error('[RevenueCat] Configuration failed:', error);
+    console.error('[RevenueCat] ❌ Configuration failed:', error);
+    if (isRealDevice) {
+      throw error;
+    }
     return false;
   }
 };
 
 export const isRevenueCatAvailable = (): boolean => {
+  // Для реальных устройств ВСЕГДА возвращаем true после загрузки модуля
+  if (isRealDevice) {
+    return !!loadPurchasesModule();
+  }
   return canUseNativeRevenueCat && !!loadPurchasesModule();
 };
 
