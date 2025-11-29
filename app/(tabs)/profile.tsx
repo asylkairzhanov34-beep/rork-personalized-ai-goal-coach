@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { User, Settings, Bell, ChevronRight, Info, LogOut, MessageCircle, RotateCcw, Sparkles, Edit3, X } from 'lucide-react-native';
+import { User, Settings, Bell, ChevronRight, Info, LogOut, MessageCircle, RotateCcw, Sparkles, Edit3, X, Wrench } from 'lucide-react-native';
+import Constants from 'expo-constants';
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
 
@@ -259,14 +260,17 @@ export default function ProfileScreen() {
             <ChevronRight size={20} color={theme.colors.textLight} />
           </TouchableOpacity>
 
-          {__DEV__ && (
+          {(__DEV__ || Constants?.appOwnership === 'expo' || Constants?.executionEnvironment === 'storeClient') && (
             <TouchableOpacity
               style={styles.devEntry}
               onPress={() => router.push('/dev-subscription-tools')}
               activeOpacity={0.8}
               testID="dev-subscription-entry"
             >
-              <Text style={styles.devEntryText}>Subscription QA Tools</Text>
+              <View style={{ marginRight: 8 }}>
+                <Wrench size={20} color="#FFD700" />
+              </View>
+              <Text style={styles.devEntryText}>🛠 Инструменты разработчика</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -431,17 +435,21 @@ const styles = StyleSheet.create({
   },
   devEntry: {
     marginTop: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.4)',
-    backgroundColor: 'rgba(255,215,0,0.08)',
+    justifyContent: 'center',
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 2,
+    borderColor: 'rgba(255,215,0,0.5)',
+    backgroundColor: 'rgba(255,215,0,0.1)',
+    ...theme.shadows.medium,
   },
   devEntryText: {
     color: '#FFD700',
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.bold,
   },
   loadingContainer: {
     flex: 1,
