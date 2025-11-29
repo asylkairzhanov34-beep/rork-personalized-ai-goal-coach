@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, Component, ReactNode, useState, useCallback } from "react";
-import { StyleSheet, Text, View, LogBox } from "react-native";
+import { StyleSheet, Text, View, LogBox, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { clearAllStorageIfCorrupted } from '@/utils/storage-helper';
 import { GoalProvider } from '@/hooks/use-goal-store';
@@ -13,6 +13,7 @@ import { ManifestationProvider } from '@/hooks/use-manifestation-store';
 import { FirstTimeSetupProvider } from '@/hooks/use-first-time-setup';
 import { SubscriptionProvider } from '@/hooks/use-subscription-store';
 import { trpc, trpcReactClient } from '@/lib/trpc';
+import Purchases from 'react-native-purchases';
 
 import { GlobalSubscriptionGate } from '@/components/GlobalSubscriptionGate';
 import { useAppBackgroundInit } from '@/hooks/use-app-background-init';
@@ -220,6 +221,40 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
+
+  useEffect(() => {
+    const initRevenueCat = async () => {
+      if (Platform.OS === 'ios') {
+        const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY;
+        
+        console.log("📱 [RevenueCat] Запуск инициализации");
+        console.log("📱 [RevenueCat] API Key присутствует:", apiKey ? "ДА" : "НЕТ");
+
+        if (apiKey) {
+          try {
+            await Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
+            console.log("📱 [RevenueCat] Debug логирование включено");
+            
+            await Purchases.configure({ apiKey });
+            console.log("✅ [RevenueCat] Успешно инициализирован!");
+            
+            const offerings = await Purchases.getOfferings();
+            console.log("📦 [RevenueCat] Offerings загружены:", offerings.current?.identifier || "НЕТ ТЕКУЩЕГО OFFERING");
+            console.log("📦 [RevenueCat] Все offerings:", Object.keys(offerings.all));
+          } catch (e: any) {
+            console.error("❌ [RevenueCat] Ошибка инициализации:", e.message);
+            console.error("❌ [RevenueCat] Stack:", e.stack);
+          }
+        } else {
+          console.error("❌ [RevenueCat] API ключ не найден в .env");
+        }
+      } else {
+        console.log("📱 [RevenueCat] Пропуск инициализации (не iOS)");
+      }
+    };
+
+    initRevenueCat();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
