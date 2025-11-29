@@ -134,16 +134,31 @@ export const isRevenueCatAvailable = (): boolean => {
 export const getOfferings = async (): Promise<RevenueCatOfferings | null> => {
   const module = loadPurchasesModule();
   if (!module || !isConfigured) {
-    console.log('[RevenueCat] getOfferings - module not ready');
+    console.error('[RevenueCat] ❌ getOfferings - module not ready');
     return null;
   }
   
   try {
+    console.log('[RevenueCat] 📦 Fetching offerings...');
     const offerings = await module.getOfferings();
-    console.log('[RevenueCat] Offerings fetched:', offerings?.current?.identifier);
+    
+    if (!offerings?.current) {
+      console.warn('[RevenueCat] ⚠️ No current offering available');
+      console.warn('[RevenueCat] Check RevenueCat Dashboard → Offerings');
+      return null;
+    }
+    
+    console.log('[RevenueCat] ✅ Offerings fetched');
+    console.log('[RevenueCat] Current offering:', offerings.current.identifier);
+    console.log('[RevenueCat] Available packages:', offerings.current.availablePackages?.length ?? 0);
+    
+    offerings.current.availablePackages?.forEach((pkg: RevenueCatPackage, index: number) => {
+      console.log(`[RevenueCat] Package ${index + 1}:`, pkg.product.identifier, '-', pkg.product.priceString);
+    });
+    
     return offerings;
   } catch (error) {
-    console.error('[RevenueCat] getOfferings failed:', error);
+    console.error('[RevenueCat] ❌ getOfferings failed:', error);
     return null;
   }
 };
@@ -170,21 +185,36 @@ export const purchasePackage = async (
 ): Promise<{ customerInfo: RevenueCatCustomerInfo } | null> => {
   const module = loadPurchasesModule();
   if (!module || !isConfigured) {
-    console.log('[RevenueCat] purchasePackage - module not ready');
+    console.error('[RevenueCat] ❌ purchasePackage - module not ready');
+    console.error('[RevenueCat] Module loaded:', !!module);
+    console.error('[RevenueCat] Configured:', isConfigured);
     return null;
   }
   
   try {
-    console.log('[RevenueCat] Purchasing package:', pkg.identifier);
+    console.log('[RevenueCat] 🛒 Initiating purchase...');
+    console.log('[RevenueCat] Package ID:', pkg.identifier);
+    console.log('[RevenueCat] Product ID:', pkg.product.identifier);
+    console.log('[RevenueCat] Price:', pkg.product.priceString);
+    
     const result = await module.purchasePackage(pkg);
-    console.log('[RevenueCat] Purchase successful');
+    
+    console.log('[RevenueCat] ✅ Purchase successful!');
+    console.log('[RevenueCat] Active subscriptions:', result.customerInfo.activeSubscriptions?.length ?? 0);
+    console.log('[RevenueCat] Active entitlements:', Object.keys(result.customerInfo.entitlements?.active ?? {}).join(', '));
+    
     return result;
   } catch (error: any) {
     if (error?.userCancelled) {
-      console.log('[RevenueCat] Purchase cancelled by user');
+      console.log('[RevenueCat] ℹ️ Purchase cancelled by user');
       throw { userCancelled: true };
     }
-    console.error('[RevenueCat] Purchase failed:', error);
+    
+    console.error('[RevenueCat] ❌ Purchase failed');
+    console.error('[RevenueCat] Error code:', error?.code);
+    console.error('[RevenueCat] Error message:', error?.message);
+    console.error('[RevenueCat] Full error:', JSON.stringify(error, null, 2));
+    
     throw error;
   }
 };

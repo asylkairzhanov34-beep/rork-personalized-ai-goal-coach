@@ -28,7 +28,8 @@ import {
   Timer, 
   Infinity,
   CreditCard,
-  AlertTriangle
+  AlertTriangle,
+  Bug
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -76,6 +77,7 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
     isPremium,
     customerInfo,
     cancelSubscriptionForDev,
+    isInitialized,
   } = useSubscription();
 
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
@@ -116,9 +118,18 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
       Alert.alert('Ошибка', 'Выберите план подписки');
       return;
     }
+    
+    console.log('[SubscriptionScreen] 🛒 Starting purchase...');
+    console.log('[SubscriptionScreen] Selected package:', selectedPackage);
+    console.log('[SubscriptionScreen] Available packages:', packages.length);
+    
     const success = await purchasePackage(selectedPackage);
+    
     if (success) {
+      console.log('[SubscriptionScreen] ✅ Purchase completed successfully');
       Alert.alert('Успешно!', 'Подписка активирована', [{ text: 'OK', onPress: () => router.back() }]);
+    } else {
+      console.error('[SubscriptionScreen] ❌ Purchase failed or was cancelled');
     }
   };
 
@@ -183,6 +194,24 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
             <TouchableOpacity style={styles.manageButton} onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}>
               <Text style={styles.manageButtonText}>Управление подпиской</Text>
             </TouchableOpacity>
+
+            {/* Debug Info */}
+            {!isProductionBuild() && packages.length === 0 && (
+              <View style={styles.debugCard}>
+                <Bug size={20} color="#FF6B6B" />
+                <Text style={styles.debugText}>
+                  ⚠️ Offerings не загружены{'\n'}
+                  {!isInitialized && 'RevenueCat инициализируется...'}{' '}
+                  {isInitialized && 'Проверьте RevenueCat Dashboard'}
+                </Text>
+                <TouchableOpacity 
+                  style={styles.debugButton}
+                  onPress={() => router.push('/dev-subscription-tools')}
+                >
+                  <Text style={styles.debugButtonText}>Открыть Debug Tools</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Test Cancel Button - Available in dev/testflight builds */}
             {!isProductionBuild() && (
@@ -660,5 +689,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.4)',
     marginHorizontal: 4,
+  },
+  debugCard: {
+    marginTop: 32,
+    padding: 16,
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+    alignItems: 'center',
+    gap: 12,
+  },
+  debugText: {
+    fontSize: 13,
+    color: '#FF6B6B',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  debugButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    borderRadius: 8,
+  },
+  debugButtonText: {
+    fontSize: 13,
+    color: '#FF6B6B',
+    fontWeight: '600',
   },
 });
