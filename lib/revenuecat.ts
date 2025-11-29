@@ -232,3 +232,41 @@ export const purchasePackageByIdentifier = async (
   return { info: result.customerInfo, purchasedPackage: pkg };
 };
 export const restorePurchasesFromRevenueCat = restorePurchases;
+
+export const syncWithRevenueCat = async (): Promise<RevenueCatCustomerInfo | null> => {
+  const module = loadPurchasesModule();
+  if (!module || !isConfigured) {
+    console.log('[RevenueCat] syncWithRevenueCat - module not ready');
+    return null;
+  }
+  
+  try {
+    console.log('[RevenueCat] Force syncing customer info from server...');
+    const info = await module.getCustomerInfo();
+    console.log('[RevenueCat] Sync complete, active entitlements:', Object.keys(info?.entitlements?.active ?? {}));
+    return info;
+  } catch (error) {
+    console.error('[RevenueCat] Sync failed:', error);
+    return null;
+  }
+};
+
+export const invalidateCustomerInfoCache = async (): Promise<void> => {
+  const module = loadPurchasesModule();
+  if (!module || !isConfigured) {
+    console.log('[RevenueCat] invalidateCustomerInfoCache - module not ready');
+    return;
+  }
+  
+  try {
+    if (typeof (module as any).invalidateCustomerInfoCache === 'function') {
+      await (module as any).invalidateCustomerInfoCache();
+      console.log('[RevenueCat] Customer info cache invalidated');
+    } else {
+      console.log('[RevenueCat] invalidateCustomerInfoCache not available, fetching fresh info');
+      await module.getCustomerInfo();
+    }
+  } catch (error) {
+    console.error('[RevenueCat] Cache invalidation failed:', error);
+  }
+};

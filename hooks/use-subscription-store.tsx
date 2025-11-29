@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import Constants from 'expo-constants';
+
 import createContextHook from '@nkzw/create-context-hook';
 import { CustomerInfo, SubscriptionPackage, SubscriptionStatus } from '@/types/subscription';
 import {
@@ -11,6 +11,8 @@ import {
   getCustomerInfo,
   purchasePackageByIdentifier,
   restorePurchases as restorePurchasesRC,
+  syncWithRevenueCat,
+  invalidateCustomerInfoCache,
   RevenueCatCustomerInfo,
   RevenueCatPackage,
 } from '@/lib/revenuecat';
@@ -596,25 +598,86 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, [isMockMode, loadMockStatus, persistCustomerInfo]);
 
   const cancelSubscriptionForDev = useCallback(async () => {
-    // Allow in dev, TestFlight, and Expo Go - but NOT in production App Store release
-    const isProductionRelease = !__DEV__ && 
-                                Constants.appOwnership !== 'expo' && 
-                                Constants.manifest?.releaseChannel !== undefined &&
-                                Constants.isDevice;
-    
-    if (isProductionRelease) {
-      console.log('[SubscriptionProvider] cancelSubscriptionForDev blocked in production');
-      return;
-    }
-
     console.log('[SubscriptionProvider] Cancelling subscription (dev/test mode)');
+    
     await secureDelete(SECURE_KEYS.subscriptionActive);
     setCustomerInfo(null);
     setStatus(trialStateRef.current.isActive ? 'trial' : 'free');
+    
     if (isMockMode || Platform.OS === 'web') {
       await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
     }
   }, [isMockMode]);
+
+  const forceRefreshFromServer = useCallback(async (): Promise<boolean> => {
+    if (isMockMode || Platform.OS === 'web') {
+      console.log('[SubscriptionProvider] Force refresh - mock mode, reloading local state');
+      await loadMockStatus();
+      return true;
+    }
+
+    try {
+      console.log('[SubscriptionProvider] Force refreshing from RevenueCat server...');
+      await invalidateCustomerInfoCache();
+      const info = await syncWithRevenueCat();
+      
+      if (info) {
+        const hasActive = Object.keys(info.entitlements?.active ?? {}).length > 0;
+        console.log('[SubscriptionProvider] Server sync result - has active:', hasActive);
+        
+        if (hasActive) {
+          await persistCustomerInfo(info);
+          return true;
+        } else {
+          await secureDelete(SECURE_KEYS.subscriptionActive);
+          setCustomerInfo(null);
+          setStatus(trialStateRef.current.isActive ? 'trial' : 'free');
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('[SubscriptionProvider] Force refresh failed:', error);
+      return false;
+    }
+  }, [isMockMode, loadMockStatus, persistCustomerInfo]);
+
+  const fullResetForTesting = useCallback(async () => {
+    console.log('[SubscriptionProvider] Full reset for testing...');
+    
+    await Promise.all([
+      AsyncStorage.multiRemove([
+        SUBSCRIPTION_OFFER_KEYS.trialStartISO,
+        SUBSCRIPTION_OFFER_KEYS.seenOffer,
+        SUBSCRIPTION_STORAGE_KEY,
+        FIRST_LAUNCH_KEY,
+      ]),
+      secureDelete(SECURE_KEYS.trialStartAt),
+      secureDelete(SECURE_KEYS.subscriptionActive),
+      secureDelete(SECURE_KEYS.hasSeenPaywall),
+    ]);
+    
+    setHasSeenPaywall(false);
+    setTrialState(defaultTrialState);
+    trialStateRef.current = defaultTrialState;
+    setStatus('free');
+    setCustomerInfo(null);
+    setIsFirstLaunch(true);
+    
+    if (!isMockMode && Platform.OS !== 'web') {
+      await invalidateCustomerInfoCache();
+      const info = await syncWithRevenueCat();
+      if (info) {
+        const hasActive = Object.keys(info.entitlements?.active ?? {}).length > 0;
+        if (hasActive) {
+          console.log('[SubscriptionProvider] Server still has active subscription');
+          await persistCustomerInfo(info);
+        }
+      }
+    }
+    
+    console.log('[SubscriptionProvider] Full reset complete');
+  }, [isMockMode, persistCustomerInfo]);
 
   const resetSubscriptionDebug = useCallback(async () => {
     const cleared = buildTrialState(null);
@@ -693,9 +756,13 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       resetSubscriptionDebug,
       forceExpireTrial,
       simulatePremiumActivation,
+      forceRefreshFromServer,
+      fullResetForTesting,
     }),
     [
       cancelSubscriptionForDev,
+      forceRefreshFromServer,
+      fullResetForTesting,
       canAccessPremiumFeatures,
       checkSubscriptionStatus,
       customerInfo,

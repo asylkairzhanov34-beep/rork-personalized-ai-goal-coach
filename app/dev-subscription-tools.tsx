@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,12 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { 
   Trash2, 
   Clock, 
@@ -19,7 +21,11 @@ import {
   RefreshCw, 
   User, 
   Settings,
-  CreditCard 
+  CreditCard,
+  CloudOff,
+  Server,
+  RotateCcw,
+  Shield,
 } from 'lucide-react-native';
 import { useSubscription } from '@/hooks/use-subscription-store';
 import { useAuth } from '@/hooks/use-auth-store';
@@ -28,7 +34,10 @@ import { useSubscriptionStatus } from '@/hooks/use-subscription-status';
 const STORAGE_KEYS = [
   'hasSeenPaywall',
   'trialStartedAt',
-  'isPremium',
+  'trialStartISO',
+  'hasSeenSubscriptionOffer',
+  '@subscription_status',
+  '@first_launch',
   'auth_user',
   'auth_sessions',
   'current_session',
@@ -37,34 +46,138 @@ const STORAGE_KEYS = [
   'subscription_state',
 ];
 
+const SECURE_STORE_KEYS = [
+  'trialStartAt',
+  'hasSeenPaywall',
+  'subscriptionActive',
+];
+
 export default function DevSubscriptionTools() {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
-  const { status, checkSubscriptionStatus, cancelSubscriptionForDev } = useSubscription();
+  const [storageValues, setStorageValues] = useState<Record<string, string | null>>({});
+  const { 
+    status, 
+    cancelSubscriptionForDev,
+    forceRefreshFromServer,
+    fullResetForTesting,
+    restorePurchases,
+    customerInfo,
+  } = useSubscription();
   const { user, logout } = useAuth();
   const { 
     isPremium,
     isTrialActive,
     isTrialExpired,
     trialExpiresAt,
-    startTrial,
     refreshStatus,
   } = useSubscriptionStatus();
 
-  const resetTrialData = useCallback(async () => {
+  const loadStorageValues = useCallback(async () => {
+    const values: Record<string, string | null> = {};
+    
+    for (const key of STORAGE_KEYS) {
+      try {
+        values[key] = await AsyncStorage.getItem(key);
+      } catch {
+        values[key] = null;
+      }
+    }
+    
+    if (Platform.OS !== 'web') {
+      for (const key of SECURE_STORE_KEYS) {
+        try {
+          values[`[Secure] ${key}`] = await SecureStore.getItemAsync(key);
+        } catch {
+          values[`[Secure] ${key}`] = null;
+        }
+      }
+    }
+    
+    setStorageValues(values);
+  }, []);
+
+  useEffect(() => {
+    loadStorageValues();
+  }, [loadStorageValues]);
+
+  const resetLocalCache = useCallback(async () => {
     if (isProcessing) return;
     setIsProcessing(true);
     try {
-      await AsyncStorage.multiRemove(['trialStartedAt', 'hasSeenPaywall']);
+      await cancelSubscriptionForDev();
       await refreshStatus();
-      Alert.alert('✅ Success', 'Trial data reset. Restart app to see first launch flow.');
+      await loadStorageValues();
+      Alert.alert('✅ Успех', 'Локальный кеш подписки сброшен. Статус теперь определяется сервером.');
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
+      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsProcessing(false);
     }
-  }, [isProcessing, refreshStatus]);
+  }, [isProcessing, cancelSubscriptionForDev, refreshStatus, loadStorageValues]);
+
+  const forceServerSync = useCallback(async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      const result = await forceRefreshFromServer();
+      await loadStorageValues();
+      if (result) {
+        Alert.alert('✅ Успех', `Синхронизация с сервером завершена.\nСтатус: ${status}`);
+      } else {
+        Alert.alert('⚠️ Внимание', 'Не удалось получить данные с сервера. Возможно, RevenueCat недоступен.');
+      }
+    } catch (error) {
+      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [isProcessing, forceRefreshFromServer, loadStorageValues, status]);
+
+  const performFullReset = useCallback(async () => {
+    Alert.alert(
+      '⚠️ Полный сброс',
+      'Это сбросит ВСЕ данные подписки локально и синхронизирует с сервером. Продолжить?',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Сбросить',
+          style: 'destructive',
+          onPress: async () => {
+            setIsProcessing(true);
+            try {
+              await fullResetForTesting();
+              await loadStorageValues();
+              Alert.alert('✅ Успех', 'Полный сброс завершен. Приложение как при первом запуске.');
+            } catch (error) {
+              Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
+            } finally {
+              setIsProcessing(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [fullResetForTesting, loadStorageValues]);
+
+  const performRestorePurchases = useCallback(async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      const result = await restorePurchases();
+      await loadStorageValues();
+      if (result) {
+        Alert.alert('✅ Успех', 'Покупки восстановлены! Премиум активен.');
+      } else {
+        Alert.alert('ℹ️ Информация', 'Активных покупок не найдено.');
+      }
+    } catch (error) {
+      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [isProcessing, restorePurchases, loadStorageValues]);
 
   const forceExpireTrial = useCallback(async () => {
     if (isProcessing) return;
@@ -72,68 +185,45 @@ export default function DevSubscriptionTools() {
     try {
       const expiredTime = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
       await AsyncStorage.setItem('trialStartedAt', expiredTime);
+      await AsyncStorage.setItem('trialStartISO', expiredTime);
+      if (Platform.OS !== 'web') {
+        await SecureStore.setItemAsync('trialStartAt', expiredTime);
+      }
       await refreshStatus();
-      Alert.alert('✅ Success', 'Trial forcefully expired. Restart app to see blocking modal.');
+      await loadStorageValues();
+      Alert.alert('✅ Успех', 'Trial принудительно истёк.');
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
+      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsProcessing(false);
     }
-  }, [isProcessing, refreshStatus]);
-
-  const simulatePurchase = useCallback(async () => {
-    if (isProcessing) return;
-    setIsProcessing(true);
-    try {
-      await AsyncStorage.setItem('isPremium', 'true');
-      router.push({
-        pathname: '/subscription-success',
-        params: {
-          planName: 'Premium (Simulated)',
-          trialStatus: 'Active',
-          nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        }
-      });
-    } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [isProcessing, router]);
-
-  const cancelSubscription = useCallback(async () => {
-    if (isProcessing) return;
-    setIsProcessing(true);
-    try {
-      await cancelSubscriptionForDev();
-      await refreshStatus();
-      Alert.alert('✅ Success', 'Subscription cancelled (test mode).');
-    } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [isProcessing, cancelSubscriptionForDev, refreshStatus]);
+  }, [isProcessing, refreshStatus, loadStorageValues]);
 
   const clearAllData = useCallback(async () => {
     Alert.alert(
-      '⚠️ Warning',
-      'This will clear ALL app data including auth. Are you sure?',
+      '⚠️ Предупреждение',
+      'Это удалит ВСЕ данные приложения включая авторизацию. Уверены?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Отмена', style: 'cancel' },
         {
-          text: 'Clear All',
+          text: 'Удалить всё',
           style: 'destructive',
           onPress: async () => {
             setIsProcessing(true);
             try {
-              await AsyncStorage.multiRemove(STORAGE_KEYS);
-              await AsyncStorage.clear(); // Clear everything
+              await AsyncStorage.clear();
+              if (Platform.OS !== 'web') {
+                for (const key of SECURE_STORE_KEYS) {
+                  try {
+                    await SecureStore.deleteItemAsync(key);
+                  } catch {}
+                }
+              }
               await logout();
-              Alert.alert('✅ Success', 'All data cleared. App will restart.');
+              Alert.alert('✅ Успех', 'Все данные удалены.');
               router.replace('/');
             } catch (error) {
-              Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
+              Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
             } finally {
               setIsProcessing(false);
             }
@@ -149,173 +239,235 @@ export default function DevSubscriptionTools() {
     );
   };
 
-  if (!__DEV__) {
-    return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
-        <View style={styles.notAvailable}>
-          <Text style={styles.notAvailableText}>
-            Developer tools are only available in development builds
-          </Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const activeEntitlements = customerInfo?.entitlements?.active 
+    ? Object.keys(customerInfo.entitlements.active) 
+    : [];
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>🛠 Developer Tools</Text>
-          <Text style={styles.subtitle}>Test subscription flows</Text>
-        </View>
+    <>
+      <Stack.Screen 
+        options={{ 
+          title: 'Инструменты подписки',
+          headerStyle: { backgroundColor: '#000' },
+          headerTintColor: '#FFD700',
+        }} 
+      />
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <Text style={styles.title}>🛠 Тестирование подписки</Text>
+            <Text style={styles.subtitle}>Доступно в TestFlight и Dev</Text>
+          </View>
 
-        {/* Current Status */}
-        <View style={styles.statusCard}>
-          <Text style={styles.statusTitle}>Current Status</Text>
-          <View style={styles.statusGrid}>
-            <View style={styles.statusItem}>
-              <User size={16} color="#888" />
-              <Text style={styles.statusLabel}>User:</Text>
-              <Text style={styles.statusValue} numberOfLines={1}>
-                {user?.email || 'Not logged in'}
-              </Text>
-            </View>
-            <View style={styles.statusItem}>
-              <CreditCard size={16} color="#888" />
-              <Text style={styles.statusLabel}>Premium:</Text>
-              <Text style={[styles.statusValue, isPremium && styles.premiumText]}>
-                {isPremium ? 'Active' : 'Inactive'}
-              </Text>
-            </View>
-            <View style={styles.statusItem}>
-              <Clock size={16} color="#888" />
-              <Text style={styles.statusLabel}>Trial:</Text>
-              <Text style={styles.statusValue}>
-                {isTrialActive ? 'Active' : isTrialExpired ? 'Expired' : 'Not started'}
-              </Text>
-            </View>
-            {trialExpiresAt && (
+          <View style={styles.statusCard}>
+            <Text style={styles.statusTitle}>Текущий статус</Text>
+            <View style={styles.statusGrid}>
               <View style={styles.statusItem}>
-                <Settings size={16} color="#888" />
-                <Text style={styles.statusLabel}>Expires:</Text>
+                <User size={16} color="#888" />
+                <Text style={styles.statusLabel}>Пользователь:</Text>
                 <Text style={styles.statusValue} numberOfLines={1}>
-                  {new Date(trialExpiresAt).toLocaleString()}
+                  {user?.email || 'Не авторизован'}
                 </Text>
               </View>
+              <View style={styles.statusItem}>
+                <Shield size={16} color="#888" />
+                <Text style={styles.statusLabel}>Статус:</Text>
+                <Text style={[styles.statusValue, status === 'premium' && styles.premiumText]}>
+                  {status === 'premium' ? 'Premium' : status === 'trial' ? 'Trial' : 'Free'}
+                </Text>
+              </View>
+              <View style={styles.statusItem}>
+                <CreditCard size={16} color="#888" />
+                <Text style={styles.statusLabel}>Premium:</Text>
+                <Text style={[styles.statusValue, isPremium && styles.premiumText]}>
+                  {isPremium ? 'Активен' : 'Неактивен'}
+                </Text>
+              </View>
+              <View style={styles.statusItem}>
+                <Clock size={16} color="#888" />
+                <Text style={styles.statusLabel}>Trial:</Text>
+                <Text style={styles.statusValue}>
+                  {isTrialActive ? 'Активен' : isTrialExpired ? 'Истёк' : 'Не начат'}
+                </Text>
+              </View>
+              {trialExpiresAt && (
+                <View style={styles.statusItem}>
+                  <Settings size={16} color="#888" />
+                  <Text style={styles.statusLabel}>Истекает:</Text>
+                  <Text style={styles.statusValue} numberOfLines={1}>
+                    {new Date(trialExpiresAt).toLocaleString('ru-RU')}
+                  </Text>
+                </View>
+              )}
+              {activeEntitlements.length > 0 && (
+                <View style={styles.statusItem}>
+                  <CheckCircle size={16} color="#4CAF50" />
+                  <Text style={styles.statusLabel}>Entitlements:</Text>
+                  <Text style={[styles.statusValue, styles.premiumText]}>
+                    {activeEntitlements.join(', ')}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🔄 Синхронизация с сервером</Text>
+            <Text style={styles.sectionSubtitle}>
+              Используйте эти кнопки для синхронизации с RevenueCat
+            </Text>
+            
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#2196F3' }]}
+              onPress={forceServerSync}
+              disabled={isProcessing}
+            >
+              <Server size={20} color="#FFF" />
+              <Text style={styles.actionButtonText}>Синхронизировать с сервером</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+              onPress={performRestorePurchases}
+              disabled={isProcessing}
+            >
+              <RefreshCw size={20} color="#FFF" />
+              <Text style={styles.actionButtonText}>Восстановить покупки</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🧪 Тестовые действия</Text>
+            
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
+              onPress={resetLocalCache}
+              disabled={isProcessing}
+            >
+              <CloudOff size={20} color="#FFF" />
+              <Text style={styles.actionButtonText}>Сбросить локальный кеш подписки</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#E91E63' }]}
+              onPress={forceExpireTrial}
+              disabled={isProcessing}
+            >
+              <XCircle size={20} color="#FFF" />
+              <Text style={styles.actionButtonText}>Принудительно завершить Trial</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#9C27B0' }]}
+              onPress={performFullReset}
+              disabled={isProcessing}
+            >
+              <RotateCcw size={20} color="#FFF" />
+              <Text style={styles.actionButtonText}>Полный сброс (как первый запуск)</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>📦 Хранилище</Text>
+            <Text style={styles.sectionSubtitle}>Текущие значения в хранилище</Text>
+            
+            {Object.entries(storageValues).map(([key, value]) => (
+              <TouchableOpacity
+                key={key}
+                style={styles.storageKeyRow}
+                onPress={() => toggleKey(key)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.checkbox}>
+                  {selectedKeys.includes(key) && <CheckCircle size={16} color="#FFD700" />}
+                </View>
+                <View style={styles.storageKeyInfo}>
+                  <Text style={styles.storageKeyText}>{key}</Text>
+                  <Text style={styles.storageValueText} numberOfLines={1}>
+                    {value ?? '(null)'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            
+            <TouchableOpacity
+              style={styles.refreshButton}
+              onPress={loadStorageValues}
+            >
+              <RefreshCw size={16} color="#FFD700" />
+              <Text style={styles.refreshButtonText}>Обновить значения</Text>
+            </TouchableOpacity>
+
+            {selectedKeys.length > 0 && (
+              <TouchableOpacity
+                style={styles.clearSelectedButton}
+                onPress={async () => {
+                  setIsProcessing(true);
+                  try {
+                    const asyncKeys = selectedKeys.filter(k => !k.startsWith('[Secure]'));
+                    const secureKeys = selectedKeys
+                      .filter(k => k.startsWith('[Secure]'))
+                      .map(k => k.replace('[Secure] ', ''));
+                    
+                    if (asyncKeys.length > 0) {
+                      await AsyncStorage.multiRemove(asyncKeys);
+                    }
+                    
+                    if (Platform.OS !== 'web' && secureKeys.length > 0) {
+                      for (const key of secureKeys) {
+                        await SecureStore.deleteItemAsync(key);
+                      }
+                    }
+                    
+                    Alert.alert('✅ Успех', `Удалено ${selectedKeys.length} ключей`);
+                    setSelectedKeys([]);
+                    await loadStorageValues();
+                    await refreshStatus();
+                  } catch {
+                    Alert.alert('Ошибка', 'Не удалось удалить ключи');
+                  } finally {
+                    setIsProcessing(false);
+                  }
+                }}
+              >
+                <Trash2 size={18} color="#FF6B6B" />
+                <Text style={styles.clearSelectedText}>
+                  Удалить {selectedKeys.length} выбранных
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
-        </View>
 
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#4A90E2' }]}
-            onPress={resetTrialData}
-            disabled={isProcessing}
-          >
-            <RefreshCw size={20} color="#FFF" />
-            <Text style={styles.actionButtonText}>Reset All Subscription Data</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#E25B45' }]}
-            onPress={forceExpireTrial}
-            disabled={isProcessing}
-          >
-            <XCircle size={20} color="#FFF" />
-            <Text style={styles.actionButtonText}>Force Expire Trial</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#5CB85C' }]}
-            onPress={simulatePurchase}
-            disabled={isProcessing}
-          >
-            <CheckCircle size={20} color="#FFF" />
-            <Text style={styles.actionButtonText}>Simulate Purchase Success</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#9B59B6' }]}
-            onPress={cancelSubscription}
-            disabled={isProcessing}
-          >
-            <CreditCard size={20} color="#FFF" />
-            <Text style={styles.actionButtonText}>Cancel Subscription (TEST ONLY)</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Storage Keys */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Storage Keys</Text>
-          <Text style={styles.sectionSubtitle}>Select keys to inspect/clear</Text>
-          {STORAGE_KEYS.map(key => (
+          <View style={styles.dangerZone}>
+            <Text style={styles.dangerTitle}>⚠️ Опасная зона</Text>
             <TouchableOpacity
-              key={key}
-              style={styles.storageKeyRow}
-              onPress={() => toggleKey(key)}
-              activeOpacity={0.7}
+              style={styles.dangerButton}
+              onPress={clearAllData}
+              disabled={isProcessing}
             >
-              <View style={styles.checkbox}>
-                {selectedKeys.includes(key) && <CheckCircle size={16} color="#FFD700" />}
-              </View>
-              <Text style={styles.storageKeyText}>{key}</Text>
+              <Trash2 size={20} color="#FFF" />
+              <Text style={styles.dangerButtonText}>Удалить ВСЕ данные приложения</Text>
             </TouchableOpacity>
-          ))}
-          
-          {selectedKeys.length > 0 && (
-            <TouchableOpacity
-              style={styles.clearSelectedButton}
-              onPress={async () => {
-                setIsProcessing(true);
-                try {
-                  await AsyncStorage.multiRemove(selectedKeys);
-                  Alert.alert('✅ Success', `Cleared ${selectedKeys.length} keys`);
-                  setSelectedKeys([]);
-                  await refreshStatus();
-                } catch (error) {
-                  Alert.alert('Error', 'Failed to clear keys');
-                } finally {
-                  setIsProcessing(false);
-                }
-              }}
-            >
-              <Trash2 size={18} color="#FF6B6B" />
-              <Text style={styles.clearSelectedText}>
-                Clear {selectedKeys.length} selected keys
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Danger Zone */}
-        <View style={styles.dangerZone}>
-          <Text style={styles.dangerTitle}>⚠️ Danger Zone</Text>
-          <TouchableOpacity
-            style={styles.dangerButton}
-            onPress={clearAllData}
-            disabled={isProcessing}
-          >
-            <Trash2 size={20} color="#FFF" />
-            <Text style={styles.dangerButtonText}>Clear ALL App Data</Text>
-          </TouchableOpacity>
-        </View>
-
-        {isProcessing && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#FFD700" />
           </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+
+          <View style={styles.infoBox}>
+            <Text style={styles.infoTitle}>ℹ️ Информация</Text>
+            <Text style={styles.infoText}>
+              • Синхронизировать с сервером - получает актуальный статус из RevenueCat{'\n'}
+              • Сбросить локальный кеш - удаляет локальные данные, но не отменяет подписку{'\n'}
+              • Полный сброс - сбрасывает всё и синхронизирует с сервером{'\n'}
+              • Для тестирования Sandbox подписок используйте тестовый Apple ID
+            </Text>
+          </View>
+
+          {isProcessing && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#FFD700" />
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 }
 
@@ -406,7 +558,7 @@ const styles = StyleSheet.create({
   storageKeyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 8,
@@ -422,10 +574,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  storageKeyText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+  storageKeyInfo: {
     flex: 1,
+  },
+  storageKeyText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+  },
+  storageValueText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: 2,
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    color: '#FFD700',
+    fontWeight: '500',
   },
   clearSelectedButton: {
     flexDirection: 'row',
@@ -469,6 +642,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
   },
+  infoBox: {
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(33, 150, 243, 0.3)',
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2196F3',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    lineHeight: 18,
+  },
   loadingOverlay: {
     position: 'absolute',
     top: 0,
@@ -478,28 +670,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  notAvailable: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  notAvailableText: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.6)',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  backButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#FFD700',
-  },
-  backButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#000',
   },
 });
