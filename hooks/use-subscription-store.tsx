@@ -7,12 +7,13 @@ import createContextHook from '@nkzw/create-context-hook';
 import { CustomerInfo, SubscriptionPackage, SubscriptionStatus } from '@/types/subscription';
 import {
   initializeRevenueCat,
-  getOfferings,
   getCustomerInfo,
   purchasePackageByIdentifier,
   restorePurchases as restorePurchasesRC,
   syncWithRevenueCat,
   invalidateCustomerInfoCache,
+  getOfferingsWithCache,
+  getOriginalPackages,
   RevenueCatCustomerInfo,
   RevenueCatPackage,
 } from '@/lib/revenuecat';
@@ -321,7 +322,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, []);
 
   const loadOfferingsFromRevenueCat = useCallback(async () => {
-    const offerings = await getOfferings();
+    // Используем getOfferingsWithCache для сохранения оригинальных пакетов
+    const offerings = await getOfferingsWithCache();
     if (offerings?.current?.availablePackages?.length) {
       const formatted = offerings.current.availablePackages.map((pkg: RevenueCatPackage) => ({
         identifier: pkg.identifier,
@@ -336,6 +338,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       }));
       setPackages(formatted);
       console.log('[SubscriptionProvider] Loaded offerings:', formatted.length, 'packages');
+      console.log('[SubscriptionProvider] Original packages cached:', getOriginalPackages().length);
     } else if (isMockMode || Platform.OS === 'web') {
       setPackages(WEB_MOCK_PACKAGES);
       console.log('[SubscriptionProvider] Using mock packages');

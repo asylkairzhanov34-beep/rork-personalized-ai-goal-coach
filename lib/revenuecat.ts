@@ -181,7 +181,7 @@ export const getCustomerInfo = async (): Promise<RevenueCatCustomerInfo | null> 
 };
 
 export const purchasePackage = async (
-  pkg: RevenueCatPackage
+  pkg: RevenueCatPackage | any
 ): Promise<{ customerInfo: RevenueCatCustomerInfo } | null> => {
   const module = loadPurchasesModule();
   if (!module || !isConfigured) {
@@ -193,10 +193,10 @@ export const purchasePackage = async (
   
   try {
     console.log('[RevenueCat] 🛒 Initiating purchase...');
-    console.log('[RevenueCat] Package ID:', pkg.identifier);
-    console.log('[RevenueCat] Product ID:', pkg.product.identifier);
-    console.log('[RevenueCat] Price:', pkg.product.priceString);
+    console.log('[RevenueCat] Package:', JSON.stringify(pkg, null, 2));
     
+    // ВАЖНО: RevenueCat требует оригинальный объект пакета из getOfferings()
+    // Передаем объект напрямую в purchasePackage
     const result = await module.purchasePackage(pkg);
     
     console.log('[RevenueCat] ✅ Purchase successful!');
@@ -237,6 +237,35 @@ export const restorePurchases = async (): Promise<RevenueCatCustomerInfo | null>
   }
 };
 
+// Хранилище для оригинальных пакетов RevenueCat
+let cachedOriginalPackages: any[] = [];
+
+export const getOriginalPackages = (): any[] => cachedOriginalPackages;
+
+export const getOfferingsWithCache = async (): Promise<RevenueCatOfferings | null> => {
+  const module = loadPurchasesModule();
+  if (!module || !isConfigured) {
+    console.error('[RevenueCat] ❌ getOfferingsWithCache - module not ready');
+    return null;
+  }
+  
+  try {
+    console.log('[RevenueCat] 📦 Fetching offerings with cache...');
+    const offerings = await module.getOfferings();
+    
+    if (offerings?.current?.availablePackages) {
+      // Сохраняем оригинальные пакеты для покупки
+      cachedOriginalPackages = offerings.current.availablePackages;
+      console.log('[RevenueCat] ✅ Cached', cachedOriginalPackages.length, 'original packages');
+    }
+    
+    return offerings;
+  } catch (error) {
+    console.error('[RevenueCat] ❌ getOfferingsWithCache failed:', error);
+    return null;
+  }
+};
+
 // Legacy exports for compatibility
 export const initializeSubscriptionFlow = initializeRevenueCat;
 export const fetchOfferings = getOfferings;
@@ -244,22 +273,55 @@ export const fetchCustomerInfo = getCustomerInfo;
 export const purchasePackageByIdentifier = async (
   identifier: string
 ): Promise<{ info: RevenueCatCustomerInfo; purchasedPackage: RevenueCatPackage } | null> => {
-  const offerings = await getOfferings();
-  if (!offerings?.current?.availablePackages) {
-    console.warn('[RevenueCat] No offerings available');
-    return null;
-  }
+  console.log('[RevenueCat] 🛒 purchasePackageByIdentifier called with:', identifier);
   
-  const pkg = offerings.current.availablePackages.find(p => p.identifier === identifier);
+  // Сначала пробуем найти в кэше оригинальных пакетов
+  let pkg = cachedOriginalPackages.find(
+    (p: any) => p.identifier === identifier || p.product?.identifier === identifier
+  );
+  
+  // Если не найден в кэше, загружаем свежие offerings
   if (!pkg) {
-    console.warn('[RevenueCat] Package not found:', identifier);
+    console.log('[RevenueCat] Package not in cache, fetching fresh offerings...');
+    const offerings = await getOfferingsWithCache();
+    
+    if (!offerings?.current?.availablePackages) {
+      console.warn('[RevenueCat] ❌ No offerings available');
+      return null;
+    }
+    
+    pkg = cachedOriginalPackages.find(
+      (p: any) => p.identifier === identifier || p.product?.identifier === identifier
+    );
+  }
+  
+  if (!pkg) {
+    console.warn('[RevenueCat] ❌ Package not found:', identifier);
+    console.warn('[RevenueCat] Available packages:', cachedOriginalPackages.map((p: any) => p.identifier).join(', '));
     return null;
   }
   
+  console.log('[RevenueCat] ✅ Found package:', pkg.identifier);
+  console.log('[RevenueCat] Package object type:', typeof pkg);
+  
+  // ВАЖНО: Передаем ОРИГИНАЛЬНЫЙ объект пакета из RevenueCat SDK
   const result = await purchasePackage(pkg);
   if (!result) return null;
   
-  return { info: result.customerInfo, purchasedPackage: pkg };
+  return { 
+    info: result.customerInfo, 
+    purchasedPackage: {
+      identifier: pkg.identifier,
+      product: {
+        identifier: pkg.product?.identifier,
+        title: pkg.product?.title,
+        description: pkg.product?.description,
+        price: pkg.product?.price,
+        priceString: pkg.product?.priceString,
+        currencyCode: pkg.product?.currencyCode,
+      }
+    }
+  };
 };
 export const restorePurchasesFromRevenueCat = restorePurchases;
 

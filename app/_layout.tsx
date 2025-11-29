@@ -238,9 +238,19 @@ export default function RootLayout() {
             await Purchases.configure({ apiKey });
             console.log("✅ [RevenueCat] Успешно инициализирован!");
             
+            // Загружаем offerings и логируем информацию о пакетах
             const offerings = await Purchases.getOfferings();
             console.log("📦 [RevenueCat] Offerings загружены:", offerings.current?.identifier || "НЕТ ТЕКУЩЕГО OFFERING");
             console.log("📦 [RevenueCat] Все offerings:", Object.keys(offerings.all));
+            
+            if (offerings.current?.availablePackages) {
+              console.log("📦 [RevenueCat] Доступные пакеты:");
+              offerings.current.availablePackages.forEach((pkg: any, idx: number) => {
+                console.log(`  ${idx + 1}. ${pkg.identifier} - ${pkg.product?.priceString || 'цена не указана'}`);
+                console.log(`     Product ID: ${pkg.product?.identifier}`);
+                console.log(`     Package type: ${typeof pkg}`);
+              });
+            }
           } catch (e: any) {
             console.error("❌ [RevenueCat] Ошибка инициализации:", e.message);
             console.error("❌ [RevenueCat] Stack:", e.stack);
