@@ -203,6 +203,70 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
     }
   }, []);
 
+  const playSound = useCallback(async (soundId: SoundId) => {
+    console.log('[TimerStore] Playing sound:', soundId);
+    
+    try {
+      await SoundManager.playTimerSound(soundId);
+      console.log('[TimerStore] Sound played');
+    } catch {
+      console.log('[TimerStore] Sound error');
+    }
+    
+    if (Platform.OS !== 'web') {
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        console.log('[TimerStore] Haptics not available');
+      }
+    }
+  }, []);
+
+  const handleTimerComplete = useCallback(async () => {
+    console.log('[TimerStore] Timer completed!');
+    
+    if (state.notificationId) {
+      await cancelNotification(state.notificationId);
+    }
+    
+    await playSound(state.notificationSound);
+    
+    setState(prev => {
+      const session: TimerSession = {
+        id: Date.now().toString(),
+        goalId: prev.currentGoalId,
+        duration: prev.totalTime,
+        completedAt: new Date(),
+        type: prev.mode === 'focus' ? 'focus' : 'break',
+      };
+
+      const sessionsCompleted = prev.mode === 'focus' 
+        ? prev.sessionsCompleted + 1 
+        : prev.sessionsCompleted;
+      
+      let nextMode: 'focus' | 'shortBreak' | 'longBreak' = 'focus';
+      if (prev.mode === 'focus') {
+        nextMode = sessionsCompleted % 4 === 0 ? 'longBreak' : 'shortBreak';
+      }
+
+      const nextDuration = TIMER_DURATIONS[nextMode];
+
+      return {
+        ...prev,
+        isRunning: false,
+        isPaused: false,
+        currentTime: nextDuration,
+        totalTime: nextDuration,
+        mode: nextMode,
+        sessionsCompleted,
+        sessions: [...prev.sessions, session],
+        notificationId: undefined,
+      };
+    });
+    
+    await clearBackgroundState();
+  }, [state.notificationId, state.notificationSound, cancelNotification, playSound, clearBackgroundState]);
+
   useEffect(() => {
     const initializeStore = async () => {
       await SoundManager.configure();
@@ -255,15 +319,18 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
     if (Platform.OS === 'web') return;
 
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      console.log('[TimerStore] AppState:', appState.current, '->', nextAppState);
+      const previousAppState = appState.current;
+      console.log('[TimerStore] AppState:', previousAppState, '->', nextAppState);
       
       if (
-        appState.current === 'active' &&
+        previousAppState === 'active' &&
         nextAppState.match(/inactive|background/)
       ) {
         console.log('[TimerStore] Going to background');
+        console.log('[TimerStore] Timer state - running:', state.isRunning, 'paused:', state.isPaused, 'time:', state.currentTime);
         
         if (state.isRunning && !state.isPaused && state.currentTime > 0) {
+          console.log('[TimerStore] Timer is active, saving state and scheduling notification');
           await saveBackgroundState(state);
           
           const modeText = state.mode === 'focus' ? 'Фокус' : state.mode === 'shortBreak' ? 'Короткий перерыв' : 'Длинный перерыв';
@@ -278,31 +345,40 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
           if (notifId) {
             backgroundNotificationId.current = notifId;
           }
+        } else {
+          console.log('[TimerStore] Timer not active, no notification scheduled');
         }
       } else if (
-        appState.current.match(/inactive|background/) &&
+        previousAppState.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
         console.log('[TimerStore] Returning to foreground');
+        console.log('[TimerStore] Cancelling background notifications');
         
         await cancelBackgroundNotification();
         
-        if (state.isRunning) {
-          const bgState = await getBackgroundState();
-          if (bgState) {
-            console.log('[TimerStore] Restoring timer:', bgState.remainingTime, 'sec');
-            
-            if (bgState.remainingTime <= 0) {
-              handleTimerComplete();
-            } else {
-              setState(prev => ({
-                ...prev,
-                currentTime: bgState.remainingTime,
-              }));
-            }
-            
-            await clearBackgroundState();
+        const bgState = await getBackgroundState();
+        console.log('[TimerStore] Background state:', bgState ? 'exists' : 'none');
+        
+        if (bgState && bgState.isActive) {
+          console.log('[TimerStore] Restoring timer from background:', bgState.remainingTime, 'sec remaining');
+          
+          if (bgState.remainingTime <= 0) {
+            console.log('[TimerStore] Timer completed in background');
+            handleTimerComplete();
+          } else {
+            console.log('[TimerStore] Updating timer with background time');
+            setState(prev => ({
+              ...prev,
+              currentTime: bgState.remainingTime,
+              isRunning: true,
+              isPaused: false,
+            }));
           }
+          
+          await clearBackgroundState();
+        } else {
+          console.log('[TimerStore] No active background timer to restore');
         }
       }
 
@@ -312,7 +388,7 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
     return () => {
       subscription.remove();
     };
-  }, [state.isRunning, state.isPaused, state.currentTime, state.mode, saveBackgroundState, getBackgroundState, clearBackgroundState, scheduleBackgroundNotification, cancelBackgroundNotification]);
+  }, [state.isRunning, state.isPaused, state.currentTime, state.mode, saveBackgroundState, getBackgroundState, clearBackgroundState, scheduleBackgroundNotification, cancelBackgroundNotification, handleTimerComplete]);
 
   useEffect(() => {
     if (state.sessions.length > 0) {
@@ -320,69 +396,7 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
     }
   }, [state.sessions]);
 
-  const playSound = useCallback(async (soundId: SoundId) => {
-    console.log('[TimerStore] Playing sound:', soundId);
-    
-    try {
-      await SoundManager.playTimerSound(soundId);
-      console.log('[TimerStore] Sound played');
-    } catch (error) {
-      console.error('[TimerStore] Sound error:', error);
-    }
-    
-    if (Platform.OS !== 'web') {
-      try {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (error) {
-        console.log('[TimerStore] Haptics not available');
-      }
-    }
-  }, []);
 
-  const handleTimerComplete = useCallback(async () => {
-    console.log('[TimerStore] Timer completed!');
-    
-    if (state.notificationId) {
-      await cancelNotification(state.notificationId);
-    }
-    
-    await playSound(state.notificationSound);
-    
-    setState(prev => {
-      const session: TimerSession = {
-        id: Date.now().toString(),
-        goalId: prev.currentGoalId,
-        duration: prev.totalTime,
-        completedAt: new Date(),
-        type: prev.mode === 'focus' ? 'focus' : 'break',
-      };
-
-      const sessionsCompleted = prev.mode === 'focus' 
-        ? prev.sessionsCompleted + 1 
-        : prev.sessionsCompleted;
-      
-      let nextMode: 'focus' | 'shortBreak' | 'longBreak' = 'focus';
-      if (prev.mode === 'focus') {
-        nextMode = sessionsCompleted % 4 === 0 ? 'longBreak' : 'shortBreak';
-      }
-
-      const nextDuration = TIMER_DURATIONS[nextMode];
-
-      return {
-        ...prev,
-        isRunning: false,
-        isPaused: false,
-        currentTime: nextDuration,
-        totalTime: nextDuration,
-        mode: nextMode,
-        sessionsCompleted,
-        sessions: [...prev.sessions, session],
-        notificationId: undefined,
-      };
-    });
-    
-    await clearBackgroundState();
-  }, [state.notificationId, state.notificationSound, cancelNotification, playSound, clearBackgroundState]);
 
   useEffect(() => {
     if (state.isRunning && !state.isPaused) {

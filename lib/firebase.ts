@@ -9,6 +9,17 @@ import {
   User as FirebaseUser,
   deleteUser
 } from 'firebase/auth';
+import { 
+  getFirestore, 
+  Firestore, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  updateDoc, 
+  deleteDoc,
+  serverTimestamp,
+  Timestamp
+} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCscmFoWxkLzJaI7Ir3jkxp3Gko0lS0Hz0",
@@ -21,8 +32,9 @@ const firebaseConfig = {
 
 let app: FirebaseApp;
 let auth: Auth;
+let db: Firestore;
 
-export function initializeFirebase(): { app: FirebaseApp; auth: Auth } {
+export function initializeFirebase(): { app: FirebaseApp; auth: Auth; db: Firestore } {
   console.log('[Firebase] Initializing...');
   
   const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'appId'];
@@ -42,9 +54,10 @@ export function initializeFirebase(): { app: FirebaseApp; auth: Auth } {
   }
   
   auth = getAuth(app);
-  console.log('[Firebase] Initialized successfully');
+  db = getFirestore(app);
+  console.log('[Firebase] Initialized successfully (Auth + Firestore)');
   
-  return { app, auth };
+  return { app, auth, db };
 }
 
 export function getFirebaseAuth(): Auth {
@@ -52,6 +65,13 @@ export function getFirebaseAuth(): Auth {
     initializeFirebase();
   }
   return auth;
+}
+
+export function getFirebaseDB(): Firestore {
+  if (!db) {
+    initializeFirebase();
+  }
+  return db;
 }
 
 export async function signInWithAppleCredential(identityToken: string, nonce?: string): Promise<FirebaseUser> {
@@ -111,4 +131,55 @@ export function subscribeToAuthState(callback: (user: FirebaseUser | null) => vo
   return onAuthStateChanged(firebaseAuth, callback);
 }
 
-export type { FirebaseUser };
+export async function saveUserProfile(userId: string, data: any): Promise<void> {
+  console.log('[Firebase] Saving user profile:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  await setDoc(userRef, {
+    ...data,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  
+  console.log('[Firebase] User profile saved');
+}
+
+export async function getUserProfile(userId: string): Promise<any | null> {
+  console.log('[Firebase] Getting user profile:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  const docSnap = await getDoc(userRef);
+  
+  if (docSnap.exists()) {
+    console.log('[Firebase] User profile found');
+    return docSnap.data();
+  }
+  
+  console.log('[Firebase] User profile not found');
+  return null;
+}
+
+export async function updateUserProfile(userId: string, data: any): Promise<void> {
+  console.log('[Firebase] Updating user profile:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  await updateDoc(userRef, {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+  
+  console.log('[Firebase] User profile updated');
+}
+
+export async function deleteUserProfile(userId: string): Promise<void> {
+  console.log('[Firebase] Deleting user profile:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  await deleteDoc(userRef);
+  console.log('[Firebase] User profile deleted');
+}
+
+export type { FirebaseUser, Timestamp };

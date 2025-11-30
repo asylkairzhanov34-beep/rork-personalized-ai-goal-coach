@@ -3,6 +3,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import { FirstTimeProfile, FirstTimeSetupState } from '@/types/first-time-setup';
 import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
 import { useAuth } from '@/hooks/use-auth-store';
+import { saveUserProfile, getUserProfile, updateUserProfile } from '@/lib/firebase';
 
 const getFirstTimeSetupKey = (userId: string) => `first_time_setup_${userId}`;
 
@@ -19,10 +20,31 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
   const loadProfile = useCallback(async () => {
     try {
       console.log('[FirstTimeSetupProvider] Loading profile...');
-      const stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
+      
+      let stored: FirstTimeProfile | null = null;
+      
+      if (user && user.id) {
+        console.log('[FirstTimeSetupProvider] Loading from Firebase for user:', user.id);
+        const firebaseProfile = await getUserProfile(user.id);
+        
+        if (firebaseProfile) {
+          console.log('[FirstTimeSetupProvider] Firebase profile found');
+          stored = firebaseProfile.firstTimeSetup || null;
+          
+          if (stored) {
+            await safeStorageSet(FIRST_TIME_SETUP_KEY, stored);
+          }
+        } else {
+          console.log('[FirstTimeSetupProvider] No Firebase profile, checking local storage');
+          stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
+        }
+      } else {
+        console.log('[FirstTimeSetupProvider] No user, loading from local storage');
+        stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
+      }
+      
       console.log('[FirstTimeSetupProvider] Profile loaded:', stored ? 'Yes' : 'No');
       
-      // Use requestAnimationFrame to prevent blocking
       requestAnimationFrame(() => {
         setState({
           profile: stored,
@@ -40,7 +62,7 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
         });
       });
     }
-  }, [FIRST_TIME_SETUP_KEY]);
+  }, [FIRST_TIME_SETUP_KEY, user]);
 
   const updateProfile = useCallback(async (updates: Partial<FirstTimeProfile>) => {
     setState(prev => {
@@ -51,12 +73,21 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
 
       safeStorageSet(FIRST_TIME_SETUP_KEY, newProfile);
       
+      if (user && user.id) {
+        console.log('[FirstTimeSetupProvider] Syncing profile to Firebase');
+        updateUserProfile(user.id, {
+          firstTimeSetup: newProfile,
+        }).catch(error => {
+          console.error('[FirstTimeSetupProvider] Failed to sync to Firebase:', error);
+        });
+      }
+      
       return {
         ...prev,
         profile: newProfile,
       };
     });
-  }, [FIRST_TIME_SETUP_KEY]);
+  }, [FIRST_TIME_SETUP_KEY, user]);
 
   const completeSetup = useCallback(async () => {
     setState(prev => {
@@ -67,12 +98,24 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
       
       safeStorageSet(FIRST_TIME_SETUP_KEY, completed);
       
+      if (user && user.id) {
+        console.log('[FirstTimeSetupProvider] Saving completed setup to Firebase');
+        saveUserProfile(user.id, {
+          firstTimeSetup: completed,
+          email: user.email,
+          displayName: completed.nickname,
+          createdAt: new Date().toISOString(),
+        }).catch(error => {
+          console.error('[FirstTimeSetupProvider] Failed to save to Firebase:', error);
+        });
+      }
+      
       return {
         ...prev,
         profile: completed,
       };
     });
-  }, [FIRST_TIME_SETUP_KEY]);
+  }, [FIRST_TIME_SETUP_KEY, user]);
 
   const setStep = useCallback((step: number) => {
     setState(prev => ({ ...prev, currentStep: step }));
