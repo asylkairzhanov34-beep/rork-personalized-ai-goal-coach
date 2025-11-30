@@ -1,10 +1,6 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-// ============================================
-// ТИПЫ
-// ============================================
-
 export interface RevenueCatCustomerInfo {
   activeSubscriptions: string[];
   allPurchasedProductIdentifiers: string[];
@@ -49,32 +45,8 @@ type PurchasesModule = {
   restorePurchases: () => Promise<RevenueCatCustomerInfo>;
 };
 
-// ============================================
-// ОПРЕДЕЛЕНИЕ СРЕДЫ
-// ============================================
-
-const isRorkSandbox = (): boolean => {
-  if (typeof window !== 'undefined' && typeof window.location !== 'undefined') {
-    const hostname = window.location.hostname || '';
-    return hostname.includes('e2b.app') || hostname.includes('rork');
-  }
-  return false;
-};
-
-const isExpoGoRuntime = Constants?.appOwnership === 'expo';
-const isWeb = Platform.OS === 'web';
-
-const canUseNativePurchases = (): boolean => {
-  if (isRorkSandbox()) return false;
-  if (isWeb) return false;
-  if (isExpoGoRuntime) return false;
-  return Platform.OS === 'ios' || Platform.OS === 'android';
-};
-
-// ============================================
-// API КЛЮЧИ
-// ============================================
-
+// Hardcoded keys to ensure they work on real devices
+// process.env is unreliable in some build configurations
 const HARDCODED_IOS_KEY = 'appl_NIzzmGwASbGFsnfAddnshynSnsG';
 
 const API_KEYS = {
@@ -82,64 +54,66 @@ const API_KEYS = {
   android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '',
 };
 
+const isExpoGoRuntime = Constants?.appOwnership === 'expo';
+const canUseNativeRevenueCat = Platform.OS !== 'web' && !isExpoGoRuntime;
+const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
+
+let hasLoggedStatus = false;
+const logStatus = (message: string) => {
+  if (hasLoggedStatus) return;
+  hasLoggedStatus = true;
+  console.log(`[RevenueCat] ${message}`);
+};
+
+let moduleRef: PurchasesModule | null = null;
+let isConfigured = false;
+
 const getApiKey = (): string => {
   if (Platform.OS === 'ios') return API_KEYS.ios;
   if (Platform.OS === 'android') return API_KEYS.android;
   return '';
 };
 
-// ============================================
-// СОСТОЯНИЕ МОДУЛЯ
-// ============================================
-
-let moduleRef: PurchasesModule | null = null;
-let isConfigured = false;
-let cachedOriginalPackages: any[] = [];
-
-// ============================================
-// ЗАГРУЗКА МОДУЛЯ
-// ============================================
-
 const loadPurchasesModule = (): PurchasesModule | null => {
   if (moduleRef) return moduleRef;
   
-  // В Rork/Web/Expo Go - модуль недоступен
-  if (!canUseNativePurchases()) {
+  if (Platform.OS === 'web') {
+    logStatus('Web platform - using mock mode');
+    return null;
+  }
+  
+  // КРИТИЧНО: Для реальных устройств ВСЕГДА загружаем модуль
+  // Mock Mode отключен для iOS и Android
+  if (isRealDevice) {
+    console.log('[RevenueCat] Real device detected - FORCING native RevenueCat (no mock mode)');
+    try {
+      const RNPurchases = require('react-native-purchases');
+      moduleRef = RNPurchases.default ?? RNPurchases;
+      console.log('[RevenueCat] ✅ Module loaded successfully for real device');
+      return moduleRef;
+    } catch (error) {
+      console.error('[RevenueCat] ❌ CRITICAL: Module failed to load on real device:', error);
+      throw new Error('RevenueCat module required for real devices but failed to load');
+    }
+  }
+  
+  if (!canUseNativeRevenueCat) {
+    logStatus('Expo Go detected - using mock mode (RevenueCat requires development build)');
     return null;
   }
   
   try {
     const RNPurchases = require('react-native-purchases');
     moduleRef = RNPurchases.default ?? RNPurchases;
-    console.log('[RevenueCat] ✅ Native module loaded');
+    console.log('[RevenueCat] Module loaded successfully');
     return moduleRef;
   } catch (error) {
-    console.error('[RevenueCat] ❌ Failed to load module:', error);
+    console.log('[RevenueCat] Module not available - using mock mode');
     return null;
   }
 };
 
-// ============================================
-// ИНИЦИАЛИЗАЦИЯ
-// ============================================
-
 export const initializeRevenueCat = async (): Promise<boolean> => {
-  // Проверяем среду
-  if (isRorkSandbox()) {
-    console.log('[RevenueCat] ℹ️ Rork Sandbox - purchases available only on real device via TestFlight');
-    return false;
-  }
-  
-  if (isWeb) {
-    console.log('[RevenueCat] ℹ️ Web platform - purchases not supported');
-    return false;
-  }
-  
-  if (isExpoGoRuntime) {
-    console.log('[RevenueCat] ℹ️ Expo Go - use TestFlight for purchases');
-    return false;
-  }
-  
   if (isConfigured) {
     console.log('[RevenueCat] Already configured');
     return true;
@@ -147,82 +121,78 @@ export const initializeRevenueCat = async (): Promise<boolean> => {
   
   const module = loadPurchasesModule();
   if (!module) {
-    console.error('[RevenueCat] ❌ Module not available');
+    if (isRealDevice) {
+      console.error('[RevenueCat] ❌ CRITICAL: Real device but no module!');
+      throw new Error('RevenueCat module is required for real devices');
+    }
     return false;
   }
   
   const apiKey = getApiKey();
   if (!apiKey) {
-    console.error('[RevenueCat] ❌ No API key for:', Platform.OS);
+    console.warn('[RevenueCat] ❌ No API key for platform:', Platform.OS);
+    if (isRealDevice) {
+      throw new Error('RevenueCat API key is required for real devices');
+    }
     return false;
   }
   
   try {
-    console.log('[RevenueCat] Configuring for', Platform.OS, '...');
+    console.log('[RevenueCat] Configuring with API key...');
+    console.log('[RevenueCat] Platform:', Platform.OS);
+    console.log('[RevenueCat] Is real device:', isRealDevice);
     
-    // Debug логи для отладки
-    if (__DEV__ && module.LOG_LEVEL) {
+    // Для реальных устройств ВСЕГДА включаем debug логи
+    if ((isRealDevice || __DEV__) && module.LOG_LEVEL) {
       await module.setLogLevel(module.LOG_LEVEL.DEBUG);
+      console.log('[RevenueCat] Debug logging enabled');
     }
     
     await module.configure({ apiKey });
     isConfigured = true;
-    console.log('[RevenueCat] ✅ Configured successfully');
+    console.log('[RevenueCat] ✅ Configuration successful');
     return true;
   } catch (error) {
     console.error('[RevenueCat] ❌ Configuration failed:', error);
+    if (isRealDevice) {
+      throw error;
+    }
     return false;
   }
 };
 
-// ============================================
-// ПРОВЕРКА ДОСТУПНОСТИ
-// ============================================
-
 export const isRevenueCatAvailable = (): boolean => {
-  return canUseNativePurchases() && isConfigured;
+  // Для реальных устройств ВСЕГДА возвращаем true после загрузки модуля
+  if (isRealDevice) {
+    return !!loadPurchasesModule();
+  }
+  return canUseNativeRevenueCat && !!loadPurchasesModule();
 };
-
-export const isInSandboxEnvironment = (): boolean => {
-  return isRorkSandbox() || isWeb || isExpoGoRuntime;
-};
-
-// ============================================
-// ПОЛУЧЕНИЕ OFFERINGS (реальные цены из App Store)
-// ============================================
 
 export const getOfferings = async (): Promise<RevenueCatOfferings | null> => {
-  // В sandbox средах - возвращаем null
-  if (!canUseNativePurchases()) {
-    console.log('[RevenueCat] ℹ️ Cannot fetch offerings - not on real device');
-    return null;
-  }
-  
   const module = loadPurchasesModule();
   if (!module || !isConfigured) {
-    console.error('[RevenueCat] ❌ getOfferings - not initialized');
+    console.error('[RevenueCat] ❌ getOfferings - module not ready');
     return null;
   }
   
   try {
-    console.log('[RevenueCat] 📦 Fetching offerings from App Store...');
+    console.log('[RevenueCat] 📦 Fetching offerings...');
     const offerings = await module.getOfferings();
     
     if (!offerings?.current) {
-      console.warn('[RevenueCat] ⚠️ No current offering');
-      console.warn('[RevenueCat] → Check RevenueCat Dashboard → Offerings → Set as Current');
+      console.warn('[RevenueCat] ⚠️ No current offering available');
+      console.warn('[RevenueCat] Check RevenueCat Dashboard → Offerings');
       return null;
     }
     
-    console.log('[RevenueCat] ✅ Offerings loaded:', offerings.current.identifier);
+    console.log('[RevenueCat] ✅ Offerings fetched');
+    console.log('[RevenueCat] Current offering:', offerings.current.identifier);
+    console.log('[RevenueCat] Available packages:', offerings.current.availablePackages?.length ?? 0);
     
-    // Логируем реальные цены из App Store
-    offerings.current.availablePackages?.forEach((pkg, i) => {
-      console.log(`[RevenueCat] Package ${i + 1}: ${pkg.product.identifier} - ${pkg.product.priceString}`);
+    offerings.current.availablePackages?.forEach((pkg: RevenueCatPackage, index: number) => {
+      console.log(`[RevenueCat] Package ${index + 1}:`, pkg.product.identifier, '-', pkg.product.priceString);
     });
-    
-    // Кэшируем для покупки
-    cachedOriginalPackages = offerings.current.availablePackages || [];
     
     return offerings;
   } catch (error) {
@@ -231,111 +201,148 @@ export const getOfferings = async (): Promise<RevenueCatOfferings | null> => {
   }
 };
 
-// ============================================
-// ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ
-// ============================================
-
 export const getCustomerInfo = async (): Promise<RevenueCatCustomerInfo | null> => {
-  if (!canUseNativePurchases()) {
-    return null;
-  }
-  
   const module = loadPurchasesModule();
   if (!module || !isConfigured) {
+    console.log('[RevenueCat] getCustomerInfo - module not ready');
     return null;
   }
   
   try {
     const info = await module.getCustomerInfo();
-    console.log('[RevenueCat] 👤 Customer info:', {
-      activeSubscriptions: info.activeSubscriptions,
-      entitlements: Object.keys(info.entitlements?.active || {}),
-    });
+    console.log('[RevenueCat] Customer info fetched, active subs:', info?.activeSubscriptions?.length ?? 0);
     return info;
   } catch (error) {
-    console.error('[RevenueCat] ❌ getCustomerInfo failed:', error);
+    console.error('[RevenueCat] getCustomerInfo failed:', error);
     return null;
   }
 };
 
-// ============================================
-// ПОКУПКА (реальная через Apple Sandbox)
-// ============================================
-
 export const purchasePackage = async (
   pkg: RevenueCatPackage | any
 ): Promise<{ customerInfo: RevenueCatCustomerInfo } | null> => {
-  if (!canUseNativePurchases()) {
-    throw new Error('Purchases only available on real device via TestFlight');
-  }
-  
   const module = loadPurchasesModule();
   if (!module || !isConfigured) {
-    throw new Error('RevenueCat not initialized');
+    console.error('[RevenueCat] ❌ purchasePackage - module not ready');
+    console.error('[RevenueCat] Module loaded:', !!module);
+    console.error('[RevenueCat] Configured:', isConfigured);
+    return null;
   }
   
   try {
-    console.log('[RevenueCat] 🛒 Starting purchase:', pkg.identifier);
-    console.log('[RevenueCat] Product:', pkg.product?.identifier);
-    console.log('[RevenueCat] Price:', pkg.product?.priceString);
+    console.log('[RevenueCat] 🛒 Initiating purchase...');
+    console.log('[RevenueCat] Package:', JSON.stringify(pkg, null, 2));
     
+    // ВАЖНО: RevenueCat требует оригинальный объект пакета из getOfferings()
+    // Передаем объект напрямую в purchasePackage
     const result = await module.purchasePackage(pkg);
     
     console.log('[RevenueCat] ✅ Purchase successful!');
-    console.log('[RevenueCat] Active subscriptions:', result.customerInfo.activeSubscriptions);
-    console.log('[RevenueCat] Entitlements:', Object.keys(result.customerInfo.entitlements?.active || {}));
+    console.log('[RevenueCat] Active subscriptions:', result.customerInfo.activeSubscriptions?.length ?? 0);
+    console.log('[RevenueCat] Active entitlements:', Object.keys(result.customerInfo.entitlements?.active ?? {}).join(', '));
     
     return result;
   } catch (error: any) {
     if (error?.userCancelled) {
-      console.log('[RevenueCat] ℹ️ User cancelled purchase');
+      console.log('[RevenueCat] ℹ️ Purchase cancelled by user');
       throw { userCancelled: true };
     }
     
     console.error('[RevenueCat] ❌ Purchase failed');
     console.error('[RevenueCat] Error code:', error?.code);
     console.error('[RevenueCat] Error message:', error?.message);
-    console.error('[RevenueCat] Underlying error:', error?.underlyingErrorMessage);
+    console.error('[RevenueCat] Full error:', JSON.stringify(error, null, 2));
     
     throw error;
   }
 };
 
-// ============================================
-// ПОКУПКА ПО ИДЕНТИФИКАТОРУ
-// ============================================
+export const restorePurchases = async (): Promise<RevenueCatCustomerInfo | null> => {
+  const module = loadPurchasesModule();
+  if (!module || !isConfigured) {
+    console.log('[RevenueCat] restorePurchases - module not ready');
+    return null;
+  }
+  
+  try {
+    console.log('[RevenueCat] Restoring purchases...');
+    const info = await module.restorePurchases();
+    console.log('[RevenueCat] Restore successful, active subs:', info?.activeSubscriptions?.length ?? 0);
+    return info;
+  } catch (error) {
+    console.error('[RevenueCat] Restore failed:', error);
+    throw error;
+  }
+};
 
+// Хранилище для оригинальных пакетов RevenueCat
+let cachedOriginalPackages: any[] = [];
+
+export const getOriginalPackages = (): any[] => cachedOriginalPackages;
+
+export const getOfferingsWithCache = async (): Promise<RevenueCatOfferings | null> => {
+  const module = loadPurchasesModule();
+  if (!module || !isConfigured) {
+    console.error('[RevenueCat] ❌ getOfferingsWithCache - module not ready');
+    return null;
+  }
+  
+  try {
+    console.log('[RevenueCat] 📦 Fetching offerings with cache...');
+    const offerings = await module.getOfferings();
+    
+    if (offerings?.current?.availablePackages) {
+      // Сохраняем оригинальные пакеты для покупки
+      cachedOriginalPackages = offerings.current.availablePackages;
+      console.log('[RevenueCat] ✅ Cached', cachedOriginalPackages.length, 'original packages');
+    }
+    
+    return offerings;
+  } catch (error) {
+    console.error('[RevenueCat] ❌ getOfferingsWithCache failed:', error);
+    return null;
+  }
+};
+
+// Legacy exports for compatibility
+export const initializeSubscriptionFlow = initializeRevenueCat;
+export const fetchOfferings = getOfferings;
+export const fetchCustomerInfo = getCustomerInfo;
 export const purchasePackageByIdentifier = async (
   identifier: string
 ): Promise<{ info: RevenueCatCustomerInfo; purchasedPackage: RevenueCatPackage } | null> => {
-  console.log('[RevenueCat] 🛒 purchasePackageByIdentifier:', identifier);
+  console.log('[RevenueCat] 🛒 purchasePackageByIdentifier called with:', identifier);
   
-  // Ищем пакет в кэше
+  // Сначала пробуем найти в кэше оригинальных пакетов
   let pkg = cachedOriginalPackages.find(
-    (p) => p.identifier === identifier || p.product?.identifier === identifier
+    (p: any) => p.identifier === identifier || p.product?.identifier === identifier
   );
   
-  // Если не найден - загружаем свежие offerings
+  // Если не найден в кэше, загружаем свежие offerings
   if (!pkg) {
-    console.log('[RevenueCat] Package not cached, fetching...');
-    const offerings = await getOfferings();
+    console.log('[RevenueCat] Package not in cache, fetching fresh offerings...');
+    const offerings = await getOfferingsWithCache();
     
     if (!offerings?.current?.availablePackages) {
-      throw new Error('No offerings available');
+      console.warn('[RevenueCat] ❌ No offerings available');
+      return null;
     }
     
     pkg = cachedOriginalPackages.find(
-      (p) => p.identifier === identifier || p.product?.identifier === identifier
+      (p: any) => p.identifier === identifier || p.product?.identifier === identifier
     );
   }
   
   if (!pkg) {
-    const available = cachedOriginalPackages.map(p => p.identifier).join(', ');
-    throw new Error(`Package "${identifier}" not found. Available: ${available}`);
+    console.warn('[RevenueCat] ❌ Package not found:', identifier);
+    console.warn('[RevenueCat] Available packages:', cachedOriginalPackages.map((p: any) => p.identifier).join(', '));
+    return null;
   }
   
-  console.log('[RevenueCat] ✅ Found package:', pkg.identifier, '-', pkg.product?.priceString);
+  console.log('[RevenueCat] ✅ Found package:', pkg.identifier);
+  console.log('[RevenueCat] Package object type:', typeof pkg);
   
+  // ВАЖНО: Передаем ОРИГИНАЛЬНЫЙ объект пакета из RevenueCat SDK
   const result = await purchasePackage(pkg);
   if (!result) return null;
   
@@ -354,70 +361,42 @@ export const purchasePackageByIdentifier = async (
     }
   };
 };
+export const restorePurchasesFromRevenueCat = restorePurchases;
 
-// ============================================
-// ВОССТАНОВЛЕНИЕ ПОКУПОК
-// ============================================
-
-export const restorePurchases = async (): Promise<RevenueCatCustomerInfo | null> => {
-  if (!canUseNativePurchases()) {
-    throw new Error('Restore only available on real device');
-  }
-  
+export const syncWithRevenueCat = async (): Promise<RevenueCatCustomerInfo | null> => {
   const module = loadPurchasesModule();
   if (!module || !isConfigured) {
-    throw new Error('RevenueCat not initialized');
+    console.log('[RevenueCat] syncWithRevenueCat - module not ready');
+    return null;
   }
   
   try {
-    console.log('[RevenueCat] 🔄 Restoring purchases...');
-    const info = await module.restorePurchases();
-    console.log('[RevenueCat] ✅ Restore complete');
-    console.log('[RevenueCat] Active subscriptions:', info.activeSubscriptions);
+    console.log('[RevenueCat] Force syncing customer info from server...');
+    const info = await module.getCustomerInfo();
+    console.log('[RevenueCat] Sync complete, active entitlements:', Object.keys(info?.entitlements?.active ?? {}));
     return info;
   } catch (error) {
-    console.error('[RevenueCat] ❌ Restore failed:', error);
-    throw error;
+    console.error('[RevenueCat] Sync failed:', error);
+    return null;
   }
 };
 
-// ============================================
-// СИНХРОНИЗАЦИЯ
-// ============================================
-
-export const syncWithRevenueCat = async (): Promise<RevenueCatCustomerInfo | null> => {
-  return getCustomerInfo();
-};
-
 export const invalidateCustomerInfoCache = async (): Promise<void> => {
-  if (!canUseNativePurchases()) return;
-  
   const module = loadPurchasesModule();
-  if (!module || !isConfigured) return;
+  if (!module || !isConfigured) {
+    console.log('[RevenueCat] invalidateCustomerInfoCache - module not ready');
+    return;
+  }
   
   try {
     if (typeof (module as any).invalidateCustomerInfoCache === 'function') {
       await (module as any).invalidateCustomerInfoCache();
-      console.log('[RevenueCat] Cache invalidated');
+      console.log('[RevenueCat] Customer info cache invalidated');
+    } else {
+      console.log('[RevenueCat] invalidateCustomerInfoCache not available, fetching fresh info');
+      await module.getCustomerInfo();
     }
   } catch (error) {
     console.error('[RevenueCat] Cache invalidation failed:', error);
   }
 };
-
-// ============================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// ============================================
-
-export const getOriginalPackages = (): any[] => cachedOriginalPackages;
-
-export const getOfferingsWithCache = getOfferings;
-
-// ============================================
-// LEGACY EXPORTS
-// ============================================
-
-export const initializeSubscriptionFlow = initializeRevenueCat;
-export const fetchOfferings = getOfferings;
-export const fetchCustomerInfo = getCustomerInfo;
-export const restorePurchasesFromRevenueCat = restorePurchases;
