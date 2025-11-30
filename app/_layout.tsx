@@ -239,7 +239,8 @@ export default function RootLayout() {
       console.log("\n==================== REVENUECAT INIT ====================");
       console.log("📱 [_layout.tsx] Платформа:", Platform.OS);
       console.log("📱 [_layout.tsx] Реальное устройство:", isRealDevice);
-      console.log("📱 [_layout.tsx] API Key:", apiKey);
+      console.log("📱 [_layout.tsx] API Key:", apiKey ? `${apiKey.substring(0, 10)}...` : 'НЕТ КЛЮЧА');
+      console.log("📱 [_layout.tsx] Bundle ID (должен совпадать с RevenueCat):", 'app.personalized-ai-goal-coach');
       console.log("========================================================\n");
 
       if (!apiKey) {
@@ -263,7 +264,8 @@ export default function RootLayout() {
         console.log("📦 [_layout.tsx] Offerings ответ:", JSON.stringify({
           hasCurrent: !!offerings.current,
           currentId: offerings.current?.identifier,
-          allKeys: Object.keys(offerings.all),
+          allOfferingsKeys: Object.keys(offerings.all),
+          allOfferingsCount: Object.keys(offerings.all).length,
           packagesCount: offerings.current?.availablePackages?.length || 0
         }, null, 2));
         
@@ -277,11 +279,20 @@ export default function RootLayout() {
             console.log(`  product.price: ${pkg.product?.price}`);
           });
         } else {
-          console.error("❌ [_layout.tsx] НЕТ пакетов! Проверьте:");
-          console.error("  1. Bundle ID совпадает в Xcode и RevenueCat");
-          console.error("  2. Продукты 'Ready to Submit' в App Store Connect");
-          console.error("  3. Продукты прикреплены к Offering в RevenueCat");
-          console.error("  4. App Bundle ID в RevenueCat: app.personalized-ai-goal-coach");
+          console.error("\n❌❌❌ [_layout.tsx] НЕТ ПАКЕТОВ! ❌❌❌");
+          console.error("\n🔍 ДИАГНОСТИКА:");
+          console.error("  📱 Bundle ID в app.json: app.personalized-ai-goal-coach");
+          console.error("  📦 Offerings загружены из RevenueCat:", Object.keys(offerings.all).length > 0 ? 'ДА' : 'НЕТ');
+          console.error("  📦 Current offering существует:", offerings.current ? 'ДА' : 'НЕТ');
+          console.error("  📦 Packages в current offering:", offerings.current?.availablePackages?.length || 0);
+          console.error("\n✅ ЧТО ДЕЛАТЬ:");
+          console.error("  1. Откройте RevenueCat Dashboard: https://app.revenuecat.com");
+          console.error("  2. Перейдите в раздел 'Offerings'");
+          console.error("  3. Убедитесь что есть хотя бы один Offering со статусом 'Current'");
+          console.error("  4. В этом Offering добавьте Packages (Monthly, Yearly)");
+          console.error("  5. Packages должны быть привязаны к Product IDs из App Store Connect");
+          console.error("  6. В App Store Connect проверьте что продукты имеют статус 'Ready to Submit'");
+          console.error("  7. Bundle ID в RevenueCat должен быть: app.personalized-ai-goal-coach\n");
         }
       } catch (e: any) {
         console.error("\n==================== REVENUECAT ERROR ====================");
