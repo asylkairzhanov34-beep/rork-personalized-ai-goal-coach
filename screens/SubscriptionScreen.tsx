@@ -337,7 +337,7 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
           </View>
 
           {/* Plan Selector (Simplified) */}
-           {packages.length > 0 && (
+           {packages.length > 0 ? (
             <View style={styles.packagesContainer}>
               {packages.map((pkg) => {
                 const isSelected = selectedPackage === pkg.identifier;
@@ -366,6 +366,22 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
                   </TouchableOpacity>
                 );
               })}
+            </View>
+          ) : (
+            <View style={styles.loadingPackagesContainer}>
+              <ActivityIndicator size="large" color="#FFD700" />
+              <Text style={styles.loadingText}>
+                {isInitialized ? 'Загрузка планов подписки...' : 'Инициализация...'}
+              </Text>
+              {!isProductionBuild() && (
+                <TouchableOpacity 
+                  style={styles.debugLinkButton}
+                  onPress={() => router.push('/dev-subscription-tools')}
+                >
+                  <Bug size={16} color="#FF6B6B" />
+                  <Text style={styles.debugLinkText}>Открыть Debug Tools</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </ScrollView>
@@ -689,6 +705,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.4)',
     marginHorizontal: 4,
+  },
+  loadingPackagesContainer: {
+    marginTop: 32,
+    marginBottom: 32,
+    alignItems: 'center',
+    gap: 16,
+    padding: 24,
+    backgroundColor: 'rgba(255, 215, 0, 0.05)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.15)',
+  },
+  loadingText: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+  },
+  debugLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+  },
+  debugLinkText: {
+    fontSize: 13,
+    color: '#FF6B6B',
+    fontWeight: '600',
   },
   debugCard: {
     marginTop: 32,

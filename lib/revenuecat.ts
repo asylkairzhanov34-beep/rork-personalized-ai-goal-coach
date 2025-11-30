@@ -284,6 +284,8 @@ export const getOfferingsWithCache = async (): Promise<RevenueCatOfferings | nul
   const module = loadPurchasesModule();
   if (!module || !isConfigured) {
     console.error('[RevenueCat] ❌ getOfferingsWithCache - module not ready');
+    console.error('[RevenueCat] Module exists:', !!module);
+    console.error('[RevenueCat] Is configured:', isConfigured);
     return null;
   }
   
@@ -291,15 +293,36 @@ export const getOfferingsWithCache = async (): Promise<RevenueCatOfferings | nul
     console.log('[RevenueCat] 📦 Fetching offerings with cache...');
     const offerings = await module.getOfferings();
     
+    console.log('[RevenueCat] 📦 Raw offerings response:', JSON.stringify(offerings, null, 2));
+    console.log('[RevenueCat] 📦 Has current offering:', !!offerings?.current);
+    console.log('[RevenueCat] 📦 Current offering identifier:', offerings?.current?.identifier);
+    console.log('[RevenueCat] 📦 All offerings:', Object.keys(offerings?.all || {}));
+    
     if (offerings?.current?.availablePackages) {
       // Сохраняем оригинальные пакеты для покупки
       cachedOriginalPackages = offerings.current.availablePackages;
       console.log('[RevenueCat] ✅ Cached', cachedOriginalPackages.length, 'original packages');
+      
+      // Детальная информация о каждом пакете
+      cachedOriginalPackages.forEach((pkg: any, idx: number) => {
+        console.log(`[RevenueCat] Package ${idx + 1}:`);
+        console.log(`  - identifier: ${pkg.identifier}`);
+        console.log(`  - product.identifier: ${pkg.product?.identifier}`);
+        console.log(`  - product.title: ${pkg.product?.title}`);
+        console.log(`  - product.priceString: ${pkg.product?.priceString}`);
+        console.log(`  - product.price: ${pkg.product?.price}`);
+      });
+    } else {
+      console.warn('[RevenueCat] ⚠️ NO availablePackages in current offering!');
     }
     
     return offerings;
-  } catch (error) {
-    console.error('[RevenueCat] ❌ getOfferingsWithCache failed:', error);
+  } catch (error: any) {
+    console.error('[RevenueCat] ❌ getOfferingsWithCache failed');
+    console.error('[RevenueCat] Error message:', error?.message);
+    console.error('[RevenueCat] Error code:', error?.code);
+    console.error('[RevenueCat] Error stack:', error?.stack);
+    console.error('[RevenueCat] Full error:', JSON.stringify(error, null, 2));
     return null;
   }
 };

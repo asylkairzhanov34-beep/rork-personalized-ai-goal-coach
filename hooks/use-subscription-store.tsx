@@ -322,8 +322,17 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, []);
 
   const loadOfferingsFromRevenueCat = useCallback(async () => {
+    console.log('[SubscriptionProvider] 📦 Loading offerings from RevenueCat...');
+    
     // Используем getOfferingsWithCache для сохранения оригинальных пакетов
     const offerings = await getOfferingsWithCache();
+    
+    console.log('[SubscriptionProvider] 📦 Offerings result:', {
+      hasOfferings: !!offerings,
+      hasCurrent: !!offerings?.current,
+      packagesCount: offerings?.current?.availablePackages?.length || 0,
+    });
+    
     if (offerings?.current?.availablePackages?.length) {
       const formatted = offerings.current.availablePackages.map((pkg: RevenueCatPackage) => ({
         identifier: pkg.identifier,
@@ -337,11 +346,24 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         },
       }));
       setPackages(formatted);
-      console.log('[SubscriptionProvider] Loaded offerings:', formatted.length, 'packages');
-      console.log('[SubscriptionProvider] Original packages cached:', getOriginalPackages().length);
-    } else if (isMockMode || Platform.OS === 'web') {
-      setPackages(WEB_MOCK_PACKAGES);
-      console.log('[SubscriptionProvider] Using mock packages');
+      console.log('[SubscriptionProvider] ✅ Loaded offerings:', formatted.length, 'packages');
+      console.log('[SubscriptionProvider] ✅ Original packages cached:', getOriginalPackages().length);
+      
+      // Логируем каждый пакет
+      formatted.forEach((pkg, idx) => {
+        console.log(`[SubscriptionProvider] Package ${idx + 1}: ${pkg.product.identifier} - ${pkg.product.priceString}`);
+      });
+    } else {
+      console.warn('[SubscriptionProvider] ⚠️ NO packages received from RevenueCat');
+      console.warn('[SubscriptionProvider] ⚠️ Mock mode:', isMockMode);
+      console.warn('[SubscriptionProvider] ⚠️ Platform:', Platform.OS);
+      
+      if (isMockMode || Platform.OS === 'web') {
+        setPackages(WEB_MOCK_PACKAGES);
+        console.log('[SubscriptionProvider] Using mock packages');
+      } else {
+        console.error('[SubscriptionProvider] ❌ CRITICAL: Real device but no packages!');
+      }
     }
   }, [isMockMode]);
 
