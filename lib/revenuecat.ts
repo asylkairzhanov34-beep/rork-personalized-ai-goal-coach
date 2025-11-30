@@ -45,8 +45,12 @@ type PurchasesModule = {
   restorePurchases: () => Promise<RevenueCatCustomerInfo>;
 };
 
+// Hardcoded keys to ensure they work on real devices
+// process.env is unreliable in some build configurations
+const HARDCODED_IOS_KEY = 'appl_NIzzmGwASbGFsnfAddnshynSnsG';
+
 const API_KEYS = {
-  ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '',
+  ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || HARDCODED_IOS_KEY,
   android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '',
 };
 

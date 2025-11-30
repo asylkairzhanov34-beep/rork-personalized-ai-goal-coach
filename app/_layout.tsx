@@ -231,8 +231,10 @@ export default function RootLayout() {
         return;
       }
       
+      // Hardcoded key to ensure it works on real devices
+      const HARDCODED_IOS_KEY = 'appl_NIzzmGwASbGFsnfAddnshynSnsG';
       const apiKey = Platform.OS === 'ios' 
-        ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY 
+        ? (process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || HARDCODED_IOS_KEY)
         : process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY;
       
       console.log("\n==================== REVENUECAT INIT ====================");
