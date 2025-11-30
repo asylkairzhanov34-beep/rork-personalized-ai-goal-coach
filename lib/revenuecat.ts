@@ -45,12 +45,10 @@ type PurchasesModule = {
   restorePurchases: () => Promise<RevenueCatCustomerInfo>;
 };
 
-// Hardcoded keys to ensure they work on real devices
-// process.env is unreliable in some build configurations
 const HARDCODED_IOS_KEY = 'appl_NIzzmGwASbGFsnfAddnshynSnsG';
 
 const API_KEYS = {
-  ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || HARDCODED_IOS_KEY,
+  ios: HARDCODED_IOS_KEY,
   android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '',
 };
 
@@ -87,12 +85,13 @@ const loadPurchasesModule = (): PurchasesModule | null => {
   if (isRealDevice) {
     console.log('[RevenueCat] Real device detected - FORCING native RevenueCat (no mock mode)');
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const RNPurchases = require('react-native-purchases');
       moduleRef = RNPurchases.default ?? RNPurchases;
       console.log('[RevenueCat] ✅ Module loaded successfully for real device');
       return moduleRef;
-    } catch (error) {
-      console.error('[RevenueCat] ❌ CRITICAL: Module failed to load on real device:', error);
+    } catch {
+      console.error('[RevenueCat] ❌ CRITICAL: Module failed to load on real device');
       throw new Error('RevenueCat module required for real devices but failed to load');
     }
   }
@@ -103,11 +102,12 @@ const loadPurchasesModule = (): PurchasesModule | null => {
   }
   
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const RNPurchases = require('react-native-purchases');
     moduleRef = RNPurchases.default ?? RNPurchases;
     console.log('[RevenueCat] Module loaded successfully');
     return moduleRef;
-  } catch (error) {
+  } catch {
     console.log('[RevenueCat] Module not available - using mock mode');
     return null;
   }

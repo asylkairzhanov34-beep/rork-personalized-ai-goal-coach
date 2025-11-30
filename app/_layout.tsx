@@ -231,58 +231,70 @@ export default function RootLayout() {
         return;
       }
       
-      // Hardcoded key to ensure it works on real devices
       const HARDCODED_IOS_KEY = 'appl_NIzzmGwASbGFsnfAddnshynSnsG';
       const apiKey = Platform.OS === 'ios' 
-        ? (process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || HARDCODED_IOS_KEY)
+        ? HARDCODED_IOS_KEY
         : process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY;
       
       console.log("\n==================== REVENUECAT INIT ====================");
       console.log("📱 [_layout.tsx] Платформа:", Platform.OS);
       console.log("📱 [_layout.tsx] Реальное устройство:", isRealDevice);
-      console.log("📱 [_layout.tsx] API Key присутствует:", apiKey ? "ДА (" + apiKey.substring(0, 10) + "...)" : "НЕТ");
-      console.log("📱 [_layout.tsx] MOCK MODE:", false);
+      console.log("📱 [_layout.tsx] API Key:", apiKey);
       console.log("========================================================\n");
 
       if (!apiKey) {
-        console.error("❌ [_layout.tsx] API ключ не найден в .env для платформы:", Platform.OS);
-        throw new Error('RevenueCat API key is required for real devices');
+        console.error("❌ [_layout.tsx] API ключ не найден");
+        return;
       }
 
       try {
-        console.log("📱 [_layout.tsx] Включение DEBUG логирования...");
-        await Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
-        console.log("✅ [_layout.tsx] Debug логирование включено");
+        console.log("📱 [_layout.tsx] Включение VERBOSE логирования...");
+        await Purchases.setLogLevel(Purchases.LOG_LEVEL.VERBOSE);
         
-        console.log("📱 [_layout.tsx] Конфигурация RevenueCat с ключом...");
+        console.log("📱 [_layout.tsx] Конфигурация RevenueCat...");
         await Purchases.configure({ apiKey });
-        console.log("✅ [_layout.tsx] RevenueCat успешно инициализирован!");
+        console.log("✅ [_layout.tsx] RevenueCat инициализирован!");
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         console.log("📦 [_layout.tsx] Загрузка offerings...");
         const offerings = await Purchases.getOfferings();
-        console.log("📦 [_layout.tsx] Offerings загружены:", offerings.current?.identifier || "НЕТ ТЕКУЩЕГО OFFERING");
-        console.log("📦 [_layout.tsx] Все offerings:", Object.keys(offerings.all));
+        
+        console.log("📦 [_layout.tsx] Offerings ответ:", JSON.stringify({
+          hasCurrent: !!offerings.current,
+          currentId: offerings.current?.identifier,
+          allKeys: Object.keys(offerings.all),
+          packagesCount: offerings.current?.availablePackages?.length || 0
+        }, null, 2));
         
         if (offerings.current?.availablePackages) {
-          console.log("📦 [_layout.tsx] Доступные пакеты (", offerings.current.availablePackages.length, "):");
           offerings.current.availablePackages.forEach((pkg: any, idx: number) => {
-            console.log(`  ${idx + 1}. ${pkg.identifier} - ${pkg.product?.priceString || 'цена не указана'}`);
-            console.log(`     Product ID: ${pkg.product?.identifier}`);
-            console.log(`     Title: ${pkg.product?.title || 'не указан'}`);
+            console.log(`\n📦 Пакет ${idx + 1}:`);
+            console.log(`  identifier: ${pkg.identifier}`);
+            console.log(`  product.identifier: ${pkg.product?.identifier}`);
+            console.log(`  product.title: ${pkg.product?.title}`);
+            console.log(`  product.priceString: ${pkg.product?.priceString}`);
+            console.log(`  product.price: ${pkg.product?.price}`);
           });
         } else {
-          console.warn("⚠️ [_layout.tsx] НЕТ доступных пакетов! Проверьте RevenueCat Dashboard.");
+          console.error("❌ [_layout.tsx] НЕТ пакетов! Проверьте:");
+          console.error("  1. Bundle ID совпадает в Xcode и RevenueCat");
+          console.error("  2. Продукты 'Ready to Submit' в App Store Connect");
+          console.error("  3. Продукты прикреплены к Offering в RevenueCat");
+          console.error("  4. App Bundle ID в RevenueCat: app.personalized-ai-goal-coach");
         }
       } catch (e: any) {
         console.error("\n==================== REVENUECAT ERROR ====================");
-        console.error("❌ [_layout.tsx] Ошибка инициализации:", e.message);
-        console.error("❌ [_layout.tsx] Stack:", e.stack);
+        console.error("❌ Ошибка:", e.message);
+        console.error("❌ Code:", e.code);
+        console.error("❌ Stack:", e.stack);
         console.error("==========================================================\n");
-        throw e;
       }
     };
 
-    initRevenueCat();
+    initRevenueCat().catch(err => {
+      console.error("❌ [_layout.tsx] Uncaught init error:", err);
+    });
   }, []);
 
   useEffect(() => {
