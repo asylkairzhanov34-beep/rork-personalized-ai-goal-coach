@@ -182,4 +182,120 @@ export async function deleteUserProfile(userId: string): Promise<void> {
   console.log('[Firebase] User profile deleted');
 }
 
+export async function saveUserGoals(userId: string, goals: any[]): Promise<void> {
+  console.log('[Firebase] Saving goals:', userId, goals.length);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  await setDoc(userRef, {
+    goals,
+    goalsUpdatedAt: serverTimestamp(),
+  }, { merge: true });
+  
+  console.log('[Firebase] Goals saved');
+}
+
+export async function getUserGoals(userId: string): Promise<any[]> {
+  console.log('[Firebase] Getting goals:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  const docSnap = await getDoc(userRef);
+  
+  if (docSnap.exists() && docSnap.data().goals) {
+    console.log('[Firebase] Goals found:', docSnap.data().goals.length);
+    return docSnap.data().goals;
+  }
+  
+  console.log('[Firebase] No goals found');
+  return [];
+}
+
+export async function saveUserTasks(userId: string, tasks: any[]): Promise<void> {
+  console.log('[Firebase] Saving tasks:', userId, tasks.length);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  await setDoc(userRef, {
+    tasks,
+    tasksUpdatedAt: serverTimestamp(),
+  }, { merge: true });
+  
+  console.log('[Firebase] Tasks saved');
+}
+
+export async function getUserTasks(userId: string): Promise<any[]> {
+  console.log('[Firebase] Getting tasks:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  const docSnap = await getDoc(userRef);
+  
+  if (docSnap.exists() && docSnap.data().tasks) {
+    console.log('[Firebase] Tasks found:', docSnap.data().tasks.length);
+    return docSnap.data().tasks;
+  }
+  
+  console.log('[Firebase] No tasks found');
+  return [];
+}
+
+export async function saveUserPomodoroSessions(userId: string, sessions: any[]): Promise<void> {
+  console.log('[Firebase] Saving pomodoro sessions:', userId, sessions.length);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  await setDoc(userRef, {
+    pomodoroSessions: sessions,
+    pomodoroUpdatedAt: serverTimestamp(),
+  }, { merge: true });
+  
+  console.log('[Firebase] Pomodoro sessions saved');
+}
+
+export async function getUserPomodoroSessions(userId: string): Promise<any[]> {
+  console.log('[Firebase] Getting pomodoro sessions:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  const docSnap = await getDoc(userRef);
+  
+  if (docSnap.exists() && docSnap.data().pomodoroSessions) {
+    console.log('[Firebase] Pomodoro sessions found:', docSnap.data().pomodoroSessions.length);
+    return docSnap.data().pomodoroSessions;
+  }
+  
+  console.log('[Firebase] No pomodoro sessions found');
+  return [];
+}
+
+export async function saveUserFullProfile(userId: string, profile: any): Promise<void> {
+  console.log('[Firebase] Saving full profile:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  await setDoc(userRef, {
+    profile,
+    profileUpdatedAt: serverTimestamp(),
+  }, { merge: true });
+  
+  console.log('[Firebase] Full profile saved');
+}
+
+export async function getUserFullProfile(userId: string): Promise<any | null> {
+  console.log('[Firebase] Getting full profile:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  const docSnap = await getDoc(userRef);
+  
+  if (docSnap.exists() && docSnap.data().profile) {
+    console.log('[Firebase] Full profile found');
+    return docSnap.data().profile;
+  }
+  
+  console.log('[Firebase] No full profile found');
+  return null;
+}
+
 export type { FirebaseUser, Timestamp };

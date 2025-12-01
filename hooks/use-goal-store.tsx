@@ -5,16 +5,16 @@ import { useState, useEffect } from 'react';
 import { Goal, DailyTask, UserProfile, PomodoroSession, PomodoroStats } from '@/types/goal';
 import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
 import { useAuth } from '@/hooks/use-auth-store';
-
-const clearAllStorage = async () => {
-  try {
-    const keys = await AsyncStorage.getAllKeys();
-    await AsyncStorage.multiRemove(keys);
-    console.log('All storage cleared due to corruption');
-  } catch (error) {
-    console.error('Error clearing storage:', error);
-  }
-};
+import { 
+  getUserGoals, 
+  saveUserGoals, 
+  getUserTasks, 
+  saveUserTasks,
+  getUserPomodoroSessions,
+  saveUserPomodoroSessions,
+  getUserFullProfile,
+  saveUserFullProfile
+} from '@/lib/firebase';
 
 const getStorageKeys = (userId: string) => ({
   PROFILE: `user_profile_${userId}`,
@@ -48,6 +48,17 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     queryKey: ['profile', user?.id],
     queryFn: async () => {
       if (!user?.id) return profile;
+      
+      console.log('[GoalStore] Loading profile for user:', user.id);
+      const firebaseProfile = await getUserFullProfile(user.id);
+      
+      if (firebaseProfile) {
+        console.log('[GoalStore] Profile loaded from Firebase');
+        await safeStorageSet(STORAGE_KEYS.PROFILE, firebaseProfile);
+        return firebaseProfile;
+      }
+      
+      console.log('[GoalStore] No Firebase profile, checking local storage');
       return await safeStorageGet(STORAGE_KEYS.PROFILE, profile);
     },
     staleTime: 5 * 60 * 1000,
@@ -59,6 +70,17 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     queryKey: ['goals', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
+      
+      console.log('[GoalStore] Loading goals for user:', user.id);
+      const firebaseGoals = await getUserGoals(user.id);
+      
+      if (firebaseGoals && firebaseGoals.length > 0) {
+        console.log('[GoalStore] Goals loaded from Firebase:', firebaseGoals.length);
+        await safeStorageSet(STORAGE_KEYS.GOALS, firebaseGoals);
+        return firebaseGoals;
+      }
+      
+      console.log('[GoalStore] No Firebase goals, checking local storage');
       return await safeStorageGet(STORAGE_KEYS.GOALS, []);
     },
     staleTime: 5 * 60 * 1000,
@@ -70,6 +92,17 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     queryKey: ['tasks', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
+      
+      console.log('[GoalStore] Loading tasks for user:', user.id);
+      const firebaseTasks = await getUserTasks(user.id);
+      
+      if (firebaseTasks && firebaseTasks.length > 0) {
+        console.log('[GoalStore] Tasks loaded from Firebase:', firebaseTasks.length);
+        await safeStorageSet(STORAGE_KEYS.TASKS, firebaseTasks);
+        return firebaseTasks;
+      }
+      
+      console.log('[GoalStore] No Firebase tasks, checking local storage');
       return await safeStorageGet(STORAGE_KEYS.TASKS, []);
     },
     staleTime: 5 * 60 * 1000,
@@ -81,6 +114,21 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     queryKey: ['pomodoro', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
+      
+      console.log('[GoalStore] Loading pomodoro sessions for user:', user.id);
+      const firebaseSessions = await getUserPomodoroSessions(user.id);
+      
+      if (firebaseSessions && firebaseSessions.length > 0) {
+        console.log('[GoalStore] Pomodoro sessions loaded from Firebase:', firebaseSessions.length);
+        const sessions = firebaseSessions.map((session: any) => ({
+          ...session,
+          completedAt: session.completedAt ? new Date(session.completedAt) : undefined
+        }));
+        await safeStorageSet(STORAGE_KEYS.POMODORO_SESSIONS, sessions);
+        return sessions;
+      }
+      
+      console.log('[GoalStore] No Firebase sessions, checking local storage');
       const sessions = await safeStorageGet(STORAGE_KEYS.POMODORO_SESSIONS, []);
       return sessions.map((session: any) => ({
         ...session,
@@ -130,7 +178,14 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
           const updatedGoals = goals.map((g: Goal) => 
             g.id === lastGoal.id ? updatedGoal : { ...g, isActive: false }
           );
-          safeStorageSet(STORAGE_KEYS.GOALS, updatedGoals);
+          
+          (async () => {
+            await safeStorageSet(STORAGE_KEYS.GOALS, updatedGoals);
+            await saveUserGoals(user?.id || 'default', updatedGoals).catch((err: Error) => {
+              console.error('[GoalStore] Failed to sync goals to Firebase:', err);
+            });
+          })();
+          
           setCurrentGoal(updatedGoal);
           queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
         }
@@ -155,7 +210,11 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   const saveProfileMutation = useMutation({
     mutationFn: async (newProfile: UserProfile) => {
       if (!user?.id) throw new Error('User not authenticated');
+      console.log('[GoalStore] Saving profile to Firebase and local storage');
       await safeStorageSet(STORAGE_KEYS.PROFILE, newProfile);
+      await saveUserFullProfile(user.id, newProfile).catch((err: Error) => {
+        console.error('[GoalStore] Failed to save profile to Firebase:', err);
+      });
       return newProfile;
     },
     onSuccess: () => {
@@ -163,23 +222,14 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     },
   });
 
-  const saveGoalMutation = useMutation({
-    mutationFn: async (goal: Goal) => {
-      if (!user?.id) throw new Error('User not authenticated');
-      const goals = goalsQuery.data || [];
-      const updated = [...goals, goal];
-      await safeStorageSet(STORAGE_KEYS.GOALS, updated);
-      return updated;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
-    },
-  });
-
   const saveTasksMutation = useMutation({
     mutationFn: async (tasks: DailyTask[]) => {
       if (!user?.id) throw new Error('User not authenticated');
+      console.log('[GoalStore] Saving tasks to Firebase and local storage');
       await safeStorageSet(STORAGE_KEYS.TASKS, tasks);
+      await saveUserTasks(user.id, tasks).catch((err: Error) => {
+        console.error('[GoalStore] Failed to save tasks to Firebase:', err);
+      });
       return tasks;
     },
     onSuccess: () => {
@@ -190,7 +240,11 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   const savePomodoroMutation = useMutation({
     mutationFn: async (sessions: PomodoroSession[]) => {
       if (!user?.id) throw new Error('User not authenticated');
+      console.log('[GoalStore] Saving pomodoro sessions to Firebase and local storage');
       await safeStorageSet(STORAGE_KEYS.POMODORO_SESSIONS, sessions);
+      await saveUserPomodoroSessions(user.id, sessions).catch((err: Error) => {
+        console.error('[GoalStore] Failed to save pomodoro sessions to Firebase:', err);
+      });
       return sessions;
     },
     onSuccess: () => {
@@ -201,8 +255,12 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
       if (!user?.id) throw new Error('User not authenticated');
+      console.log('[GoalStore] Deleting task from Firebase and local storage');
       const updated = dailyTasks.filter(t => t.id !== taskId);
       await safeStorageSet(STORAGE_KEYS.TASKS, updated);
+      await saveUserTasks(user.id, updated).catch((err: Error) => {
+        console.error('[GoalStore] Failed to delete task from Firebase:', err);
+      });
       return updated;
     },
     onSuccess: () => {
@@ -259,7 +317,11 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     setCurrentGoal(newGoal);
     setDailyTasks(newTasks);
     
+    console.log('[GoalStore] Creating new goal and syncing to Firebase');
     await safeStorageSet(STORAGE_KEYS.GOALS, allGoals);
+    await saveUserGoals(user?.id || 'default', allGoals).catch((err: Error) => {
+      console.error('[GoalStore] Failed to sync goals to Firebase:', err);
+    });
     await saveTasksMutation.mutateAsync(newTasks);
     
     queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
@@ -267,7 +329,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     updateProfile({ currentGoalId: goalId });
   };
 
-  const toggleTaskCompletion = (taskId: string) => {
+  const toggleTaskCompletion = async (taskId: string) => {
     const updatedTasks = dailyTasks.map(task => {
       if (task.id === taskId) {
         const completed = !task.completed;
@@ -281,7 +343,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     });
 
     setDailyTasks(updatedTasks);
-    saveTasksMutation.mutate(updatedTasks);
+    await saveTasksMutation.mutateAsync(updatedTasks);
 
     if (currentGoal) {
       const goalTasks = updatedTasks.filter(t => t.goalId === currentGoal.id);
@@ -297,14 +359,15 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       
       const goals = goalsQuery.data || [];
       const updatedGoals = goals.map((g: Goal) => g.id === updatedGoal.id ? updatedGoal : g);
-      safeStorageSet(STORAGE_KEYS.GOALS, updatedGoals);
+      await safeStorageSet(STORAGE_KEYS.GOALS, updatedGoals);
+      await saveUserGoals(user?.id || 'default', updatedGoals).catch((err: Error) => {
+        console.error('[GoalStore] Failed to sync goals to Firebase:', err);
+      });
       queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
     }
 
     updateStreak();
   };
-
-
 
   const updateStreak = () => {
     const today = new Date();
@@ -388,7 +451,6 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   const getProgressForPeriod = (period: 'day' | 'week' | 'month') => {
     if (!currentGoal) return { completed: 0, total: 0, percentage: 0 };
     
-    const now = new Date();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -505,7 +567,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     };
   };
 
-  const addTask = (taskData: Omit<DailyTask, 'id' | 'goalId' | 'completed'> & { completed?: boolean }) => {
+  const addTask = async (taskData: Omit<DailyTask, 'id' | 'goalId' | 'completed'> & { completed?: boolean }) => {
     const newTask: DailyTask = {
       ...taskData,
       completed: taskData.completed ?? false,
@@ -515,9 +577,8 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     
     const updatedTasks = [...dailyTasks, newTask];
     setDailyTasks(updatedTasks);
-    saveTasksMutation.mutate(updatedTasks);
+    await saveTasksMutation.mutateAsync(updatedTasks);
 
-    // If task is added as completed, update goal progress immediately
     if (newTask.completed) {
        if (currentGoal) {
           const goalTasks = updatedTasks.filter(t => t.goalId === currentGoal.id);
@@ -533,7 +594,10 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
           
           const goals = goalsQuery.data || [];
           const updatedGoals = goals.map((g: Goal) => g.id === updatedGoal.id ? updatedGoal : g);
-          safeStorageSet(STORAGE_KEYS.GOALS, updatedGoals);
+          await safeStorageSet(STORAGE_KEYS.GOALS, updatedGoals);
+          await saveUserGoals(user?.id || 'default', updatedGoals).catch((err: Error) => {
+            console.error('[GoalStore] Failed to sync goals to Firebase:', err);
+          });
           queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
        }
        updateStreak();
