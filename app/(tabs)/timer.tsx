@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import { Timer, BarChart3, Settings } from 'lucide-react-native';
+import { Timer, BarChart3, Settings, Maximize2 } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/constants/theme';
 import { PomodoroTimer } from '@/components/PomodoroTimer';
@@ -44,12 +45,20 @@ export default function TimerScreen() {
       {/* Premium Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Фокус</Text>
-        <TouchableOpacity 
-          style={styles.settingsButton}
-          onPress={() => setShowSettings(true)}
-        >
-          <Settings size={20} color={theme.colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => router.push('/timer-fullscreen')}
+          >
+            <Maximize2 size={20} color={theme.colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => setShowSettings(true)}
+          >
+            <Settings size={20} color={theme.colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tab Selector */}
@@ -120,7 +129,11 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     letterSpacing: -0.5,
   },
-  settingsButton: {
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerButton: {
     width: 44,
     height: 44,
     borderRadius: theme.borderRadius.full,

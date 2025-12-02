@@ -215,6 +215,14 @@ function RootLayoutNav() {
           animation: 'slide_from_bottom'
         }} 
       />
+      <Stack.Screen 
+        name="timer-fullscreen" 
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'fade'
+        }} 
+      />
     </Stack>
   );
 }
