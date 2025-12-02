@@ -83,10 +83,15 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
       
       if (user && user.id) {
         console.log('[FirstTimeSetupProvider] Syncing profile to Firebase');
-        const profileToSave = {
+        const profileToSave: any = {
           ...newProfile,
-          birthdate: newProfile.birthdate?.toISOString ? newProfile.birthdate.toISOString() : newProfile.birthdate,
         };
+        
+        if (newProfile.birthdate) {
+          profileToSave.birthdate = newProfile.birthdate instanceof Date 
+            ? newProfile.birthdate.toISOString() 
+            : newProfile.birthdate;
+        }
         
         updateUserProfile(user.id, {
           firstTimeSetup: profileToSave,
@@ -115,10 +120,15 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
       
       if (user && user.id) {
         console.log('[FirstTimeSetupProvider] Saving completed setup to Firebase');
-        const profileToSave = {
+        const profileToSave: any = {
           ...completed,
-          birthdate: completed.birthdate?.toISOString ? completed.birthdate.toISOString() : completed.birthdate,
         };
+        
+        if (completed.birthdate) {
+          profileToSave.birthdate = completed.birthdate instanceof Date 
+            ? completed.birthdate.toISOString() 
+            : completed.birthdate;
+        }
         
         saveUserProfile(user.id, {
           firstTimeSetup: profileToSave,
