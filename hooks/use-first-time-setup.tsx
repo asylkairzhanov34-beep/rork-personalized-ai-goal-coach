@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { FirstTimeProfile, FirstTimeSetupState } from '@/types/first-time-setup';
-import { safeStorageSet } from '@/utils/storage-helper';
+import { safeStorageGet, safeStorageSet } from '@/utils/storage-helper';
 import { useAuth } from '@/hooks/use-auth-store';
 import { saveUserProfile, getUserProfile, updateUserProfile } from '@/lib/firebase';
 
@@ -27,29 +27,23 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
         console.log('[FirstTimeSetupProvider] Loading from Firebase for user:', user.id);
         const firebaseProfile = await getUserProfile(user.id);
         
-        if (firebaseProfile && firebaseProfile.firstTimeSetup) {
+        if (firebaseProfile) {
           console.log('[FirstTimeSetupProvider] Firebase profile found');
-          const fbSetup = firebaseProfile.firstTimeSetup;
+          stored = firebaseProfile.firstTimeSetup || null;
           
-          stored = {
-            ...fbSetup,
-            birthdate: typeof fbSetup.birthdate === 'string' 
-              ? new Date(fbSetup.birthdate) 
-              : fbSetup.birthdate,
-          };
-          
-          await safeStorageSet(FIRST_TIME_SETUP_KEY, stored);
-          console.log('[FirstTimeSetupProvider] Profile synced to local storage');
+          if (stored) {
+            await safeStorageSet(FIRST_TIME_SETUP_KEY, stored);
+          }
         } else {
-          console.log('[FirstTimeSetupProvider] No Firebase profile found');
-          stored = null;
+          console.log('[FirstTimeSetupProvider] No Firebase profile, checking local storage');
+          stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
         }
       } else {
-        console.log('[FirstTimeSetupProvider] No user, cannot load profile');
-        stored = null;
+        console.log('[FirstTimeSetupProvider] No user, loading from local storage');
+        stored = await safeStorageGet<FirstTimeProfile | null>(FIRST_TIME_SETUP_KEY, null);
       }
       
-      console.log('[FirstTimeSetupProvider] Profile loaded:', stored ? `Yes (completed: ${stored.isCompleted})` : 'No');
+      console.log('[FirstTimeSetupProvider] Profile loaded:', stored ? 'Yes' : 'No');
       
       requestAnimationFrame(() => {
         setState({
@@ -71,8 +65,6 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
   }, [FIRST_TIME_SETUP_KEY, user]);
 
   const updateProfile = useCallback(async (updates: Partial<FirstTimeProfile>) => {
-    console.log('[FirstTimeSetupProvider] Updating profile with:', updates);
-    
     setState(prev => {
       const newProfile = {
         ...prev.profile,
@@ -83,18 +75,8 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
       
       if (user && user.id) {
         console.log('[FirstTimeSetupProvider] Syncing profile to Firebase');
-        const profileToSave: any = {
-          ...newProfile,
-        };
-        
-        if (newProfile.birthdate) {
-          profileToSave.birthdate = newProfile.birthdate instanceof Date 
-            ? newProfile.birthdate.toISOString() 
-            : newProfile.birthdate;
-        }
-        
         updateUserProfile(user.id, {
-          firstTimeSetup: profileToSave,
+          firstTimeSetup: newProfile,
         }).catch(error => {
           console.error('[FirstTimeSetupProvider] Failed to sync to Firebase:', error);
         });
@@ -108,8 +90,6 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
   }, [FIRST_TIME_SETUP_KEY, user]);
 
   const completeSetup = useCallback(async () => {
-    console.log('[FirstTimeSetupProvider] Completing setup...');
-    
     setState(prev => {
       const completed = {
         ...prev.profile!,
@@ -120,18 +100,8 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
       
       if (user && user.id) {
         console.log('[FirstTimeSetupProvider] Saving completed setup to Firebase');
-        const profileToSave: any = {
-          ...completed,
-        };
-        
-        if (completed.birthdate) {
-          profileToSave.birthdate = completed.birthdate instanceof Date 
-            ? completed.birthdate.toISOString() 
-            : completed.birthdate;
-        }
-        
         saveUserProfile(user.id, {
-          firstTimeSetup: profileToSave,
+          firstTimeSetup: completed,
           email: user.email,
           displayName: completed.nickname,
           createdAt: new Date().toISOString(),
@@ -139,8 +109,6 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
           console.error('[FirstTimeSetupProvider] Failed to save to Firebase:', error);
         });
       }
-      
-      console.log('[FirstTimeSetupProvider] Setup completed successfully');
       
       return {
         ...prev,
