@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
@@ -9,7 +9,6 @@ import { useSubscriptionStatus } from '@/hooks/use-subscription-status';
 import SubscriptionOfferModal from '@/src/components/SubscriptionOfferModal';
 
 export default function Index() {
-  const router = useRouter();
   const [isReady, setIsReady] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,16 +62,20 @@ export default function Index() {
   }
 
   if (!isAuthenticated) {
+    console.log('[Index] Not authenticated, redirecting to /auth');
     return <Redirect href="/auth" />;
   }
 
-  if (!profile || !profile.nickname) {
+  if (!profile || !profile.nickname || !profile.isCompleted) {
+    console.log('[Index] Profile incomplete, redirecting to /first-time-setup', {
+      hasProfile: !!profile,
+      hasNickname: profile?.nickname,
+      isCompleted: profile?.isCompleted,
+    });
     return <Redirect href="/first-time-setup" />;
   }
 
-  if (!profile.isCompleted) {
-    return <Redirect href="/first-time-setup" />;
-  }
+  console.log('[Index] Profile complete, checking subscription...');
 
   if (shouldShowOffer) {
     return (

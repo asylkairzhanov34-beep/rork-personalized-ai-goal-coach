@@ -35,19 +35,19 @@ export default function Step3Biorhythm({ onNext, onSkip, initialTime }: Step3Bio
     {
       id: 'morning',
       icon: 'sunrise',
-      title: 'Утром',
+      title: 'Утро',
       time: '6:00 - 12:00',
     },
     {
       id: 'afternoon',
       icon: 'sun',
-      title: 'После обеда',
+      title: 'День',
       time: '12:00 - 18:00',
     },
     {
       id: 'evening',
       icon: 'moon',
-      title: 'Вечером',
+      title: 'Вечер',
       time: '18:00 - 00:00',
     },
   ];
@@ -109,27 +109,29 @@ export default function Step3Biorhythm({ onNext, onSkip, initialTime }: Step3Bio
                   isSelected && styles.timeCardActive,
                 ]}
                 onPress={() => handleSelect(time.id)}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
               >
                 <View style={[
                   styles.iconContainer,
                   isSelected && styles.iconContainerActive
                 ]}>
                   <IconComponent 
-                    size={32} 
+                    size={28} 
                     color={isSelected ? theme.colors.background : theme.colors.primary}
-                    strokeWidth={1.5}
+                    strokeWidth={2}
                   />
                 </View>
-                <Text style={[
-                  styles.timeTitle,
-                  isSelected && styles.timeTitleActive
-                ]}>
-                  {time.title}
-                </Text>
-                <Text style={styles.timeRange}>
-                  {time.time}
-                </Text>
+                <View style={styles.timeTextContainer}>
+                  <Text style={[
+                    styles.timeTitle,
+                    isSelected && styles.timeTitleActive
+                  ]}>
+                    {time.title}
+                  </Text>
+                  <Text style={styles.timeRange}>
+                    {time.time}
+                  </Text>
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -185,39 +187,49 @@ const styles = StyleSheet.create({
   },
   timesContainer: {
     gap: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
   timeCard: {
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#0F1213',
-    borderRadius: 14,
+    borderRadius: 20,
     paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.06)',
-    minHeight: 48,
+    paddingHorizontal: theme.spacing.lg,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 215, 0, 0.1)',
+    minHeight: 80,
   },
   timeCardActive: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
     borderColor: theme.colors.primary,
     ...theme.shadows.gold,
   },
   iconContainer: {
-    marginBottom: theme.spacing.sm,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.md,
   },
   iconContainerActive: {
+    backgroundColor: theme.colors.primary,
   },
   timeTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold,
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
+    marginBottom: 4,
   },
   timeTitleActive: {
-    color: theme.colors.background,
+    color: theme.colors.primary,
   },
   timeRange: {
-    fontSize: theme.fontSize.sm,
+    fontSize: theme.fontSize.md,
     color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium,
   },
   button: {
     marginTop: theme.spacing.xl,
@@ -245,5 +257,8 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: theme.colors.textLight,
     fontWeight: theme.fontWeight.medium,
+  },
+  timeTextContainer: {
+    flex: 1,
   },
 });
