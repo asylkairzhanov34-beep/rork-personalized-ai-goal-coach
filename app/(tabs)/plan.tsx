@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Calendar } from 'lucide-react-native';
@@ -29,7 +29,12 @@ export default function PlanScreen() {
   const [selectedDay, setSelectedDay] = useState(getCurrentDayKey());
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [availableDays] = useState<string[]>(getAvailableDays());
+  const [refreshing, setRefreshing] = useState(false);
 
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   // Organize tasks by day of week
   const weeklyTasks = useMemo(() => {
@@ -108,6 +113,9 @@ export default function PlanScreen() {
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View style={styles.header}>
           <View style={styles.titleContainer}>

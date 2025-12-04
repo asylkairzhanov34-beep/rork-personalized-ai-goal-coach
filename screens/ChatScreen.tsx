@@ -269,9 +269,15 @@ const ChatScreen: React.FC = () => {
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.suggestionChip}
-                  onPress={() => setInputText("Дай совет по продуктивности")}
+                  onPress={() => setInputText("Добавь задачу на завтра")}
                 >
-                  <Text style={styles.suggestionText}>💡 Дай совет</Text>
+                  <Text style={styles.suggestionText}>➕ Добавь задачу</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.suggestionChip}
+                  onPress={() => setInputText("Покажи мои задачи")}
+                >
+                  <Text style={styles.suggestionText}>📋 Покажи задачи</Text>
                 </TouchableOpacity>
               </View>
             </View>

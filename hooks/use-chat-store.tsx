@@ -10,23 +10,57 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const { messages, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
+      addTask: createRorkTool({
+        description: 'Добавить новую задачу в план пользователя. Используй когда пользователь просит добавить задачу или создать что-то в плане.',
+        zodSchema: z.object({
+          title: z.string().describe('Title of the task'),
+          description: z.string().describe('Detailed description'),
+          date: z.string().describe('Date for the task (ISO format)'),
+          priority: z.enum(['high', 'medium', 'low']).optional().describe('Priority level'),
+          duration: z.string().optional().describe('Estimated duration (e.g., "30 min")'),
+          difficulty: z.enum(['easy', 'medium', 'hard']).optional().describe('Difficulty level'),
+          estimatedTime: z.number().optional().describe('Estimated time in minutes'),
+        }),
+        execute: async (input) => {
+          await goalStore.addTask({
+            title: input.title,
+            description: input.description,
+            date: input.date,
+            priority: (input.priority || 'medium') as any,
+            duration: input.duration || '30 min',
+            difficulty: (input.difficulty || 'medium') as any,
+            estimatedTime: input.estimatedTime || 30,
+            day: 0,
+            tips: [],
+          });
+          return `Задача "${input.title}" успешно добавлена в план на ${new Date(input.date).toLocaleDateString('ru-RU')}`;
+        },
+      }),
       updateTask: createRorkTool({
         description: 'Обновить существующую задачу. Используй для изменения статуса, названия или других параметров.',
         zodSchema: z.object({
           taskId: z.string().describe('ID of the task to update'),
           title: z.string().optional(),
+          description: z.string().optional(),
           date: z.string().optional(),
           completed: z.boolean().optional(),
           priority: z.enum(['high', 'medium', 'low']).optional(),
+          difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+          duration: z.string().optional(),
+          estimatedTime: z.number().optional(),
         }),
         execute: async (input) => {
            goalStore.updateTask(input.taskId, {
              ...(input.title && { title: input.title }),
+             ...(input.description && { description: input.description }),
              ...(input.date && { date: input.date }),
              ...(input.completed !== undefined && { completed: input.completed }),
              ...(input.priority && { priority: input.priority as any }),
+             ...(input.difficulty && { difficulty: input.difficulty as any }),
+             ...(input.duration && { duration: input.duration }),
+             ...(input.estimatedTime && { estimatedTime: input.estimatedTime }),
            });
-           return `Task updated successfully.`;
+           return `Задача обновлена успешно.`;
         },
       }),
       deleteTask: createRorkTool({
@@ -36,11 +70,11 @@ export const [ChatProvider, useChat] = createContextHook(() => {
         }),
         execute: async (input) => {
           goalStore.deleteTask(input.taskId);
-          return `Task deleted successfully.`;
+          return `Задача удалена успешно.`;
         },
       }),
       getTasks: createRorkTool({
-        description: 'Получить задачи для определенного периода или все активные задачи. Используй перед добавлением задач чтобы понять текущий план.',
+        description: 'Получить задачи для определенного периода или все активные задачи. Используй перед добавлением или изменением задач чтобы понять текущий план.',
         zodSchema: z.object({
           startDate: z.string().optional().describe('Start date (ISO)'),
           endDate: z.string().optional().describe('End date (ISO)'),
@@ -56,9 +90,12 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           return JSON.stringify(tasks.map(t => ({
             id: t.id,
             title: t.title,
+            description: t.description,
             date: t.date,
             completed: t.completed,
-            priority: t.priority
+            priority: t.priority,
+            difficulty: t.difficulty,
+            estimatedTime: t.estimatedTime
           })));
         },
       }),
