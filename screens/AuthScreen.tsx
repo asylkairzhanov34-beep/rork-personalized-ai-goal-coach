@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,12 @@ import {
   Animated,
   Dimensions,
   Linking,
-  KeyboardAvoidingView,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/hooks/use-auth-store';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AuthScreenProps {
   onAuthSuccess?: () => void;
@@ -23,54 +22,102 @@ interface AuthScreenProps {
 
 const { width, height } = Dimensions.get('window');
 
+interface BubbleConfig {
+  id: number;
+  top: number;
+  left: number;
+  size: number;
+  opacity: number;
+}
+
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
   const [isTestingBackend, setIsTestingBackend] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+  const insets = useSafeAreaInsets();
 
-  const logoScale = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const buttonSlide = useRef(new Animated.Value(50)).current;
-  const glowAnim = useRef(new Animated.Value(0.95)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const titleTranslate = useRef(new Animated.Value(15)).current;
+  const subtitleOpacity = useRef(new Animated.Value(0)).current;
+  const subtitleTranslate = useRef(new Animated.Value(15)).current;
+  const buttonScale = useRef(new Animated.Value(1.05)).current;
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const footerOpacity = useRef(new Animated.Value(0)).current;
+  const glowOpacity = useRef(new Animated.Value(0.3)).current;
+  const pressScale = useRef(new Animated.Value(1)).current;
 
   const { loginWithApple, firebaseInitialized, initError } = useAuth();
 
+  const bubbles = useMemo<BubbleConfig[]>(() => [
+    { id: 1, top: height * 0.08, left: -width * 0.15, size: width * 0.5, opacity: 0.08 },
+    { id: 2, top: height * 0.25, left: width * 0.65, size: width * 0.45, opacity: 0.06 },
+    { id: 3, top: height * 0.55, left: -width * 0.2, size: width * 0.6, opacity: 0.05 },
+    { id: 4, top: height * 0.7, left: width * 0.5, size: width * 0.55, opacity: 0.07 },
+    { id: 5, top: height * 0.12, left: width * 0.35, size: width * 0.3, opacity: 0.04 },
+  ], []);
+
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(logoScale, {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(titleOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleTranslate, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(subtitleOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(subtitleTranslate, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.spring(buttonScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.timing(footerOpacity, {
         toValue: 1,
-        tension: 10,
-        friction: 2,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(buttonSlide, {
-        toValue: 0,
-        duration: 600,
-        delay: 300,
+        duration: 400,
         useNativeDriver: true,
       }),
     ]).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1.05,
-          duration: 1000,
+        Animated.timing(glowOpacity, {
+          toValue: 0.5,
+          duration: 1500,
           useNativeDriver: true,
         }),
-        Animated.timing(glowAnim, {
-          toValue: 0.95,
-          duration: 1000,
+        Animated.timing(glowOpacity, {
+          toValue: 0.3,
+          duration: 1500,
           useNativeDriver: true,
         }),
       ])
     ).start();
-  }, [logoScale, fadeAnim, buttonSlide, glowAnim]);
+  }, [titleOpacity, titleTranslate, subtitleOpacity, subtitleTranslate, buttonScale, buttonOpacity, footerOpacity, glowOpacity]);
 
   const testFirebaseConnection = async () => {
     console.log('[AuthScreen] Testing Firebase...');
@@ -90,6 +137,26 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     }
 
     setIsTestingBackend(false);
+  };
+
+  const handlePressIn = () => {
+    setIsPressed(true);
+    Animated.spring(pressScale, {
+      toValue: 0.97,
+      tension: 100,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    setIsPressed(false);
+    Animated.spring(pressScale, {
+      toValue: 1,
+      tension: 100,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleAppleAuth = async () => {
@@ -135,103 +202,128 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const isAppleSignInAvailable = Platform.OS === 'ios';
 
   return (
-    <LinearGradient
-      colors={['#000000', '#001F3F']}
-      style={styles.container}
-    >
-      <View style={styles.patternOverlay}>
-        {[...Array(6)].map((_, i) => (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#020306', '#0A1628', '#0D1A2D']}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <View style={styles.bubblesContainer}>
+        {bubbles.map((bubble) => (
           <View
-            key={i}
+            key={bubble.id}
             style={[
-              styles.patternCircle,
+              styles.bubble,
               {
-                top: Math.random() * height,
-                left: Math.random() * width,
-                width: 100 + Math.random() * 200,
-                height: 100 + Math.random() * 200,
+                top: bubble.top,
+                left: bubble.left,
+                width: bubble.size,
+                height: bubble.size,
+                borderRadius: bubble.size / 2,
+                opacity: bubble.opacity,
               },
             ]}
           />
         ))}
       </View>
 
-      <LinearGradient
-        colors={['transparent', 'rgba(255, 215, 0, 0.05)', 'transparent']}
-        style={styles.centerGlow}
-      />
-
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+      <View style={[styles.content, { paddingBottom: insets.bottom + 20 }]}>
+        <View style={styles.mainContent}>
           <Animated.View
             style={[
               styles.headerSection,
-              { opacity: fadeAnim },
+              {
+                opacity: titleOpacity,
+                transform: [{ translateY: titleTranslate }],
+              },
             ]}
           >
             <Text style={styles.title}>Добро пожаловать!</Text>
-            <Text style={styles.subtitle}>
-              Ваш ИИ-коуч ждёт — начните путь к целям
-            </Text>
           </Animated.View>
 
           <Animated.View
             style={[
-              styles.form,
+              styles.subtitleContainer,
               {
-                opacity: fadeAnim,
-                transform: [{ translateY: buttonSlide }],
+                opacity: subtitleOpacity,
+                transform: [{ translateY: subtitleTranslate }],
               },
             ]}
           >
-            {__DEV__ && (
-              <View style={styles.debugSection}>
-                <TouchableOpacity
-                  style={styles.debugButton}
-                  onPress={testFirebaseConnection}
-                  disabled={isTestingBackend}
-                >
-                  {isTestingBackend ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.debugButtonText}>
-                      🔧 Тест Firebase
-                    </Text>
-                  )}
-                </TouchableOpacity>
-                {debugInfo && (
-                  <Text style={styles.debugStatus}>{debugInfo}</Text>
-                )}
-              </View>
-            )}
+            <Text style={styles.subtitle}>
+              Ваш ИИ-коуч ждёт —{'\n'}начните путь к целям
+            </Text>
+          </Animated.View>
 
+          {__DEV__ && (
+            <View style={styles.debugSection}>
+              <TouchableOpacity
+                style={styles.debugButton}
+                onPress={testFirebaseConnection}
+                disabled={isTestingBackend}
+              >
+                {isTestingBackend ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.debugButtonText}>
+                    🔧 Тест Firebase
+                  </Text>
+                )}
+              </TouchableOpacity>
+              {debugInfo && (
+                <Text style={styles.debugStatus}>{debugInfo}</Text>
+              )}
+            </View>
+          )}
+
+          <Animated.View
+            style={[
+              styles.buttonContainer,
+              {
+                opacity: buttonOpacity,
+                transform: [
+                  { scale: Animated.multiply(buttonScale, pressScale) },
+                ],
+              },
+            ]}
+          >
             {isAppleSignInAvailable ? (
               <TouchableOpacity
                 style={[styles.appleButton, isLoading && styles.buttonDisabled]}
                 onPress={handleAppleAuth}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
                 disabled={isLoading}
-                activeOpacity={0.9}
+                activeOpacity={1}
                 testID="apple-auth-button"
+                accessibilityLabel="Войти с Apple"
+                accessibilityRole="button"
               >
                 <LinearGradient
-                  colors={['#000000', '#1A1A1A']}
+                  colors={['#1E2430', '#151A24']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
                   style={styles.buttonGradient}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
-                  )}
-                  <Text style={styles.appleButtonText}>
-                    {isLoading ? 'Входим...' : 'Войти с Apple'}
-                  </Text>
+                  <Animated.View
+                    style={[
+                      styles.buttonGlow,
+                      {
+                        opacity: isPressed ? 0.6 : glowOpacity,
+                      },
+                    ]}
+                  />
+                  <View style={styles.buttonContent}>
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Ionicons name="logo-apple" size={22} color="#FFFFFF" />
+                    )}
+                    <Text style={styles.appleButtonText}>
+                      {isLoading ? 'Входим...' : 'Войти с Apple'}
+                    </Text>
+                  </View>
                 </LinearGradient>
               </TouchableOpacity>
             ) : (
@@ -243,158 +335,182 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               </View>
             )}
           </Animated.View>
+        </View>
 
-          <Animated.View
-            style={[
-              styles.footer,
-              { opacity: Animated.multiply(fadeAnim, 0.7) },
-            ]}
-          >
-            <Text style={styles.footerText}>
-              Продолжая, вы соглашаетесь с{' '}
-              <Text style={styles.linkText} onPress={handlePrivacyPress}>
-                Политикой конфиденциальности
-              </Text>
+        <Animated.View
+          style={[
+            styles.footer,
+            { opacity: footerOpacity },
+          ]}
+        >
+          <Text style={styles.footerText}>
+            Продолжая, вы соглашаетесь с{' '}
+            <Text style={styles.linkText} onPress={handlePrivacyPress}>
+              Политикой конфиденциальности
             </Text>
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </LinearGradient>
+          </Text>
+        </Animated.View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#020306',
   },
-  keyboardView: {
-    flex: 1,
-  },
-  patternOverlay: {
+  bubblesContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    overflow: 'hidden',
   },
-  patternCircle: {
+  bubble: {
     position: 'absolute',
-    borderRadius: 1000,
-    backgroundColor: 'rgba(255, 215, 0, 0.02)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.05)',
+    backgroundColor: '#1A2A40',
   },
-  centerGlow: {
-    position: 'absolute',
-    top: '30%',
-    left: '-50%',
-    right: '-50%',
-    height: '40%',
-    opacity: 0.3,
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: 28,
+    paddingTop: 60,
   },
-  scrollContent: {
-    flexGrow: 1,
+  mainContent: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 40,
-    paddingBottom: 32,
+    marginTop: -40,
   },
   headerSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '800' as const,
+    fontSize: 34,
+    fontWeight: '700' as const,
     color: '#FFFFFF',
-    marginBottom: 12,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#A9A9A9',
-    textAlign: 'center',
-    lineHeight: 24,
+  subtitleContainer: {
+    alignItems: 'center',
+    marginBottom: 48,
     paddingHorizontal: 20,
   },
-  form: {
+  subtitle: {
+    fontSize: 17,
+    color: 'rgba(255, 255, 255, 0.75)',
+    textAlign: 'center',
+    lineHeight: 26,
+    letterSpacing: 0.2,
+  },
+  buttonContainer: {
     width: '100%',
-    maxWidth: 340,
-    marginBottom: 32,
+    maxWidth: 320,
   },
   appleButton: {
     width: '100%',
-    borderRadius: 16,
+    borderRadius: 28,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
+    borderColor: 'rgba(255, 215, 0, 0.25)',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   buttonGradient: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    minHeight: 64,
+  },
+  buttonGlow: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 215, 0, 0.4)',
+  },
+  buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 24,
-    minHeight: 56,
     gap: 12,
   },
   appleButtonText: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   webNotice: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(255, 215, 0, 0.08)',
+    borderRadius: 20,
     gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.15)',
   },
   webNoticeText: {
-    color: '#FFFFFF',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
     textAlign: 'center',
     flex: 1,
+    lineHeight: 20,
   },
   footer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
+    paddingBottom: 8,
   },
   footerText: {
-    fontSize: 12,
-    color: '#666666',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.5)',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
   },
   linkText: {
     color: '#FFD700',
     fontWeight: '500' as const,
   },
   debugSection: {
-    marginBottom: 20,
+    marginBottom: 24,
     width: '100%',
+    maxWidth: 320,
   },
   debugButton: {
-    backgroundColor: 'rgba(100, 100, 255, 0.3)',
+    backgroundColor: 'rgba(100, 100, 255, 0.2)',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     minHeight: 44,
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 100, 255, 0.3)',
   },
   debugButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
   },
   debugStatus: {
-    color: '#AAAAAA',
+    color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 12,
     marginTop: 8,
     textAlign: 'center',
