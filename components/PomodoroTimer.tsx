@@ -155,7 +155,7 @@ export function PomodoroTimer() {
   };
 
   const handleModeChange = (newMode: 'focus' | 'shortBreak' | 'longBreak') => {
-    if (!isRunning && setMode) {
+    if (setMode) {
       setMode(newMode);
       progressAnim.setValue(0);
     }
@@ -468,12 +468,14 @@ export function PomodoroTimer() {
       {/* Session Type Indicator */}
       <View style={styles.sessionTypes}>
         {(['focus', 'shortBreak', 'longBreak'] as const).map((type) => (
-          <View
+          <TouchableOpacity
             key={type}
             style={[
               styles.sessionTypeButton,
               mode === type && styles.sessionTypeButtonActive,
             ]}
+            onPress={() => handleModeChange(type)}
+            activeOpacity={0.7}
           >
             <Text style={[
               styles.sessionTypeText,
@@ -481,7 +483,7 @@ export function PomodoroTimer() {
             ]}>
               {SESSION_LABELS[type]}
             </Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
 

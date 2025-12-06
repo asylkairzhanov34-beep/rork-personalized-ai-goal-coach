@@ -251,6 +251,8 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
 
       const nextDuration = TIMER_DURATIONS[nextMode];
 
+      console.log('[TimerStore] Auto-switching to:', nextMode, 'after', sessionsCompleted, 'focus sessions');
+
       return {
         ...prev,
         isRunning: false,
@@ -486,6 +488,8 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
   }, [handleTimerComplete]);
 
   const setMode = useCallback((mode: 'focus' | 'shortBreak' | 'longBreak') => {
+    console.log('[TimerStore] Manual mode change to:', mode);
+    
     setState(prev => {
       let duration: number;
       

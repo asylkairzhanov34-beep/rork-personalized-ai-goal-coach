@@ -63,6 +63,7 @@ export default function TimerFullscreenScreen() {
   const resumeTimer = timerStore?.resumeTimer;
   const stopTimer = timerStore?.stopTimer;
   const setCustomDuration = timerStore?.setCustomDuration;
+  const setMode = timerStore?.setMode;
 
   const minuteOptions = useMemo(() => {
     return Array.from({ length: 120 }, (_, i) => i + 1);
@@ -236,7 +237,61 @@ export default function TimerFullscreenScreen() {
             <X size={24} color={theme.colors.text} />
           </TouchableOpacity>
           
-          <Text style={styles.modeLabel}>{SESSION_LABELS[mode]}</Text>
+          <View style={styles.modeContainer}>
+            <TouchableOpacity
+              style={[
+                styles.modePill,
+                mode === 'focus' && styles.modePillActive,
+              ]}
+              onPress={() => setMode && setMode('focus')}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.modePillText,
+                  mode === 'focus' && styles.modePillTextActive,
+                ]}
+              >
+                Фокус
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.modePill,
+                mode === 'shortBreak' && styles.modePillActive,
+              ]}
+              onPress={() => setMode && setMode('shortBreak')}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.modePillText,
+                  mode === 'shortBreak' && styles.modePillTextActive,
+                ]}
+              >
+                Перерыв
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.modePill,
+                mode === 'longBreak' && styles.modePillActive,
+              ]}
+              onPress={() => setMode && setMode('longBreak')}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.modePillText,
+                  mode === 'longBreak' && styles.modePillTextActive,
+                ]}
+              >
+                Длинный
+              </Text>
+            </TouchableOpacity>
+          </View>
           
           <TouchableOpacity style={styles.iconButton} onPress={() => setShowSettings(true)}>
             <Settings size={24} color={theme.colors.text} />
@@ -565,11 +620,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },
-  modeLabel: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.extrabold as any,
-    color: theme.colors.text,
-    letterSpacing: -0.5,
+  modeContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  modePill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+  },
+  modePillActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+    ...theme.shadows.gold,
+  },
+  modePillText: {
+    fontSize: 13,
+    fontWeight: theme.fontWeight.medium as any,
+    color: theme.colors.textSecondary,
+  },
+  modePillTextActive: {
+    fontSize: 13,
+    fontWeight: theme.fontWeight.bold as any,
+    color: '#111214',
   },
   content: {
     flex: 1,
