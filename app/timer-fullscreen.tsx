@@ -10,17 +10,24 @@ import {
   ScrollView,
   Modal,
   Alert,
+  Dimensions,
   StatusBar,
-  useWindowDimensions,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import { Picker } from '@react-native-picker/picker';
 import { X, Settings, Play, Pause, Wind, RotateCcw } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { useTimer } from '@/hooks/use-timer-store';
-import FlipClockDigit from '@/components/FlipClockDigit';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const TIMER_SIZE = Math.min(SCREEN_WIDTH * 0.7, SCREEN_HEIGHT * 0.4, 280);
+const STROKE_WIDTH = 4;
+const RADIUS = TIMER_SIZE / 2 - STROKE_WIDTH;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 const QUICK_PRESETS = [10, 25, 45, 60];
 
@@ -34,8 +41,6 @@ export default function TimerFullscreenScreen() {
   const insets = useSafeAreaInsets();
   const { currentGoal } = useGoalStore();
   const timerStore = useTimer();
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -216,18 +221,13 @@ export default function TimerFullscreenScreen() {
     });
   };
 
-  const getDigits = (seconds: number) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return {
-      min1: Math.floor(mins / 10).toString(),
-      min2: (mins % 10).toString(),
-      sec1: Math.floor(secs / 10).toString(),
-      sec2: (secs % 10).toString(),
-    };
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const digits = getDigits(currentTime);
+  const progress = totalTime > 0 ? 1 - currentTime / totalTime : 0;
 
   if (!timerStore) {
     return (
@@ -266,27 +266,100 @@ export default function TimerFullscreenScreen() {
         </View>
 
         <View style={styles.content}>
-          <View style={styles.timerWrapper}>
-            <View style={styles.flipClockContainer}>
-              <View style={styles.flipClockRow}>
-                <FlipClockDigit value={digits.min1} size="large" />
-                <FlipClockDigit value={digits.min2} size="large" />
-                <Text style={[styles.colonText, { fontSize: isLandscape ? 48 : 56 }]}>:</Text>
-                <FlipClockDigit value={digits.sec1} size="large" />
-                <FlipClockDigit value={digits.sec2} size="large" />
+          <TouchableOpacity
+            onPress={openTimeSelector}
+            disabled={isRunning}
+            activeOpacity={0.9}
+            style={styles.timerWrapper}
+          >
+            <Animated.View
+              style={[
+                styles.timerContainer,
+                {
+                  transform: [{ scale: pulseAnim }],
+                },
+              ]}
+            >
+              <View style={[styles.timerCircle, { width: TIMER_SIZE, height: TIMER_SIZE }]}>
+                <View
+                  style={[
+                    styles.circleBackground,
+                    { width: TIMER_SIZE, height: TIMER_SIZE, borderRadius: TIMER_SIZE / 2 },
+                  ]}
+                />
+
+                <View style={styles.progressContainer}>
+                  {Platform.OS !== 'web' ? (
+                    <Svg width={TIMER_SIZE} height={TIMER_SIZE} style={styles.progressSvg}>
+                      <Circle
+                        cx={TIMER_SIZE / 2}
+                        cy={TIMER_SIZE / 2}
+                        r={RADIUS}
+                        stroke={theme.colors.glassBorder}
+                        strokeWidth={STROKE_WIDTH}
+                        fill="none"
+                        opacity={0.3}
+                      />
+                      <Circle
+                        cx={TIMER_SIZE / 2}
+                        cy={TIMER_SIZE / 2}
+                        r={RADIUS}
+                        stroke={theme.colors.primary}
+                        strokeWidth={STROKE_WIDTH}
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeDasharray={CIRCUMFERENCE.toString()}
+                        strokeDashoffset={(CIRCUMFERENCE * (1 - progress)).toString()}
+                        transform={`rotate(-90 ${TIMER_SIZE / 2} ${TIMER_SIZE / 2})`}
+                      />
+                    </Svg>
+                  ) : (
+                    <>
+                      <View
+                        style={[
+                          styles.progressRingWeb,
+                          {
+                            width: TIMER_SIZE - STROKE_WIDTH * 2,
+                            height: TIMER_SIZE - STROKE_WIDTH * 2,
+                            borderRadius: (TIMER_SIZE - STROKE_WIDTH * 2) / 2,
+                            borderWidth: STROKE_WIDTH,
+                            borderColor: theme.colors.glassBorder + '4D',
+                          },
+                        ]}
+                      />
+                      <View
+                        style={[
+                          styles.progressRingWeb,
+                          {
+                            width: TIMER_SIZE - STROKE_WIDTH * 2,
+                            height: TIMER_SIZE - STROKE_WIDTH * 2,
+                            borderRadius: (TIMER_SIZE - STROKE_WIDTH * 2) / 2,
+                            borderWidth: STROKE_WIDTH,
+                            borderColor: 'transparent',
+                            borderTopColor: theme.colors.primary,
+                            transform: [{ rotate: '-90deg' }, { rotate: `${progress * 360}deg` }],
+                          },
+                        ]}
+                      />
+                    </>
+                  )}
+                </View>
+
+                <View style={styles.timerContent}>
+                  <Text style={styles.timerText}>{formatTime(currentTime)}</Text>
+                  <Text style={styles.timerStatus}>
+                    {isRunning && !isPaused
+                      ? 'Идёт фокус'
+                      : isPaused
+                      ? 'На паузе'
+                      : currentTime === 0
+                      ? 'Завершено!'
+                      : 'Нажми на таймер'}
+                  </Text>
+                </View>
               </View>
-              
-              <Text style={styles.timerStatus}>
-                {isRunning && !isPaused
-                  ? 'Идёт фокус'
-                  : isPaused
-                  ? 'На паузе'
-                  : currentTime === 0
-                  ? 'Завершено!'
-                  : 'Таймер готов'}
-              </Text>
-            </View>
-          </View>
+            </Animated.View>
+          </TouchableOpacity>
 
           <View style={styles.controls}>
             {!isRunning ? (
@@ -538,29 +611,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: theme.spacing.xl,
   },
-  flipClockContainer: {
+  timerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  flipClockRow: {
-    flexDirection: 'row',
+  timerCircle: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    marginBottom: theme.spacing.lg,
+    position: 'relative',
   },
-  colonText: {
-    fontSize: 56,
-    fontWeight: theme.fontWeight.bold as any,
-    color: theme.colors.primary,
-    marginHorizontal: 4,
-    textAlign: 'center',
+  circleBackground: {
+    position: 'absolute',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    ...theme.shadows.medium,
+  },
+  progressContainer: {
+    position: 'absolute',
+    width: TIMER_SIZE,
+    height: TIMER_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressSvg: {
+    position: 'absolute',
+  },
+  progressRingWeb: {
+    position: 'absolute',
+  },
+  timerContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  timerText: {
+    fontSize: 48,
+    fontWeight: theme.fontWeight.extrabold as any,
+    color: theme.colors.text,
+    marginBottom: 8,
+    letterSpacing: -2,
   },
   timerStatus: {
-    fontSize: 17,
+    fontSize: 15,
     color: theme.colors.primary,
-    fontWeight: theme.fontWeight.semibold as any,
-    textAlign: 'center',
+    fontWeight: theme.fontWeight.medium as any,
   },
   controls: {
     alignItems: 'center',
