@@ -44,7 +44,6 @@ export default function TimerFullscreenScreen() {
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   const panelSlideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -96,28 +95,7 @@ export default function TimerFullscreenScreen() {
     }
   }, [currentTime, totalTime, progressAnim, timerStore]);
 
-  useEffect(() => {
-    if (timerStore && isRunning && !isPaused) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.03,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      pulse.start();
-      return () => pulse.stop();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [isRunning, isPaused, pulseAnim, timerStore]);
+
 
   useEffect(() => {
     if (timerStore && currentTime === 0 && !isRunning) {
@@ -272,14 +250,7 @@ export default function TimerFullscreenScreen() {
             activeOpacity={0.9}
             style={styles.timerWrapper}
           >
-            <Animated.View
-              style={[
-                styles.timerContainer,
-                {
-                  transform: [{ scale: pulseAnim }],
-                },
-              ]}
-            >
+            <View style={styles.timerContainer}>
               <View style={[styles.timerCircle, { width: TIMER_SIZE, height: TIMER_SIZE }]}>
                 <View
                   style={[
@@ -358,7 +329,7 @@ export default function TimerFullscreenScreen() {
                   </Text>
                 </View>
               </View>
-            </Animated.View>
+            </View>
           </TouchableOpacity>
 
           <View style={styles.controls}>

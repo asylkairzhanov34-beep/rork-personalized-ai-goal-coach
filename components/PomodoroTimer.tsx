@@ -29,7 +29,6 @@ export function PomodoroTimer() {
   const timerStore = useTimer();
   
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   
   const [selectedMinutes, setSelectedMinutes] = useState<number>(25);
@@ -112,29 +111,7 @@ export function PomodoroTimer() {
     }
   }, [currentTime, totalTime, progressAnim, timerStore]);
 
-  // Pulse animation for running state
-  useEffect(() => {
-    if (timerStore && isRunning && !isPaused) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.02,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      pulse.start();
-      return () => pulse.stop();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [isRunning, isPaused, pulseAnim, timerStore]);
+
 
   // Completion animation
   useEffect(() => {
@@ -220,7 +197,6 @@ export function PomodoroTimer() {
           { 
             transform: [
               { scale: scaleAnim },
-              { scale: pulseAnim },
               { translateY: showTimeSelector ? -12 : 0 }
             ] 
           }
