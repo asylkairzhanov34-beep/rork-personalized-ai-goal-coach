@@ -136,8 +136,10 @@ export async function saveUserProfile(userId: string, data: any): Promise<void> 
   const firestore = getFirebaseDB();
   const userRef = doc(firestore, 'users', userId);
   
+  const cleanedData = removeUndefinedValues(data);
+  
   await setDoc(userRef, {
-    ...data,
+    ...cleanedData,
     updatedAt: serverTimestamp(),
   }, { merge: true });
   
@@ -165,8 +167,10 @@ export async function updateUserProfile(userId: string, data: any): Promise<void
   const firestore = getFirebaseDB();
   const userRef = doc(firestore, 'users', userId);
   
+  const cleanedData = removeUndefinedValues(data);
+  
   await updateDoc(userRef, {
-    ...data,
+    ...cleanedData,
     updatedAt: serverTimestamp(),
   });
   
@@ -187,8 +191,10 @@ export async function saveUserGoals(userId: string, goals: any[]): Promise<void>
   const firestore = getFirebaseDB();
   const userRef = doc(firestore, 'users', userId);
   
+  const cleanedGoals = removeUndefinedValues(goals);
+  
   await setDoc(userRef, {
-    goals,
+    goals: cleanedGoals,
     goalsUpdatedAt: serverTimestamp(),
   }, { merge: true });
   
@@ -216,8 +222,10 @@ export async function saveUserTasks(userId: string, tasks: any[]): Promise<void>
   const firestore = getFirebaseDB();
   const userRef = doc(firestore, 'users', userId);
   
+  const cleanedTasks = removeUndefinedValues(tasks);
+  
   await setDoc(userRef, {
-    tasks,
+    tasks: cleanedTasks,
     tasksUpdatedAt: serverTimestamp(),
   }, { merge: true });
   
@@ -245,8 +253,10 @@ export async function saveUserPomodoroSessions(userId: string, sessions: any[]):
   const firestore = getFirebaseDB();
   const userRef = doc(firestore, 'users', userId);
   
+  const cleanedSessions = removeUndefinedValues(sessions);
+  
   await setDoc(userRef, {
-    pomodoroSessions: sessions,
+    pomodoroSessions: cleanedSessions,
     pomodoroUpdatedAt: serverTimestamp(),
   }, { merge: true });
   
@@ -274,8 +284,10 @@ export async function saveUserFullProfile(userId: string, profile: any): Promise
   const firestore = getFirebaseDB();
   const userRef = doc(firestore, 'users', userId);
   
+  const cleanedProfile = removeUndefinedValues(profile);
+  
   await setDoc(userRef, {
-    profile,
+    profile: cleanedProfile,
     profileUpdatedAt: serverTimestamp(),
   }, { merge: true });
   
@@ -296,6 +308,29 @@ export async function getUserFullProfile(userId: string): Promise<any | null> {
   
   console.log('[Firebase] No full profile found');
   return null;
+}
+
+function removeUndefinedValues(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefinedValues);
+  }
+  
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const key of Object.keys(obj)) {
+      const value = obj[key];
+      if (value !== undefined) {
+        cleaned[key] = removeUndefinedValues(value);
+      }
+    }
+    return cleaned;
+  }
+  
+  return obj;
 }
 
 export type { FirebaseUser, Timestamp };
