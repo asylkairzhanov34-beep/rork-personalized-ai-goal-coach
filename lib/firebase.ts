@@ -329,4 +329,35 @@ export async function getUserFullProfile(userId: string): Promise<any | null> {
   return null;
 }
 
+export async function saveSubscriptionInfo(userId: string, subscriptionInfo: any): Promise<void> {
+  console.log('[Firebase] Saving subscription info:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  const cleanedInfo = removeUndefined(subscriptionInfo);
+  
+  await setDoc(userRef, {
+    subscription: cleanedInfo,
+    subscriptionUpdatedAt: serverTimestamp(),
+  }, { merge: true });
+  
+  console.log('[Firebase] Subscription info saved');
+}
+
+export async function getSubscriptionInfo(userId: string): Promise<any | null> {
+  console.log('[Firebase] Getting subscription info:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  const docSnap = await getDoc(userRef);
+  
+  if (docSnap.exists() && docSnap.data().subscription) {
+    console.log('[Firebase] Subscription info found');
+    return docSnap.data().subscription;
+  }
+  
+  console.log('[Firebase] No subscription info found');
+  return null;
+}
+
 export type { FirebaseUser, Timestamp };

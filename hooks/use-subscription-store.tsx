@@ -17,6 +17,8 @@ import {
   RevenueCatCustomerInfo,
   RevenueCatPackage,
 } from '@/lib/revenuecat';
+import { saveSubscriptionInfo, getSubscriptionInfo } from '@/lib/firebase';
+import { useAuth } from '@/hooks/use-auth-store';
 
 const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000;
 const SUBSCRIPTION_STORAGE_KEY = '@subscription_status';
@@ -185,6 +187,7 @@ export type PurchaseResult = {
 export type TrialState = ReturnType<typeof buildTrialState>;
 
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
+  const { user } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
   const [status, setStatus] = useState<SubscriptionStatus>('loading');
   const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
@@ -249,8 +252,26 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           setStatus('free');
         }
       }
+
+      if (user?.id) {
+        try {
+          await saveSubscriptionInfo(user.id, {
+            status: hasActive ? 'premium' : (trialStateRef.current.isActive ? 'trial' : 'free'),
+            customerInfo: mapped,
+            trialState: {
+              startedAt: trialStateRef.current.startedAt,
+              expiresAt: trialStateRef.current.expiresAt,
+              isActive: trialStateRef.current.isActive,
+            },
+            lastUpdated: new Date().toISOString(),
+          });
+          console.log('[SubscriptionProvider] ✅ Subscription synced to Firebase');
+        } catch (error) {
+          console.error('[SubscriptionProvider] Failed to save subscription to Firebase:', error);
+        }
+      }
     },
-    [mapCustomerInfo],
+    [mapCustomerInfo, user?.id],
   );
 
   const hydratePaywallSeen = useCallback(async () => {
@@ -375,18 +396,44 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         console.log('[SubscriptionProvider] Starting initialization...');
         console.log('[SubscriptionProvider] Platform:', Platform.OS);
         console.log('[SubscriptionProvider] Is real device:', isRealDevice);
+        console.log('[SubscriptionProvider] User ID:', user?.id || 'none');
         
         await hydratePaywallSeen();
         const securePremium = await hydrateSecurePremiumFlag();
         const trial = await hydrateTrialState();
         await checkFirstLaunch();
 
+        if (user?.id) {
+          try {
+            console.log('[SubscriptionProvider] Loading subscription from Firebase...');
+            const firebaseSubscription = await getSubscriptionInfo(user.id);
+            if (firebaseSubscription) {
+              console.log('[SubscriptionProvider] Firebase subscription found:', firebaseSubscription.status);
+              if (firebaseSubscription.status === 'premium' && firebaseSubscription.customerInfo) {
+                setStatus('premium');
+                setCustomerInfo(firebaseSubscription.customerInfo);
+                await secureSet(SECURE_KEYS.subscriptionActive, 'true');
+              } else if (firebaseSubscription.trialState?.isActive) {
+                const restoredTrial = buildTrialState(firebaseSubscription.trialState.startedAt);
+                setTrialState(restoredTrial);
+                trialStateRef.current = restoredTrial;
+                if (restoredTrial.isActive) {
+                  setStatus('trial');
+                  await secureSet(SECURE_KEYS.trialStartAt, restoredTrial.startedAt!);
+                }
+              }
+            }
+          } catch (error) {
+            console.error('[SubscriptionProvider] Failed to load from Firebase:', error);
+          }
+        }
+
         // Web platform always uses mock mode
         if (Platform.OS === 'web') {
           console.log('[SubscriptionProvider] Web platform - using mock mode');
           setIsMockMode(true);
           setPackages(WEB_MOCK_PACKAGES);
-          if (!securePremium && !trial.isActive) {
+          if (!securePremium && !trial.isActive && status === 'loading') {
             setStatus('free');
           }
           setIsInitialized(true);
@@ -404,7 +451,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           console.log('[SubscriptionProvider] Using mock mode (Expo Go)');
           setIsMockMode(true);
           setPackages(WEB_MOCK_PACKAGES);
-          if (!securePremium && !trial.isActive) {
+          if (!securePremium && !trial.isActive && status === 'loading') {
             setStatus('free');
           }
           setIsInitialized(true);
@@ -418,7 +465,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         const info = await getCustomerInfo();
         if (info) {
           await persistCustomerInfo(info);
-        } else if (!securePremium && !trial.isActive) {
+        } else if (!securePremium && !trial.isActive && status === 'loading') {
           setStatus('free');
         }
 
@@ -433,7 +480,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           console.error('[SubscriptionProvider] ❌ FATAL: Cannot use mock mode on real device');
           setIsMockMode(false);
           setPackages([]);
-          setStatus('free');
+          if (status === 'loading') {
+            setStatus('free');
+          }
           setIsInitialized(true);
         } else {
           // Only Expo Go or other non-production environments can use mock
@@ -446,7 +495,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     };
 
     bootstrap();
-  }, [checkFirstLaunch, hydratePaywallSeen, hydrateSecurePremiumFlag, hydrateTrialState, loadOfferingsFromRevenueCat, persistCustomerInfo]);
+  }, [checkFirstLaunch, hydratePaywallSeen, hydrateSecurePremiumFlag, hydrateTrialState, loadOfferingsFromRevenueCat, persistCustomerInfo, user?.id, status]);
 
   useEffect(() => {
     if (!trialState.startedAt || trialState.isExpired) {
@@ -537,8 +586,27 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     trialStateRef.current = nextState;
     setStatus('trial');
     emitAnalytics(ANALYTICS_EVENTS.TRIAL_STARTED, { started_at: now });
+
+    if (user?.id) {
+      try {
+        await saveSubscriptionInfo(user.id, {
+          status: 'trial',
+          customerInfo: null,
+          trialState: {
+            startedAt: nextState.startedAt,
+            expiresAt: nextState.expiresAt,
+            isActive: nextState.isActive,
+          },
+          lastUpdated: new Date().toISOString(),
+        });
+        console.log('[SubscriptionProvider] ✅ Trial synced to Firebase');
+      } catch (error) {
+        console.error('[SubscriptionProvider] Failed to save trial to Firebase:', error);
+      }
+    }
+
     return nextState;
-  }, []);
+  }, [user?.id]);
 
   const purchasePackage = useCallback(
     async (packageIdentifier: string): Promise<PurchaseResult | null> => {
@@ -560,10 +628,30 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
             identifier: normalized.identifier,
             expiryDate,
           });
+          const mockInfo = buildCustomerInfoFromMock(normalized.packageId);
           setStatus('premium');
-          setCustomerInfo(buildCustomerInfoFromMock(normalized.packageId));
+          setCustomerInfo(mockInfo);
           await secureSet(SECURE_KEYS.subscriptionActive, 'true');
-            return {
+
+          if (user?.id) {
+            try {
+              await saveSubscriptionInfo(user.id, {
+                status: 'premium',
+                customerInfo: mockInfo,
+                trialState: {
+                  startedAt: null,
+                  expiresAt: null,
+                  isActive: false,
+                },
+                lastUpdated: new Date().toISOString(),
+              });
+              console.log('[SubscriptionProvider] ✅ Mock purchase synced to Firebase');
+            } catch (error) {
+              console.error('[SubscriptionProvider] Failed to save mock purchase to Firebase:', error);
+            }
+          }
+
+          return {
             planName: normalized.identifier,
             productId: normalized.packageId,
             priceString: packages.find(pkg => pkg.identifier === packageIdentifier)?.product.priceString ?? '',
@@ -612,7 +700,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         setIsPurchasing(false);
       }
     },
-    [isMockMode, packages, persistCustomerInfo, persistMockSubscription],
+    [isMockMode, packages, persistCustomerInfo, persistMockSubscription, user?.id],
   );
 
   const restorePurchases = useCallback(async (): Promise<boolean> => {
