@@ -16,12 +16,9 @@ export default function ProgressScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('day');
   const [animatedValue] = useState(new Animated.Value(0));
   
-  const progress = store?.getProgress ? store.getProgress() : 0;
-  
   // Правильный расчет задач для текущей цели
   const goalTasks = store?.currentGoal ? store.dailyTasks.filter(task => task.goalId === store.currentGoal?.id) : [];
   const completedTasks = goalTasks.filter(task => task.completed).length;
-  const totalTasks = goalTasks.length;
   
   if (!store || !store.isReady) {
     return (

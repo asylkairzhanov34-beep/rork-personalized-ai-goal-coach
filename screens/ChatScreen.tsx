@@ -99,10 +99,15 @@ const ChatScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
 
   const [isSending, setIsSending] = useState(false);
-  const { getFeatureAccess } = useSubscription();
+  const { getFeatureAccess, checkSubscriptionStatus } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
 
   const featureAccess = getFeatureAccess();
+
+  // Refresh subscription status when screen mounts
+  useEffect(() => {
+    checkSubscriptionStatus();
+  }, [checkSubscriptionStatus]);
 
   const handleSend = async () => {
     if (inputText.trim()) {
@@ -153,8 +158,10 @@ const ChatScreen: React.FC = () => {
     };
   }, []);
 
-  // Show paywall if feature not available
-  if (!featureAccess.aiChatAssistant) {
+  // Always allow access to chat screen, check inside handleSend instead
+  const shouldBlockChat = false; // Removed blocking at screen level
+  
+  if (shouldBlockChat && !featureAccess.aiChatAssistant) {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.headerContainer} edges={['top']}>

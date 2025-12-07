@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { Plus, Target, Zap, Star, Wind, MessageCircle, CheckCircle2, Timer, Sparkles, Calendar } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
-import { Button } from '@/components/Button';
+
 import { ProgressRing } from '@/components/ProgressRing';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { useAuth } from '@/hooks/use-auth-store';
