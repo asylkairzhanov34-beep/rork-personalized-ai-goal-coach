@@ -42,7 +42,7 @@ export default function TodayScreen() {
   }, []);
 
   // Calculate values that are used in multiple places
-  const completedToday = todayTasks.filter(t => t.completed === true).length;
+  const completedToday = todayTasks.filter(t => t.completed).length;
   const greeting = getGreeting();
   const motivationalQuote = getQuotes()[currentQuoteIndex];
 

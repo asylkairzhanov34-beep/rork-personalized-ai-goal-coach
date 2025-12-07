@@ -18,8 +18,7 @@ export default function ProgressScreen() {
   
   // Правильный расчет задач для текущей цели
   const goalTasks = store?.currentGoal ? store.dailyTasks.filter(task => task.goalId === store.currentGoal?.id) : [];
-  const completedTasks = goalTasks.filter(task => task.completed === true).length;
-  const totalTasks = goalTasks.length;
+  const completedTasks = goalTasks.filter(task => task.completed).length;
   
   if (!store || !store.isReady) {
     return (
@@ -56,7 +55,7 @@ export default function ProgressScreen() {
     {
       icon: Target,
       label: 'Всего выполнено',
-      value: `${completedTasks}/${totalTasks}`,
+      value: completedTasks,
       unit: 'задач',
       color: theme.colors.success,
     },
@@ -151,15 +150,10 @@ export default function ProgressScreen() {
                     <Calendar size={20} color={theme.colors.primary} />
                     <Text style={styles.mainStatLabel}>Сегодня выполнено</Text>
                     <Text style={styles.mainStatValue}>
-                      {(() => {
-                        const todayStr = new Date().toDateString();
-                        const todayTasks = dailyTasks.filter(t => 
-                          t.goalId === currentGoal?.id &&
-                          new Date(t.date).toDateString() === todayStr
-                        );
-                        const todayCompleted = todayTasks.filter(t => t.completed === true).length;
-                        return `${todayCompleted}/${todayTasks.length}`;
-                      })()} задач
+                      {dailyTasks.filter(t => 
+                        t.goalId === currentGoal?.id &&
+                        new Date(t.date).toDateString() === new Date().toDateString() && t.completed
+                      ).length} задач
                     </Text>
                   </View>
                   <View style={styles.mainStatDivider} />
@@ -168,23 +162,12 @@ export default function ProgressScreen() {
                     <Text style={styles.mainStatLabel}>Всего за неделю</Text>
                     <Text style={styles.mainStatValue}>
                       {(() => {
-                        const today = new Date();
-                        const weekStart = new Date(today);
-                        const dayOfWeek = today.getDay();
-                        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                        weekStart.setDate(today.getDate() - daysToMonday);
-                        weekStart.setHours(0, 0, 0, 0);
-                        const weekEnd = new Date(weekStart);
-                        weekEnd.setDate(weekStart.getDate() + 6);
-                        weekEnd.setHours(23, 59, 59, 999);
-                        
-                        const weekTasks = dailyTasks.filter(t => {
-                          if (t.goalId !== currentGoal?.id) return false;
-                          const taskDate = new Date(t.date);
-                          return taskDate >= weekStart && taskDate <= weekEnd;
-                        });
-                        const weekCompleted = weekTasks.filter(t => t.completed === true).length;
-                        return `${weekCompleted}/${weekTasks.length}`;
+                        const weekStart = new Date();
+                        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+                        return dailyTasks.filter(t => 
+                          t.goalId === currentGoal?.id &&
+                          new Date(t.date) >= weekStart && t.completed
+                        ).length;
                       })()} задач
                     </Text>
                   </View>
@@ -196,19 +179,12 @@ export default function ProgressScreen() {
                     <Text style={styles.mainStatLabel}>Всего за месяц</Text>
                     <Text style={styles.mainStatValue}>
                       {(() => {
-                        const today = new Date();
-                        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-                        monthStart.setHours(0, 0, 0, 0);
-                        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                        monthEnd.setHours(23, 59, 59, 999);
-                        
-                        const monthTasks = dailyTasks.filter(t => {
-                          if (t.goalId !== currentGoal?.id) return false;
-                          const taskDate = new Date(t.date);
-                          return taskDate >= monthStart && taskDate <= monthEnd;
-                        });
-                        const monthCompleted = monthTasks.filter(t => t.completed === true).length;
-                        return `${monthCompleted}/${monthTasks.length}`;
+                        const monthStart = new Date();
+                        monthStart.setDate(1);
+                        return dailyTasks.filter(t => 
+                          t.goalId === currentGoal?.id &&
+                          new Date(t.date) >= monthStart && t.completed
+                        ).length;
                       })()} задач
                     </Text>
                   </View>
@@ -263,7 +239,7 @@ export default function ProgressScreen() {
                     styles.achievementBadge,
                     dailyTasks.filter(t => 
                       t.goalId === currentGoal?.id &&
-                      new Date(t.date).toDateString() === new Date().toDateString() && t.completed === true
+                      new Date(t.date).toDateString() === new Date().toDateString() && t.completed
                     ).length >= 5 && styles.achievementBadgeActive
                   ]}>
                     <Text style={styles.achievementEmoji}>✅</Text>
@@ -322,15 +298,15 @@ function getWeeklyProgress(tasks: any[], goalId?: string) {
     // Вычисляем дату для каждого дня недели
     const dayDate = new Date(weekStart);
     dayDate.setDate(weekStart.getDate() + index);
-    const dayDateStr = dayDate.toDateString();
+    dayDate.setHours(0, 0, 0, 0);
     
     const dayTasks = goalTasks.filter(task => {
       const taskDate = new Date(task.date);
-      return taskDate.toDateString() === dayDateStr;
+      taskDate.setHours(0, 0, 0, 0);
+      return taskDate.getTime() === dayDate.getTime();
     });
 
-    // Используем строгое сравнение === true
-    const completed = dayTasks.filter(t => t.completed === true).length;
+    const completed = dayTasks.filter(t => t.completed).length;
     const total = dayTasks.length;
     const percentage = total > 0 ? (completed / total) * 100 : 0;
 

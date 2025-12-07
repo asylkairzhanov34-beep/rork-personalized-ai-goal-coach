@@ -150,23 +150,10 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     if (goalsQuery.data && Array.isArray(goalsQuery.data) && goalsQuery.data.length > 0) {
       const goals = goalsQuery.data as Goal[];
       const activeGoal = goals.find((g: Goal) => g.isActive);
-      
-      const calculateGoalProgress = (goal: Goal) => {
-        const goalTasks = dailyTasks.filter(task => task.goalId === goal.id);
-        const completedCount = goalTasks.filter(task => task.completed === true).length;
-        const totalCount = goalTasks.length;
-        
-        console.log('[GoalStore] Progress calculation for goal:', goal.id, {
-          totalTasks: totalCount,
-          completedTasks: completedCount,
-          tasksDetails: goalTasks.map(t => ({ id: t.id, title: t.title, completed: t.completed }))
-        });
-        
-        return { completedCount, totalCount };
-      };
-      
       if (activeGoal) {
-        const { completedCount, totalCount } = calculateGoalProgress(activeGoal);
+        const goalTasks = dailyTasks.filter(task => task.goalId === activeGoal.id);
+        const completedCount = goalTasks.filter(task => task.completed).length;
+        const totalCount = goalTasks.length;
         
         const updatedGoal: Goal = {
           ...activeGoal,
@@ -178,7 +165,9 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       } else {
         const lastGoal = goals[goals.length - 1];
         if (lastGoal) {
-          const { completedCount, totalCount } = calculateGoalProgress(lastGoal);
+          const goalTasks = dailyTasks.filter(task => task.goalId === lastGoal.id);
+          const completedCount = goalTasks.filter(task => task.completed).length;
+          const totalCount = goalTasks.length;
           
           const updatedGoal: Goal = { 
             ...lastGoal, 
@@ -341,26 +330,13 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   };
 
   const toggleTaskCompletion = async (taskId: string) => {
-    const taskToUpdate = dailyTasks.find(t => t.id === taskId);
-    if (!taskToUpdate) {
-      console.error('[GoalStore] Task not found:', taskId);
-      return;
-    }
-    
-    const newCompletedStatus = !taskToUpdate.completed;
-    console.log('[GoalStore] Toggling task completion:', {
-      taskId,
-      taskTitle: taskToUpdate.title,
-      wasCompleted: taskToUpdate.completed,
-      willBeCompleted: newCompletedStatus
-    });
-    
     const updatedTasks = dailyTasks.map(task => {
       if (task.id === taskId) {
+        const completed = !task.completed;
         return {
           ...task,
-          completed: newCompletedStatus,
-          completedAt: newCompletedStatus ? new Date().toISOString() : undefined,
+          completed,
+          completedAt: completed ? new Date().toISOString() : undefined,
         };
       }
       return task;
@@ -371,15 +347,8 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
 
     if (currentGoal) {
       const goalTasks = updatedTasks.filter(t => t.goalId === currentGoal.id);
-      const completedCount = goalTasks.filter(t => t.completed === true).length;
+      const completedCount = goalTasks.filter(t => t.completed).length;
       const totalCount = goalTasks.length;
-      
-      console.log('[GoalStore] Updated goal progress:', {
-        goalId: currentGoal.id,
-        completedCount,
-        totalCount,
-        percentage: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
-      });
       
       const updatedGoal = { 
         ...currentGoal, 
@@ -461,109 +430,75 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   };
 
   const getTodayTasks = () => {
-    if (!currentGoal) {
-      console.log('[GoalStore] getTodayTasks: No current goal');
-      return [];
-    }
-    
     const today = new Date().toDateString();
-    const todayTasks = dailyTasks.filter(task => 
-      task.goalId === currentGoal.id && 
+    return dailyTasks.filter(task => 
+      task.goalId === currentGoal?.id && 
       new Date(task.date).toDateString() === today
     );
-    
-    console.log('[GoalStore] getTodayTasks:', {
-      today,
-      goalId: currentGoal.id,
-      tasksCount: todayTasks.length,
-      completedCount: todayTasks.filter(t => t.completed === true).length
-    });
-    
-    return todayTasks;
   };
 
   const getProgress = () => {
     if (!currentGoal) return 0;
     
     const goalTasks = dailyTasks.filter(task => task.goalId === currentGoal.id);
-    const completedTasks = goalTasks.filter(task => task.completed === true);
+    const completedTasks = goalTasks.filter(task => task.completed);
     
-    const progress = goalTasks.length > 0 
+    return goalTasks.length > 0 
       ? (completedTasks.length / goalTasks.length) * 100 
       : 0;
-    
-    console.log('[GoalStore] getProgress:', {
-      goalId: currentGoal.id,
-      totalTasks: goalTasks.length,
-      completedTasks: completedTasks.length,
-      progress: Math.round(progress)
-    });
-    
-    return progress;
   };
 
   const getProgressForPeriod = (period: 'day' | 'week' | 'month') => {
-    if (!currentGoal) {
-      console.log('[GoalStore] getProgressForPeriod: No current goal');
-      return { completed: 0, total: 0, percentage: 0 };
-    }
+    if (!currentGoal) return { completed: 0, total: 0, percentage: 0 };
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const goalTasks = dailyTasks.filter(task => task.goalId === currentGoal.id);
-    let filteredTasks: typeof goalTasks = [];
+    let filteredTasks = dailyTasks.filter(task => task.goalId === currentGoal.id);
     
     if (period === 'day') {
-      const todayStr = today.toDateString();
-      filteredTasks = goalTasks.filter(task => {
+      filteredTasks = filteredTasks.filter(task => {
         const taskDate = new Date(task.date);
-        return taskDate.toDateString() === todayStr;
+        taskDate.setHours(0, 0, 0, 0);
+        return taskDate.getTime() === today.getTime();
       });
     } else if (period === 'week') {
       const weekStart = new Date(today);
       const dayOfWeek = today.getDay();
       const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       weekStart.setDate(today.getDate() - daysToMonday);
-      weekStart.setHours(0, 0, 0, 0);
       
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
       
-      filteredTasks = goalTasks.filter(task => {
+      filteredTasks = filteredTasks.filter(task => {
         const taskDate = new Date(task.date);
         return taskDate >= weekStart && taskDate <= weekEnd;
       });
     } else if (period === 'month') {
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      monthStart.setHours(0, 0, 0, 0);
       const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       monthEnd.setHours(23, 59, 59, 999);
       
-      filteredTasks = goalTasks.filter(task => {
+      filteredTasks = filteredTasks.filter(task => {
         const taskDate = new Date(task.date);
         return taskDate >= monthStart && taskDate <= monthEnd;
       });
     }
     
-    const completed = filteredTasks.filter(t => t.completed === true).length;
+    const completed = filteredTasks.filter(t => t.completed).length;
     const total = filteredTasks.length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
     
-    console.log(`[GoalStore] Progress for ${period}:`, {
-      goalId: currentGoal.id,
+    console.log(`Progress for ${period}:`, {
       period,
-      dateRange: period === 'day' ? today.toDateString() : `${period} range`,
+      today: today.toDateString(),
       completed,
       total,
       percentage,
-      tasks: filteredTasks.map(t => ({
-        id: t.id,
-        title: t.title.substring(0, 20),
-        date: t.date,
-        completed: t.completed
-      }))
+      filteredTasksCount: filteredTasks.length,
+      taskDates: filteredTasks.map(t => ({ id: t.id, date: t.date, completed: t.completed }))
     });
     
     return { completed, total, percentage };
