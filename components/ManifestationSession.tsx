@@ -380,15 +380,15 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     alignSelf: 'flex-end',
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    marginBottom: 0,
   },
   centerContent: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.lg,
-    marginTop: -theme.spacing.xxxl,
+    marginTop: -theme.spacing.xl,
   },
   centerCircle: {
     width: 120,
