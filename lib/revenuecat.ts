@@ -54,7 +54,7 @@ const API_KEYS = {
 
 const isExpoGoRuntime = Constants?.appOwnership === 'expo';
 const canUseNativeRevenueCat = Platform.OS !== 'web' && !isExpoGoRuntime;
-const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
+const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime;
 
 let hasLoggedStatus = false;
 const logStatus = (message: string) => {

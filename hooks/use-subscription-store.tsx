@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Alert, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 
@@ -369,11 +370,14 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   useEffect(() => {
     const bootstrap = async () => {
-      const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
+      const isExpoGoRuntime = Constants?.appOwnership === 'expo';
+      const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime;
       
       try {
         console.log('[SubscriptionProvider] Starting initialization...');
         console.log('[SubscriptionProvider] Platform:', Platform.OS);
+        console.log('[SubscriptionProvider] appOwnership:', Constants?.appOwnership);
+        console.log('[SubscriptionProvider] Is Expo Go:', isExpoGoRuntime);
         console.log('[SubscriptionProvider] Is real device:', isRealDevice);
         
         await hydratePaywallSeen();
@@ -542,7 +546,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   const purchasePackage = useCallback(
     async (packageIdentifier: string): Promise<PurchaseResult | null> => {
-      const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
+      const isExpoGoRuntime = Constants?.appOwnership === 'expo';
+      const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime;
       
       // КРИТИЧНО: Для реальных устройств НИКОГДА не используем Mock Mode
       if (isRealDevice && isMockMode) {
@@ -616,7 +621,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   );
 
   const restorePurchases = useCallback(async (): Promise<boolean> => {
-    const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
+    const isExpoGoRuntime = Constants?.appOwnership === 'expo';
+    const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime;
     
     // КРИТИЧНО: Для реальных устройств НИКОГДА не используем Mock Mode
     if (isRealDevice && isMockMode) {
