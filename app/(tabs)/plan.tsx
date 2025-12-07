@@ -36,8 +36,20 @@ export default function PlanScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  // Organize tasks by day of week based on actual task date
+  // Organize tasks by day of week
   const weeklyTasks = useMemo(() => {
+    if (!store?.dailyTasks) {
+      return {
+        monday: [],
+        tuesday: [],
+        wednesday: [],
+        thursday: [],
+        friday: [],
+        saturday: [],
+        sunday: [],
+      };
+    }
+
     const tasksByDay: { [key: string]: DailyTask[] } = {
       monday: [],
       tuesday: [],
@@ -48,43 +60,10 @@ export default function PlanScreen() {
       sunday: [],
     };
 
-    if (!store?.dailyTasks || !store?.currentGoal) {
-      return tasksByDay;
-    }
-
-    const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    
-    // Get current week's date range
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - daysToMonday);
-    weekStart.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    weekEnd.setHours(23, 59, 59, 999);
-
-    // Filter tasks for current goal and current week
-    const goalTasks = store.dailyTasks.filter(task => {
-      if (task.goalId !== store.currentGoal?.id) return false;
-      const taskDate = new Date(task.date);
-      return taskDate >= weekStart && taskDate <= weekEnd;
-    });
-
-    console.log('[PlanScreen] Organizing tasks by day:', {
-      totalTasks: store.dailyTasks.length,
-      goalTasks: goalTasks.length,
-      weekStart: weekStart.toDateString(),
-      weekEnd: weekEnd.toDateString()
-    });
-
-    // Group tasks by their actual day
-    goalTasks.forEach((task) => {
-      const taskDate = new Date(task.date);
-      const taskDayIndex = taskDate.getDay();
-      const dayKey = dayKeys[taskDayIndex];
-      
+    // For demo purposes, distribute existing tasks across the week
+    store.dailyTasks.forEach((task, index) => {
+      const dayKeys = Object.keys(tasksByDay);
+      const dayKey = dayKeys[index % dayKeys.length];
       tasksByDay[dayKey].push({
         ...task,
         difficulty: task.difficulty || 'medium',
@@ -92,18 +71,8 @@ export default function PlanScreen() {
       });
     });
 
-    console.log('[PlanScreen] Tasks by day:', {
-      monday: tasksByDay.monday.length,
-      tuesday: tasksByDay.tuesday.length,
-      wednesday: tasksByDay.wednesday.length,
-      thursday: tasksByDay.thursday.length,
-      friday: tasksByDay.friday.length,
-      saturday: tasksByDay.saturday.length,
-      sunday: tasksByDay.sunday.length,
-    });
-
     return tasksByDay;
-  }, [store?.dailyTasks, store?.currentGoal]);
+  }, [store?.dailyTasks]);
 
   if (!store || !store.isReady) {
     return (

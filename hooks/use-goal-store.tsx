@@ -508,57 +508,41 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       return { completed: 0, total: 0, percentage: 0 };
     }
     
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     const goalTasks = dailyTasks.filter(task => task.goalId === currentGoal.id);
-    
-    console.log('[GoalStore] getProgressForPeriod: All goal tasks:', goalTasks.map(t => ({
-      id: t.id,
-      title: t.title.substring(0, 30),
-      date: t.date,
-      completed: t.completed,
-      parsedDate: new Date(t.date).toDateString()
-    })));
-    
     let filteredTasks: typeof goalTasks = [];
     
     if (period === 'day') {
       const todayStr = today.toDateString();
       filteredTasks = goalTasks.filter(task => {
         const taskDate = new Date(task.date);
-        const taskDateStr = taskDate.toDateString();
-        const matches = taskDateStr === todayStr;
-        return matches;
+        return taskDate.toDateString() === todayStr;
       });
-      console.log('[GoalStore] Day filter - Today:', todayStr, 'Found tasks:', filteredTasks.length);
     } else if (period === 'week') {
       const weekStart = new Date(today);
       const dayOfWeek = today.getDay();
       const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       weekStart.setDate(today.getDate() - daysToMonday);
+      weekStart.setHours(0, 0, 0, 0);
       
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
       
-      console.log('[GoalStore] Week range:', weekStart.toDateString(), '-', weekEnd.toDateString());
-      
       filteredTasks = goalTasks.filter(task => {
         const taskDate = new Date(task.date);
-        taskDate.setHours(0, 0, 0, 0);
         return taskDate >= weekStart && taskDate <= weekEnd;
       });
     } else if (period === 'month') {
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      monthStart.setHours(0, 0, 0, 0);
       const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       monthEnd.setHours(23, 59, 59, 999);
       
-      console.log('[GoalStore] Month range:', monthStart.toDateString(), '-', monthEnd.toDateString());
-      
       filteredTasks = goalTasks.filter(task => {
         const taskDate = new Date(task.date);
-        taskDate.setHours(0, 0, 0, 0);
         return taskDate >= monthStart && taskDate <= monthEnd;
       });
     }
@@ -570,10 +554,11 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
     console.log(`[GoalStore] Progress for ${period}:`, {
       goalId: currentGoal.id,
       period,
+      dateRange: period === 'day' ? today.toDateString() : `${period} range`,
       completed,
       total,
       percentage,
-      filteredTasks: filteredTasks.map(t => ({
+      tasks: filteredTasks.map(t => ({
         id: t.id,
         title: t.title.substring(0, 20),
         date: t.date,

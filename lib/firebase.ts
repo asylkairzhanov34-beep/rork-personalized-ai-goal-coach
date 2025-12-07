@@ -187,10 +187,8 @@ export async function saveUserGoals(userId: string, goals: any[]): Promise<void>
   const firestore = getFirebaseDB();
   const userRef = doc(firestore, 'users', userId);
   
-  const cleanedGoals = removeUndefined(goals);
-  
   await setDoc(userRef, {
-    goals: cleanedGoals,
+    goals,
     goalsUpdatedAt: serverTimestamp(),
   }, { merge: true });
   
@@ -218,10 +216,8 @@ export async function saveUserTasks(userId: string, tasks: any[]): Promise<void>
   const firestore = getFirebaseDB();
   const userRef = doc(firestore, 'users', userId);
   
-  const cleanedTasks = removeUndefined(tasks);
-  
   await setDoc(userRef, {
-    tasks: cleanedTasks,
+    tasks,
     tasksUpdatedAt: serverTimestamp(),
   }, { merge: true });
   
@@ -249,10 +245,8 @@ export async function saveUserPomodoroSessions(userId: string, sessions: any[]):
   const firestore = getFirebaseDB();
   const userRef = doc(firestore, 'users', userId);
   
-  const cleanedSessions = removeUndefined(sessions);
-  
   await setDoc(userRef, {
-    pomodoroSessions: cleanedSessions,
+    pomodoroSessions: sessions,
     pomodoroUpdatedAt: serverTimestamp(),
   }, { merge: true });
   
@@ -275,38 +269,13 @@ export async function getUserPomodoroSessions(userId: string): Promise<any[]> {
   return [];
 }
 
-function removeUndefined(obj: any): any {
-  if (obj === null || obj === undefined) {
-    return null;
-  }
-  
-  if (Array.isArray(obj)) {
-    return obj.map(item => removeUndefined(item));
-  }
-  
-  if (typeof obj === 'object') {
-    const cleaned: any = {};
-    for (const key in obj) {
-      const value = obj[key];
-      if (value !== undefined) {
-        cleaned[key] = removeUndefined(value);
-      }
-    }
-    return cleaned;
-  }
-  
-  return obj;
-}
-
 export async function saveUserFullProfile(userId: string, profile: any): Promise<void> {
   console.log('[Firebase] Saving full profile:', userId);
   const firestore = getFirebaseDB();
   const userRef = doc(firestore, 'users', userId);
   
-  const cleanedProfile = removeUndefined(profile);
-  
   await setDoc(userRef, {
-    profile: cleanedProfile,
+    profile,
     profileUpdatedAt: serverTimestamp(),
   }, { merge: true });
   
@@ -326,37 +295,6 @@ export async function getUserFullProfile(userId: string): Promise<any | null> {
   }
   
   console.log('[Firebase] No full profile found');
-  return null;
-}
-
-export async function saveSubscriptionInfo(userId: string, subscriptionInfo: any): Promise<void> {
-  console.log('[Firebase] Saving subscription info:', userId);
-  const firestore = getFirebaseDB();
-  const userRef = doc(firestore, 'users', userId);
-  
-  const cleanedInfo = removeUndefined(subscriptionInfo);
-  
-  await setDoc(userRef, {
-    subscription: cleanedInfo,
-    subscriptionUpdatedAt: serverTimestamp(),
-  }, { merge: true });
-  
-  console.log('[Firebase] Subscription info saved');
-}
-
-export async function getSubscriptionInfo(userId: string): Promise<any | null> {
-  console.log('[Firebase] Getting subscription info:', userId);
-  const firestore = getFirebaseDB();
-  const userRef = doc(firestore, 'users', userId);
-  
-  const docSnap = await getDoc(userRef);
-  
-  if (docSnap.exists() && docSnap.data().subscription) {
-    console.log('[Firebase] Subscription info found');
-    return docSnap.data().subscription;
-  }
-  
-  console.log('[Firebase] No subscription info found');
   return null;
 }
 

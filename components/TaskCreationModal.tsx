@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
-import { X, Plus, Clock, Target, AlertCircle, Star, Lightbulb, Sparkles, Bot, CheckCircle } from 'lucide-react-native';
+import { X, Plus, Clock, Target, AlertCircle, Star, Lightbulb, Sparkles, Bot, CheckCircle, Circle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DailyTask, SubTask } from '@/types/goal';
@@ -167,32 +167,9 @@ export function TaskCreationModal({
       setIsCalculating(false);
     }
 
-    // Calculate the correct date based on selected day
-    const getDateForSelectedDay = () => {
-      const today = new Date();
-      const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const todayDayIndex = today.getDay();
-      const selectedDayIndex = dayKeys.indexOf(selectedDay);
-      
-      if (selectedDayIndex === -1 || selectedDayIndex === todayDayIndex) {
-        return new Date().toISOString();
-      }
-      
-      // Calculate days difference
-      let daysDiff = selectedDayIndex - todayDayIndex;
-      if (daysDiff < 0) daysDiff += 7;
-      
-      const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() + daysDiff);
-      return targetDate.toISOString();
-    };
-
-    const taskDate = getDateForSelectedDay();
-    console.log('[TaskCreationModal] Creating task for day:', selectedDay, 'Date:', taskDate);
-
     const task: Omit<DailyTask, 'id' | 'goalId'> = {
-      day: 0,
-      date: taskDate,
+      day: 0, // Will be set by parent
+      date: new Date().toISOString(),
       title: title.trim(),
       description: description.trim(),
       duration: `${finalTime}м`,

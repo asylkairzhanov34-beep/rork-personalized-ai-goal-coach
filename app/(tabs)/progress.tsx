@@ -18,21 +18,8 @@ export default function ProgressScreen() {
   
   // Правильный расчет задач для текущей цели
   const goalTasks = store?.currentGoal ? store.dailyTasks.filter(task => task.goalId === store.currentGoal?.id) : [];
-  const allCompletedTasks = goalTasks.filter(task => task.completed === true).length;
+  const completedTasks = goalTasks.filter(task => task.completed === true).length;
   const totalTasks = goalTasks.length;
-  
-  // Calculate today's completed tasks
-  const todayStr = new Date().toDateString();
-  const todayTasks = goalTasks.filter(task => new Date(task.date).toDateString() === todayStr);
-  const todayCompleted = todayTasks.filter(task => task.completed === true).length;
-  
-  console.log('[ProgressScreen] Task stats:', {
-    totalTasks,
-    allCompletedTasks,
-    todayTasks: todayTasks.length,
-    todayCompleted,
-    taskDates: goalTasks.map(t => ({ title: t.title.substring(0, 20), date: t.date, completed: t.completed }))
-  });
   
   if (!store || !store.isReady) {
     return (
@@ -69,7 +56,7 @@ export default function ProgressScreen() {
     {
       icon: Target,
       label: 'Всего выполнено',
-      value: `${allCompletedTasks}/${totalTasks}`,
+      value: `${completedTasks}/${totalTasks}`,
       unit: 'задач',
       color: theme.colors.success,
     },
@@ -149,7 +136,7 @@ export default function ProgressScreen() {
                 <View style={styles.progressStats}>
                   <Text style={styles.progressLabel}>{getPeriodLabel()}</Text>
                   <Text style={styles.progressValue}>
-                    {periodStats.completed} задач
+                    {periodStats.completed} из {periodStats.total} задач
                   </Text>
                   <Text style={styles.progressSubtext}>
                     {getEmptyMessage() || 'Продолжайте в своём темпе'}
@@ -171,8 +158,8 @@ export default function ProgressScreen() {
                           new Date(t.date).toDateString() === todayStr
                         );
                         const todayCompleted = todayTasks.filter(t => t.completed === true).length;
-                        return `${todayCompleted} задач`;
-                      })()}
+                        return `${todayCompleted}/${todayTasks.length}`;
+                      })()} задач
                     </Text>
                   </View>
                   <View style={styles.mainStatDivider} />
@@ -197,8 +184,8 @@ export default function ProgressScreen() {
                           return taskDate >= weekStart && taskDate <= weekEnd;
                         });
                         const weekCompleted = weekTasks.filter(t => t.completed === true).length;
-                        return `${weekCompleted} задач`;
-                      })()}
+                        return `${weekCompleted}/${weekTasks.length}`;
+                      })()} задач
                     </Text>
                   </View>
                 </View>
@@ -221,8 +208,8 @@ export default function ProgressScreen() {
                           return taskDate >= monthStart && taskDate <= monthEnd;
                         });
                         const monthCompleted = monthTasks.filter(t => t.completed === true).length;
-                        return `${monthCompleted} задач`;
-                      })()}
+                        return `${monthCompleted}/${monthTasks.length}`;
+                      })()} задач
                     </Text>
                   </View>
                 </View>
@@ -293,7 +280,7 @@ export default function ProgressScreen() {
                   
                   <View style={[
                     styles.achievementBadge,
-                    allCompletedTasks >= 50 && styles.achievementBadgeActive
+                    completedTasks >= 50 && styles.achievementBadgeActive
                   ]}>
                     <Text style={styles.achievementEmoji}>🏅</Text>
                     <Text style={styles.achievementText}>50 задач за месяц</Text>
