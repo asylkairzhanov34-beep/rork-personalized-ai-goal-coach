@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, Component, ReactNode, useState, useCallback } from "react";
+import React, { useEffect, Component, ReactNode, useState } from "react";
 import { StyleSheet, Text, View, LogBox, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { clearAllStorageIfCorrupted } from '@/utils/storage-helper';
@@ -228,7 +228,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [appReady, setAppReady] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     const initRevenueCat = async () => {
@@ -317,46 +317,33 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-
     const prepareApp = async () => {
       try {
-        console.log('[RootLayout] Preparing app for hydration');
+        console.log('[RootLayout] Starting hydration');
         await clearAllStorageIfCorrupted();
+        console.log('[RootLayout] Storage check complete');
       } catch (error) {
         console.error('[RootLayout] Preparation error:', error);
       } finally {
-        if (isMounted) {
-          setAppReady(true);
-        }
+        requestAnimationFrame(() => {
+          setIsHydrated(true);
+          SplashScreen.hideAsync().catch(err => {
+            console.error('[RootLayout] Failed to hide splash:', err);
+          });
+        });
       }
     };
 
     prepareApp();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
-  const handleLayout = useCallback(async () => {
-    if (appReady) {
-      try {
-        await SplashScreen.hideAsync();
-        console.log('[RootLayout] Splash screen hidden after layout');
-      } catch (error) {
-        console.error('[RootLayout] Failed to hide splash:', error);
-      }
-    }
-  }, [appReady]);
-
-  if (!appReady) {
+  if (!isHydrated) {
     return null;
   }
 
   return (
     <ErrorBoundary>
-      <GestureHandlerRootView style={styles.container} onLayout={handleLayout}>
+      <GestureHandlerRootView style={styles.container}>
         <trpc.Provider client={trpcReactClient} queryClient={queryClient}>
           <QueryClientProvider client={queryClient}>
             <SubscriptionProvider>
