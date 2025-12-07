@@ -86,11 +86,14 @@ export default function ProgressScreen() {
   const getEmptyMessage = () => {
     if (periodStats.total === 0) {
       switch (selectedPeriod) {
-        case 'day': return 'Сегодня у вас свободный день, можно начать в любое время';
+        case 'day': return 'Сегодня у вас свободный день';
         case 'week': return 'На этой неделе пока нет задач';
         case 'month': return 'В этом месяце пока нет задач';
         default: return 'Пока нет задач';
       }
+    }
+    if (periodStats.percentage === 100) {
+      return 'Отлично! Все задачи выполнены!';
     }
     return null;
   };
@@ -135,7 +138,7 @@ export default function ProgressScreen() {
                 <View style={styles.progressStats}>
                   <Text style={styles.progressLabel}>{getPeriodLabel()}</Text>
                   <Text style={styles.progressValue}>
-                    {periodStats.completed} из {periodStats.total} задач
+                    {periodStats.completed} {periodStats.completed === 1 ? 'задача' : periodStats.completed < 5 ? 'задачи' : 'задач'} выполнено
                   </Text>
                   <Text style={styles.progressSubtext}>
                     {getEmptyMessage() || 'Продолжайте в своём темпе'}
@@ -148,44 +151,56 @@ export default function ProgressScreen() {
                 <View style={styles.mainStatRow}>
                   <View style={styles.mainStatItem}>
                     <Calendar size={20} color={theme.colors.primary} />
-                    <Text style={styles.mainStatLabel}>Сегодня выполнено</Text>
+                    <Text style={styles.mainStatLabel}>Сегодня</Text>
                     <Text style={styles.mainStatValue}>
-                      {dailyTasks.filter(t => 
-                        t.goalId === currentGoal?.id &&
-                        new Date(t.date).toDateString() === new Date().toDateString() && t.completed
-                      ).length} задач
+                      {(() => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const todayTasks = dailyTasks.filter(t => {
+                          const taskDate = new Date(t.date);
+                          taskDate.setHours(0, 0, 0, 0);
+                          return t.goalId === currentGoal?.id && taskDate.getTime() === today.getTime();
+                        });
+                        const completed = todayTasks.filter(t => t.completed).length;
+                        const total = todayTasks.length;
+                        return total > 0 ? `${completed}/${total}` : '0';
+                      })()}
                     </Text>
                   </View>
                   <View style={styles.mainStatDivider} />
                   <View style={styles.mainStatItem}>
                     <Clock size={20} color={theme.colors.success} />
-                    <Text style={styles.mainStatLabel}>Всего за неделю</Text>
+                    <Text style={styles.mainStatLabel}>За неделю</Text>
                     <Text style={styles.mainStatValue}>
                       {(() => {
-                        const weekStart = new Date();
-                        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-                        return dailyTasks.filter(t => 
-                          t.goalId === currentGoal?.id &&
-                          new Date(t.date) >= weekStart && t.completed
-                        ).length;
-                      })()} задач
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const dayOfWeek = today.getDay();
+                        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                        const weekStart = new Date(today);
+                        weekStart.setDate(today.getDate() - daysToMonday);
+                        const weekEnd = new Date(weekStart);
+                        weekEnd.setDate(weekStart.getDate() + 6);
+                        weekEnd.setHours(23, 59, 59, 999);
+                        
+                        const weekTasks = dailyTasks.filter(t => {
+                          const taskDate = new Date(t.date);
+                          return t.goalId === currentGoal?.id && taskDate >= weekStart && taskDate <= weekEnd;
+                        });
+                        const completed = weekTasks.filter(t => t.completed).length;
+                        const total = weekTasks.length;
+                        return total > 0 ? `${completed}/${total}` : '0';
+                      })()}
                     </Text>
                   </View>
                 </View>
-                <View style={styles.mainStatDivider} />
+                <View style={styles.mainStatDividerHorizontal} />
                 <View style={styles.mainStatRow}>
                   <View style={styles.mainStatItem}>
                     <Trophy size={20} color={theme.colors.warning} />
-                    <Text style={styles.mainStatLabel}>Всего за месяц</Text>
+                    <Text style={styles.mainStatLabel}>Всего выполнено</Text>
                     <Text style={styles.mainStatValue}>
-                      {(() => {
-                        const monthStart = new Date();
-                        monthStart.setDate(1);
-                        return dailyTasks.filter(t => 
-                          t.goalId === currentGoal?.id &&
-                          new Date(t.date) >= monthStart && t.completed
-                        ).length;
-                      })()} задач
+                      {completedTasks}
                     </Text>
                   </View>
                 </View>
@@ -404,6 +419,11 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: theme.colors.border,
     marginHorizontal: 12,
+  },
+  mainStatDividerHorizontal: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: 12,
   },
   mainStatLabel: {
     fontSize: theme.fontSize.xs,

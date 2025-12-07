@@ -36,7 +36,7 @@ export default function PlanScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  // Organize tasks by day of week
+  // Organize tasks by day of week based on task date
   const weeklyTasks = useMemo(() => {
     if (!store?.dailyTasks) {
       return {
@@ -60,15 +60,25 @@ export default function PlanScreen() {
       sunday: [],
     };
 
-    // For demo purposes, distribute existing tasks across the week
-    store.dailyTasks.forEach((task, index) => {
-      const dayKeys = Object.keys(tasksByDay);
-      const dayKey = dayKeys[index % dayKeys.length];
-      tasksByDay[dayKey].push({
-        ...task,
-        difficulty: task.difficulty || 'medium',
-        estimatedTime: task.estimatedTime || 30,
-      });
+    const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Group tasks by their actual date's day of week
+    store.dailyTasks.forEach((task) => {
+      const taskDate = new Date(task.date);
+      taskDate.setHours(0, 0, 0, 0);
+      
+      // Only include tasks for today (since only today is available)
+      if (taskDate.getTime() === today.getTime()) {
+        const dayOfWeek = taskDate.getDay();
+        const dayKey = dayKeys[dayOfWeek];
+        tasksByDay[dayKey].push({
+          ...task,
+          difficulty: task.difficulty || 'medium',
+          estimatedTime: task.estimatedTime || 30,
+        });
+      }
     });
 
     return tasksByDay;

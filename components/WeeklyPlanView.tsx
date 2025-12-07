@@ -268,7 +268,7 @@ export function WeeklyPlanView({
             <View style={styles.dayStatItem}>
               <Target size={16} color="#FFFFFF" />
               <Text style={styles.dayStatText}>
-                {getCurrentDayTasks().length} задач
+                {getCurrentDayTasks().filter(t => t.completed).length}/{getCurrentDayTasks().length} задач
               </Text>
             </View>
             
@@ -280,6 +280,15 @@ export function WeeklyPlanView({
             </View>
           </View>
         </View>
+        
+        {/* Индикатор взаимосвязи задач */}
+        {getCurrentDayTasks().length > 1 && (
+          <View style={styles.tasksConnectionHint}>
+            <Text style={styles.connectionHintText}>
+              🔗 Задачи взаимосвязаны и дополняют друг друга
+            </Text>
+          </View>
+        )}
         
         {/* Add Task Button - только для доступных дней */}
         {availableDays.includes(selectedDay) && (
@@ -608,6 +617,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.4)',
     marginTop: 8,
+    textAlign: 'center',
+  },
+  tasksConnectionHint: {
+    backgroundColor: 'rgba(255,214,0,0.1)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,214,0,0.2)',
+  },
+  connectionHintText: {
+    fontSize: 13,
+    color: '#FFD600',
     textAlign: 'center',
   },
   dayButtonDisabled: {

@@ -255,48 +255,48 @@ export function GoalCreationModal() {
         
         Создай JSON с:
         1. Объект goal с полями: title, description, category, motivation
-        2. Массив tasks с 15-20 разнообразными задачами для достижения цели
+        2. Массив dailyPlans - план на 30 дней, где каждый день содержит 2-3 ВЗАИМОСВЯЗАННЫЕ задачи
         
-        Каждая задача должна содержать:
-        - title: конкретное название задачи
-        - description: подробное описание (2-3 предложения)
-        - duration: время выполнения (например "30 минут")
-        - priority: приоритет (high/medium/low)
-        - difficulty: сложность (easy/medium/hard)
-        - estimatedTime: время в минутах (число)
-        - tips: массив из 3-4 практических советов
-        - subtasks: массив подзадач (по 3-5 на задачу), каждая с полями title, estimatedTime, completed: false
+        КРИТИЧЕСКИ ВАЖНО:
+        - Каждый день должен содержать РОВНО 2-3 задачи разной сложности
+        - Задачи в дне должны быть ЛОГИЧЕСКИ СВЯЗАНЫ и дополнять друг друга
+        - Задачи должны образовывать ЕДИНУЮ СТРУКТУРУ, где каждая следующая задача строится на предыдущей
+        - Прогресс должен быть постепенным - от простого к сложному на протяжении 30 дней
         
-        ВАЖНО! Подзадачи должны быть МАКСИМАЛЬНО КОНКРЕТНЫМИ и ДЕТАЛЬНЫМИ:
-        - Для физических упражнений: указывай КОНКРЕТНЫЕ упражнения с ТОЧНЫМ количеством повторений/подходов/времени
-          Примеры: "Отжимания - 3 подхода по 15 раз", "Планка - 3 подхода по 45 секунд", "Приседания - 4 подхода по 20 раз"
-        - Для изучения языка: указывай КОНКРЕТНЫЕ слова, темы, правила
-          Примеры: "Выучить слова: apple, banana, orange, grape, watermelon (5 слов)", "Изучить правило Past Simple с 10 примерами"
-        - Для обучения: указывай КОНКРЕТНЫЕ темы, страницы, упражнения
-          Примеры: "Прочитать главу 3, стр. 45-67 (22 страницы)", "Решить задачи №15-25 из учебника"
-        - Для планирования: указывай КОНКРЕТНЫЕ пункты плана
-          Примеры: "Составить список из 10 подцелей", "Записать 5 ежедневных привычек"
+        Структура dailyPlans:
+        [
+          {
+            "dayNumber": 1,
+            "dailyTheme": "Тема дня (например: Основы и планирование)",
+            "tasks": [
+              {
+                "title": "Название задачи",
+                "description": "Подробное описание (2-3 предложения)",
+                "duration": "время (например 20 минут)",
+                "priority": "high/medium/low",
+                "difficulty": "easy/medium/hard",
+                "estimatedTime": число в минутах,
+                "connectionToNext": "Как эта задача связана со следующей",
+                "tips": ["совет 1", "совет 2"],
+                "subtasks": [
+                  { "title": "Конкретная подзадача", "estimatedTime": 5, "completed": false }
+                ]
+              }
+            ]
+          }
+        ]
         
-        Подзадачи НЕ должны быть общими типа "Силовые упражнения" или "Выучить новые слова".
-        Каждая подзадача = конкретное действие с числовыми показателями.
+        Примеры связности задач в дне:
+        - День изучения языка: 1) Изучить 10 новых слов → 2) Составить 5 предложений с этими словами → 3) Послушать диалог с этими словами
+        - День фитнеса: 1) Разминка 10 мин → 2) Основная тренировка → 3) Растяжка и анализ
+        - День бизнеса: 1) Изучить рынок → 2) Проанализировать конкурентов → 3) Составить план действий
         
-        Задачи должны быть:
-        - Разнообразными (теория, практика, планирование, анализ, развитие навыков)
-        - Прогрессивными (от простых к сложным)
-        - Практичными и выполнимыми
-        - Направленными на формирование привычек
-        - Адаптированными под указанное время
+        Распределение сложности в дне:
+        - 1 лёгкая задача (easy) - подготовка/разогрев
+        - 1 средняя задача (medium) - основная работа  
+        - 1 сложная задача (hard) - применение/закрепление (опционально)
         
-        Включи задачи разных типов:
-        - Изучение теории
-        - Практические упражнения
-        - Планирование и анализ
-        - Развитие навыков
-        - Отслеживание прогресса
-        - Работа с мотивацией
-        - Преодоление препятствий
-        
-        Формат: { "goal": {...}, "tasks": [...] }
+        Формат: { "goal": {...}, "dailyPlans": [...] }
       `;
 
       const response = await fetch('https://toolkit.rork.com/text/llm/', {
@@ -338,7 +338,7 @@ export function GoalCreationModal() {
       console.log('Parsed plan data:', planData);
       
       // Validate the structure
-      if (!planData.goal || !planData.tasks || !Array.isArray(planData.tasks)) {
+      if (!planData.goal || (!planData.dailyPlans && !planData.tasks)) {
         throw new Error('Invalid plan structure received from AI');
       }
       
@@ -352,35 +352,45 @@ export function GoalCreationModal() {
         obstacles: [finalAnswers[2]],
         resources: [finalAnswers[3]],
         startDate: startDate.toISOString(),
-        planType: 'free', // Устанавливаем тип плана как свободный
-        // endDate не устанавливаем для свободного плана
+        planType: 'free',
       };
 
-      const tasks: Omit<DailyTask, 'id' | 'goalId' | 'completed' | 'completedAt'>[] = planData.tasks.map((task: any, index: number) => {
-        const taskDate = new Date();
-        taskDate.setDate(taskDate.getDate() + index);
-        
-        // Обработка подзадач
-        const subtasks = Array.isArray(task?.subtasks) ? task.subtasks.map((st: any, stIndex: number) => ({
-          id: `subtask_${Date.now()}_${index}_${stIndex}`,
-          title: st?.title || `Подзадача ${stIndex + 1}`,
-          completed: false,
-          estimatedTime: st?.estimatedTime || 10,
-        })) : undefined;
-        
-        return {
-          day: index + 1,
-          date: taskDate.toISOString(),
-          title: task?.title || `Задача ${index + 1}`,
-          description: task?.description || 'Работайте над своей целью сегодня',
-          duration: task?.duration || finalAnswers[4] || '30 минут',
-          priority: (task?.priority as 'high' | 'medium' | 'low') || 'medium',
-          tips: Array.isArray(task?.tips) ? task.tips : ['Сохраняйте фокус', 'Делайте перерывы при необходимости'],
-          difficulty: (task?.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
-          estimatedTime: task?.estimatedTime || 30,
-          subtasks,
-        };
-      });
+      // Преобразуем новую структуру dailyPlans в задачи
+      const tasks: Omit<DailyTask, 'id' | 'goalId' | 'completed' | 'completedAt'>[] = [];
+      
+      const dailyPlans = planData.dailyPlans || planData.tasks;
+      
+      if (Array.isArray(dailyPlans)) {
+        dailyPlans.forEach((dayPlan: any, dayIndex: number) => {
+          const dayDate = new Date();
+          dayDate.setDate(dayDate.getDate() + dayIndex);
+          
+          // Если структура новая (dailyPlans с tasks внутри)
+          const dayTasks = dayPlan?.tasks || [dayPlan];
+          
+          dayTasks.forEach((task: any, taskIndex: number) => {
+            const subtasks = Array.isArray(task?.subtasks) ? task.subtasks.map((st: any, stIndex: number) => ({
+              id: `subtask_${Date.now()}_${dayIndex}_${taskIndex}_${stIndex}`,
+              title: st?.title || `Подзадача ${stIndex + 1}`,
+              completed: false,
+              estimatedTime: st?.estimatedTime || 10,
+            })) : undefined;
+            
+            tasks.push({
+              day: dayIndex + 1,
+              date: dayDate.toISOString(),
+              title: task?.title || `Задача ${dayIndex + 1}.${taskIndex + 1}`,
+              description: task?.description || 'Работайте над своей целью сегодня',
+              duration: task?.duration || finalAnswers[4] || '30 минут',
+              priority: (task?.priority as 'high' | 'medium' | 'low') || 'medium',
+              tips: Array.isArray(task?.tips) ? task.tips : ['Сохраняйте фокус', 'Делайте перерывы при необходимости'],
+              difficulty: (task?.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
+              estimatedTime: task?.estimatedTime || 30,
+              subtasks,
+            });
+          });
+        });
+      }
 
       await createGoal(goal, tasks);
       if (router.canGoBack()) {
