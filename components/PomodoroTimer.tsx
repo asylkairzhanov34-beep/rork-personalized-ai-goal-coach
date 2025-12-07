@@ -202,65 +202,6 @@ export function PomodoroTimer() {
           }
         ]}>
           <View style={[styles.timerCircle, { width: TIMER_SIZE, height: TIMER_SIZE }]}>
-          {/* Background Circle */}
-          <View style={[styles.circleBackground, { width: TIMER_SIZE, height: TIMER_SIZE }]} />
-          
-          {/* Progress Ring */}
-          <View style={styles.progressContainer}>
-            {Platform.OS !== 'web' ? (
-              <Svg width={TIMER_SIZE} height={TIMER_SIZE} style={styles.progressSvg}>
-                {/* Background ring */}
-                <Circle
-                  cx={TIMER_SIZE / 2}
-                  cy={TIMER_SIZE / 2}
-                  r={RADIUS}
-                  stroke={theme.colors.glassBorder}
-                  strokeWidth={STROKE_WIDTH}
-                  fill="none"
-                  opacity={0.3}
-                />
-                {/* Progress ring */}
-                <Circle
-                  cx={TIMER_SIZE / 2}
-                  cy={TIMER_SIZE / 2}
-                  r={RADIUS}
-                  stroke={theme.colors.primary}
-                  strokeWidth={STROKE_WIDTH}
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={CIRCUMFERENCE.toString()}
-                  strokeDashoffset={(CIRCUMFERENCE * (1 - progress)).toString()}
-                  transform={`rotate(-90 ${TIMER_SIZE / 2} ${TIMER_SIZE / 2})`}
-                />
-              </Svg>
-            ) : (
-              <>
-                <View style={[styles.progressRingWeb, {
-                  width: TIMER_SIZE - STROKE_WIDTH * 2,
-                  height: TIMER_SIZE - STROKE_WIDTH * 2,
-                  borderRadius: (TIMER_SIZE - STROKE_WIDTH * 2) / 2,
-                  borderWidth: STROKE_WIDTH,
-                  borderColor: theme.colors.glassBorder + '4D',
-                }]} />
-                <View style={[
-                  styles.progressRingWeb,
-                  {
-                    width: TIMER_SIZE - STROKE_WIDTH * 2,
-                    height: TIMER_SIZE - STROKE_WIDTH * 2,
-                    borderRadius: (TIMER_SIZE - STROKE_WIDTH * 2) / 2,
-                    borderWidth: STROKE_WIDTH,
-                    borderColor: 'transparent',
-                    borderTopColor: theme.colors.primary,
-                    transform: [
-                      { rotate: '-90deg' },
-                      { rotate: `${progress * 360}deg` },
-                    ],
-                  },
-                ]} />
-              </>
-            )}
-          </View>
-          
           {/* Timer Content */}
           <View style={styles.timerContent}>
             <Text style={styles.timerText}>{formatTime(currentTime)}</Text>
@@ -565,11 +506,11 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   timerText: {
-    fontSize: 34,
+    fontSize: 56,
     fontWeight: theme.fontWeight.extrabold as any,
     color: theme.colors.text,
-    marginBottom: 4,
-    letterSpacing: -1.5,
+    marginBottom: 8,
+    letterSpacing: -2,
     textAlign: 'center',
   },
   timerStatus: {

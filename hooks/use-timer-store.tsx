@@ -50,9 +50,9 @@ interface BackgroundTimerState {
 }
 
 const TIMER_DURATIONS = {
-  focus: 10,
-  shortBreak: 5,
-  longBreak: 8,
+  focus: 25 * 60,
+  shortBreak: 5 * 60,
+  longBreak: 15 * 60,
 };
 
 export const [TimerProvider, useTimer] = createContextHook(() => {
