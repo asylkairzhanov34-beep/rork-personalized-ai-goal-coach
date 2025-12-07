@@ -136,7 +136,7 @@ export default function ProgressScreen() {
                 <View style={styles.progressStats}>
                   <Text style={styles.progressLabel}>{getPeriodLabel()}</Text>
                   <Text style={styles.progressValue}>
-                    {periodStats.completed} из {periodStats.total} задач
+                    {periodStats.completed} задач
                   </Text>
                   <Text style={styles.progressSubtext}>
                     {getEmptyMessage() || 'Продолжайте в своём темпе'}
@@ -158,8 +158,8 @@ export default function ProgressScreen() {
                           new Date(t.date).toDateString() === todayStr
                         );
                         const todayCompleted = todayTasks.filter(t => t.completed === true).length;
-                        return `${todayCompleted}/${todayTasks.length}`;
-                      })()} задач
+                        return `${todayCompleted} задач`;
+                      })()}
                     </Text>
                   </View>
                   <View style={styles.mainStatDivider} />
@@ -184,8 +184,8 @@ export default function ProgressScreen() {
                           return taskDate >= weekStart && taskDate <= weekEnd;
                         });
                         const weekCompleted = weekTasks.filter(t => t.completed === true).length;
-                        return `${weekCompleted}/${weekTasks.length}`;
-                      })()} задач
+                        return `${weekCompleted} задач`;
+                      })()}
                     </Text>
                   </View>
                 </View>
@@ -208,8 +208,8 @@ export default function ProgressScreen() {
                           return taskDate >= monthStart && taskDate <= monthEnd;
                         });
                         const monthCompleted = monthTasks.filter(t => t.completed === true).length;
-                        return `${monthCompleted}/${monthTasks.length}`;
-                      })()} задач
+                        return `${monthCompleted} задач`;
+                      })()}
                     </Text>
                   </View>
                 </View>
