@@ -369,16 +369,19 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   useEffect(() => {
     const bootstrap = async () => {
+      const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
+      
       try {
         console.log('[SubscriptionProvider] Starting initialization...');
+        console.log('[SubscriptionProvider] Platform:', Platform.OS);
+        console.log('[SubscriptionProvider] Is real device:', isRealDevice);
+        
         await hydratePaywallSeen();
         const securePremium = await hydrateSecurePremiumFlag();
         const trial = await hydrateTrialState();
         await checkFirstLaunch();
 
-        // КРИТИЧНО: Для реальных устройств НИКОГДА не используем Mock Mode
-        const isRealDevice = Platform.OS === 'ios' || Platform.OS === 'android';
-        
+        // Web platform always uses mock mode
         if (Platform.OS === 'web') {
           console.log('[SubscriptionProvider] Web platform - using mock mode');
           setIsMockMode(true);
@@ -389,16 +392,16 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           setIsInitialized(true);
           return;
         }
-
-        console.log('[SubscriptionProvider] Real device:', isRealDevice);
         
+        // Real devices (iOS/Android) MUST use RevenueCat
         const initialized = await initializeRevenueCat();
         if (!initialized) {
+          console.error('[SubscriptionProvider] ❌ RevenueCat initialization failed');
           if (isRealDevice) {
-            console.error('[SubscriptionProvider] ❌ CRITICAL: Real device but RevenueCat failed to initialize!');
+            console.error('[SubscriptionProvider] ❌ CRITICAL: Real device requires RevenueCat!');
             throw new Error('RevenueCat is required for real devices');
           }
-          console.log('[SubscriptionProvider] RevenueCat not available - using mock mode');
+          console.log('[SubscriptionProvider] Using mock mode (Expo Go)');
           setIsMockMode(true);
           setPackages(WEB_MOCK_PACKAGES);
           if (!securePremium && !trial.isActive) {
@@ -408,9 +411,10 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           return;
         }
 
-        console.log('[SubscriptionProvider] ✅ RevenueCat initialized successfully');
-        console.log('[SubscriptionProvider] Mock Mode:', false);
+        // RevenueCat initialized successfully - NEVER use mock mode
+        console.log('[SubscriptionProvider] ✅ RevenueCat initialized');
         setIsMockMode(false);
+        
         const info = await getCustomerInfo();
         if (info) {
           await persistCustomerInfo(info);
@@ -420,12 +424,24 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
         await loadOfferingsFromRevenueCat();
         setIsInitialized(true);
-        console.log('[SubscriptionProvider] Initialization complete');
+        console.log('[SubscriptionProvider] ✅ Initialization complete');
       } catch (error) {
-        console.error('[SubscriptionProvider] Initialization error', error);
-        setPackages(WEB_MOCK_PACKAGES);
-        setIsMockMode(true);
-        setIsInitialized(true);
+        console.error('[SubscriptionProvider] ❌ Initialization error:', error);
+        
+        // CRITICAL: For real devices, DO NOT fallback to mock mode
+        if (isRealDevice) {
+          console.error('[SubscriptionProvider] ❌ FATAL: Cannot use mock mode on real device');
+          setIsMockMode(false);
+          setPackages([]);
+          setStatus('free');
+          setIsInitialized(true);
+        } else {
+          // Only Expo Go or other non-production environments can use mock
+          console.log('[SubscriptionProvider] Falling back to mock mode (non-real device)');
+          setIsMockMode(true);
+          setPackages(WEB_MOCK_PACKAGES);
+          setIsInitialized(true);
+        }
       }
     };
 
