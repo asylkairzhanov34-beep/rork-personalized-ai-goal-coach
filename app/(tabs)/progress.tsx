@@ -5,7 +5,7 @@ import { TrendingUp, Award, Target, Zap, Calendar, Clock, Trophy } from 'lucide-
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
 import { ProgressRing } from '@/components/ProgressRing';
-import { AIInsightCard } from '@/components/AIInsightCard';
+import { ActivityCalendar } from '@/components/ActivityCalendar';
 import { useGoalStore } from '@/hooks/use-goal-store';
 
 
@@ -253,9 +253,14 @@ export default function ProgressScreen() {
                 </View>
               </View>
               
-              {/* AI-инсайт-карточка */}
-              <View style={styles.aiInsightContainer}>
-                <AIInsightCard />
+              {/* Календарь активности */}
+              <View style={styles.activityCalendarContainer}>
+                <ActivityCalendar 
+                  completedDates={dailyTasks
+                    .filter(t => t.goalId === currentGoal?.id && t.completed)
+                    .map(t => new Date(t.date).toISOString().split('T')[0])}
+                  currentStreak={profile.currentStreak}
+                />
               </View>
               
               {/* Блок достижений */}
@@ -513,7 +518,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  aiInsightContainer: {
+  activityCalendarContainer: {
     marginBottom: 24,
   },
   weeklyTitle: {
