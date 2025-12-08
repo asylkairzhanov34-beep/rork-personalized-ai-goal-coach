@@ -505,12 +505,10 @@ export function GoalCreationModal() {
                 multiline
                 onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
                 textAlignVertical="top"
-                returnKeyType="next"
-                blurOnSubmit={false}
+                returnKeyType="done"
+                blurOnSubmit={true}
                 onSubmitEditing={() => {
-                  if (currentAnswer.trim()) {
-                    handleNext();
-                  }
+                  Keyboard.dismiss();
                 }}
               />
 
