@@ -188,7 +188,8 @@ export type PurchaseResult = {
 export type TrialState = ReturnType<typeof buildTrialState>;
 
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const [isInitialized, setIsInitialized] = useState(false);
   const [status, setStatus] = useState<SubscriptionStatus>('loading');
   const [packages, setPackages] = useState<SubscriptionPackage[]>([]);

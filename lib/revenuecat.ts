@@ -46,15 +46,18 @@ type PurchasesModule = {
 };
 
 const HARDCODED_IOS_KEY = 'appl_NIzzmGwASbGFsnfAddnshynSnsG';
+const TEST_STORE_KEY = 'rcb_nEoCBBLpFGWnfNlHgmMcVhiVTPw';
 
 const API_KEYS = {
   ios: HARDCODED_IOS_KEY,
   android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '',
+  testStore: TEST_STORE_KEY,
 };
 
 const isExpoGoRuntime = Constants?.appOwnership === 'expo';
-const canUseNativeRevenueCat = Platform.OS !== 'web' && !isExpoGoRuntime;
-const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime;
+const isRorkSandbox = typeof window !== 'undefined' && (window as any).__RORK_SANDBOX__;
+const canUseNativeRevenueCat = Platform.OS !== 'web' && !isExpoGoRuntime && !isRorkSandbox;
+const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime && !isRorkSandbox;
 
 let hasLoggedStatus = false;
 const logStatus = (message: string) => {
@@ -67,6 +70,10 @@ let moduleRef: PurchasesModule | null = null;
 let isConfigured = false;
 
 const getApiKey = (): string => {
+  if (isRorkSandbox) {
+    console.log('[RevenueCat] Rork Sandbox detected - using Test Store API Key');
+    return API_KEYS.testStore;
+  }
   if (Platform.OS === 'ios') return API_KEYS.ios;
   if (Platform.OS === 'android') return API_KEYS.android;
   return '';
