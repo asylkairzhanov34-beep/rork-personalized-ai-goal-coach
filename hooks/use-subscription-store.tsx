@@ -395,13 +395,15 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   useEffect(() => {
     const bootstrap = async () => {
       const isExpoGoRuntime = Constants?.appOwnership === 'expo';
-      const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime;
+      const isRorkSandbox = typeof window !== 'undefined' && (window as any).__RORK_SANDBOX__;
+      const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime && !isRorkSandbox;
       
       try {
         console.log('[SubscriptionProvider] Starting initialization...');
         console.log('[SubscriptionProvider] Platform:', Platform.OS);
         console.log('[SubscriptionProvider] appOwnership:', Constants?.appOwnership);
         console.log('[SubscriptionProvider] Is Expo Go:', isExpoGoRuntime);
+        console.log('[SubscriptionProvider] Is Rork Sandbox:', isRorkSandbox);
         console.log('[SubscriptionProvider] Is real device:', isRealDevice);
         
         await hydratePaywallSeen();
@@ -409,9 +411,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         const trial = await hydrateTrialState();
         await checkFirstLaunch();
 
-        // Web platform always uses mock mode
-        if (Platform.OS === 'web') {
-          console.log('[SubscriptionProvider] Web platform - using mock mode');
+        // Web platform or Rork Sandbox always uses mock mode
+        if (Platform.OS === 'web' || isRorkSandbox) {
+          console.log('[SubscriptionProvider]', isRorkSandbox ? 'Rork Sandbox' : 'Web platform', '- using mock mode');
           setIsMockMode(true);
           setPackages(WEB_MOCK_PACKAGES);
           if (!securePremium && !trial.isActive) {
@@ -464,7 +466,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           setStatus('free');
           setIsInitialized(true);
         } else {
-          // Only Expo Go or other non-production environments can use mock
+          // Only Expo Go, web, or Rork sandbox can use mock
           console.log('[SubscriptionProvider] Falling back to mock mode (non-real device)');
           setIsMockMode(true);
           setPackages(WEB_MOCK_PACKAGES);
@@ -582,7 +584,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const purchasePackage = useCallback(
     async (packageIdentifier: string): Promise<PurchaseResult | null> => {
       const isExpoGoRuntime = Constants?.appOwnership === 'expo';
-      const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime;
+      const isRorkSandbox = typeof window !== 'undefined' && (window as any).__RORK_SANDBOX__;
+      const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime && !isRorkSandbox;
       
       // КРИТИЧНО: Для реальных устройств НИКОГДА не используем Mock Mode
       if (isRealDevice && isMockMode) {
@@ -672,7 +675,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   const restorePurchases = useCallback(async (): Promise<boolean> => {
     const isExpoGoRuntime = Constants?.appOwnership === 'expo';
-    const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime;
+    const isRorkSandbox = typeof window !== 'undefined' && (window as any).__RORK_SANDBOX__;
+    const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime && !isRorkSandbox;
     
     // КРИТИЧНО: Для реальных устройств НИКОГДА не используем Mock Mode
     if (isRealDevice && isMockMode) {

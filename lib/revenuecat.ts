@@ -59,6 +59,8 @@ const isRorkSandbox = typeof window !== 'undefined' && (window as any).__RORK_SA
 const canUseNativeRevenueCat = Platform.OS !== 'web' && !isExpoGoRuntime && !isRorkSandbox;
 const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime && !isRorkSandbox;
 
+const shouldUseMockMode = Platform.OS === 'web' || isRorkSandbox || isExpoGoRuntime;
+
 let hasLoggedStatus = false;
 const logStatus = (message: string) => {
   if (hasLoggedStatus) return;
@@ -82,15 +84,19 @@ const getApiKey = (): string => {
 const loadPurchasesModule = (): PurchasesModule | null => {
   if (moduleRef) return moduleRef;
   
-  if (Platform.OS === 'web') {
-    logStatus('Web platform - using mock mode');
+  if (shouldUseMockMode) {
+    if (isRorkSandbox) {
+      logStatus('Rork Sandbox detected - using mock mode');
+    } else if (Platform.OS === 'web') {
+      logStatus('Web platform - using mock mode');
+    } else {
+      logStatus('Expo Go detected - using mock mode (RevenueCat requires development build)');
+    }
     return null;
   }
   
-  // КРИТИЧНО: Для реальных устройств ВСЕГДА загружаем модуль
-  // Mock Mode отключен для iOS и Android
   if (isRealDevice) {
-    console.log('[RevenueCat] Real device detected - FORCING native RevenueCat (no mock mode)');
+    console.log('[RevenueCat] Real device detected - loading native RevenueCat');
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const RNPurchases = require('react-native-purchases');
@@ -101,11 +107,6 @@ const loadPurchasesModule = (): PurchasesModule | null => {
       console.error('[RevenueCat] ❌ CRITICAL: Module failed to load on real device');
       throw new Error('RevenueCat module required for real devices but failed to load');
     }
-  }
-  
-  if (!canUseNativeRevenueCat) {
-    logStatus('Expo Go detected - using mock mode (RevenueCat requires development build)');
-    return null;
   }
   
   try {
