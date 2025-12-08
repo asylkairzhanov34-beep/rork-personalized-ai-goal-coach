@@ -60,8 +60,6 @@ export default function ProgressScreen() {
       color: theme.colors.success,
     },
   ];
-
-  const weeklyProgress = getWeeklyProgress(dailyTasks, currentGoal?.id);
   
   const handlePeriodChange = (period: TimePeriod) => {
     setSelectedPeriod(period);
@@ -229,30 +227,7 @@ export default function ProgressScreen() {
                 ))}
               </View>
 
-              <View style={styles.weeklyCard}>
-                <Text style={styles.weeklyTitle}>Обзор прогресса</Text>
-                <View style={styles.weeklyChart}>
-                  {weeklyProgress.map((day, index) => (
-                    <View key={index} style={styles.dayColumn}>
-                      <View style={styles.barContainer}>
-                        <View
-                          style={[
-                            styles.bar,
-                            { height: Math.max(day.percentage, 4) },
-                            day.isToday && styles.todayBar,
-                          ]}
-                        />
-                        <Text style={styles.taskCount}>{day.completedTasks}</Text>
-                      </View>
-                      <Text style={styles.dayLabel}>{day.label}</Text>
-                      <Text style={styles.daySubLabel}>
-                        {day.completedTasks > 0 ? `${day.completedTasks} задач` : '0 задач'}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-              
+
               {/* Календарь активности */}
               <View style={styles.activityCalendarContainer}>
                 <ActivityCalendar 
@@ -311,46 +286,7 @@ export default function ProgressScreen() {
   );
 }
 
-function getWeeklyProgress(tasks: any[], goalId?: string) {
-  const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-  const today = new Date();
-  const todayDayOfWeek = today.getDay();
-  const adjustedToday = todayDayOfWeek === 0 ? 6 : todayDayOfWeek - 1;
 
-  // Начало текущей недели (понедельник)
-  const weekStart = new Date(today);
-  const daysToMonday = todayDayOfWeek === 0 ? 6 : todayDayOfWeek - 1;
-  weekStart.setDate(today.getDate() - daysToMonday);
-  weekStart.setHours(0, 0, 0, 0);
-
-  // Фильтруем задачи по текущей цели
-  const goalTasks = goalId ? tasks.filter(task => task.goalId === goalId) : tasks;
-
-  return days.map((label, index) => {
-    // Вычисляем дату для каждого дня недели
-    const dayDate = new Date(weekStart);
-    dayDate.setDate(weekStart.getDate() + index);
-    dayDate.setHours(0, 0, 0, 0);
-    
-    const dayTasks = goalTasks.filter(task => {
-      const taskDate = new Date(task.date);
-      taskDate.setHours(0, 0, 0, 0);
-      return taskDate.getTime() === dayDate.getTime();
-    });
-
-    const completed = dayTasks.filter(t => t.completed).length;
-    const total = dayTasks.length;
-    const percentage = total > 0 ? (completed / total) * 100 : 0;
-
-    return {
-      label,
-      percentage,
-      completedTasks: completed,
-      totalTasks: total,
-      isToday: index === adjustedToday,
-    };
-  });
-}
 
 const styles = StyleSheet.create({
   container: {
@@ -507,69 +443,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-  weeklyCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.xl,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
   activityCalendarContainer: {
     marginBottom: 24,
-  },
-  weeklyTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.text,
-    marginBottom: 20,
-  },
-  weeklyChart: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 140,
-  },
-  dayColumn: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  barContainer: {
-    flex: 1,
-    width: '70%',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  bar: {
-    backgroundColor: theme.colors.primary + '30',
-    borderRadius: theme.borderRadius.sm,
-    width: '100%',
-    minHeight: 4,
-  },
-  todayBar: {
-    backgroundColor: theme.colors.primary,
-  },
-  taskCount: {
-    position: 'absolute',
-    top: -20,
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.text,
-  },
-  dayLabel: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textSecondary,
-    marginTop: 12,
-    fontWeight: theme.fontWeight.semibold,
-  },
-  daySubLabel: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textLight,
-    marginTop: 2,
   },
   achievementsCard: {
     backgroundColor: theme.colors.surface,
