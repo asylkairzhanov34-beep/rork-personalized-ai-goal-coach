@@ -414,9 +414,11 @@ export function PomodoroTimer() {
             style={[
               styles.sessionTypeButton,
               mode === type && styles.sessionTypeButtonActive,
+              isRunning && styles.sessionTypeButtonDisabled,
             ]}
             onPress={() => handleModeChange(type)}
             activeOpacity={0.7}
+            disabled={isRunning}
           >
             <Text style={[
               styles.sessionTypeText,

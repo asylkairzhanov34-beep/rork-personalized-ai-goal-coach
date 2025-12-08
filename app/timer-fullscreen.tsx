@@ -242,9 +242,11 @@ export default function TimerFullscreenScreen() {
               style={[
                 styles.modePill,
                 mode === 'focus' && styles.modePillActive,
+                isRunning && styles.modePillDisabled,
               ]}
               onPress={() => setMode && setMode('focus')}
               activeOpacity={0.7}
+              disabled={isRunning}
             >
               <Text
                 style={[
@@ -260,9 +262,11 @@ export default function TimerFullscreenScreen() {
               style={[
                 styles.modePill,
                 mode === 'shortBreak' && styles.modePillActive,
+                isRunning && styles.modePillDisabled,
               ]}
               onPress={() => setMode && setMode('shortBreak')}
               activeOpacity={0.7}
+              disabled={isRunning}
             >
               <Text
                 style={[
@@ -278,9 +282,11 @@ export default function TimerFullscreenScreen() {
               style={[
                 styles.modePill,
                 mode === 'longBreak' && styles.modePillActive,
+                isRunning && styles.modePillDisabled,
               ]}
               onPress={() => setMode && setMode('longBreak')}
               activeOpacity={0.7}
+              disabled={isRunning}
             >
               <Text
                 style={[
@@ -583,6 +589,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: theme.fontWeight.bold as any,
     color: '#111214',
+  },
+  modePillDisabled: {
+    opacity: 0.4,
   },
   content: {
     flex: 1,
