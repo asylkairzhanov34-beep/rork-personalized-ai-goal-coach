@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
-import { X, Plus, Clock, Target, AlertCircle, Star, Lightbulb, Sparkles, Bot, CheckCircle, Circle } from 'lucide-react-native';
+import { X, Plus, Clock, Target, AlertCircle, Star, Lightbulb, Sparkles, Bot, CheckCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DailyTask, SubTask } from '@/types/goal';
@@ -72,7 +72,7 @@ export function TaskCreationModal({
   previousDayTasks = []
 }: TaskCreationModalProps) {
   const insets = useSafeAreaInsets();
-  const { currentGoal } = useGoalStore();
+  const { currentGoal, dailyTasks } = useGoalStore();
   
   const [isCompletedMode, setIsCompletedMode] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -250,6 +250,15 @@ export function TaskCreationModal({
     
     setIsGeneratingAI(true);
     try {
+      const recentTasks = dailyTasks ? dailyTasks
+        .filter(t => t.goalId === currentGoal.id)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 7) : [];
+      
+      const recentCompleted = recentTasks.filter(t => t.completed);
+      const recentContext = recentCompleted.length > 0 
+        ? `\n\nПРЕДЫДУЩИЕ ВЫПОЛНЕННЫЕ ЗАДАЧИ (для контекста):\n${recentCompleted.map((t, i) => `${i + 1}. ${t.title} - ${t.description}`).join('\n')}\n\nВАЖНО: Создай задачи которые ЛОГИЧЕСКИ ПРОДОЛЖАЮТ эти результаты и развивают их.`
+        : '';
       // Умный анализ категории цели для более специфичных задач
       const isLanguageLearning = /английск|язык|english|изуч.*слов|vocabular/i.test(
         `${currentGoal.title} ${currentGoal.description} ${currentGoal.category}`
@@ -312,26 +321,31 @@ export function TaskCreationModal({
       }
 
       const prompt = `
-        Создай 3-4 конкретные задачи для достижения цели на русском языке:
+        Создай 2-3 конкретные взаимосвязанные задачи для достижения цели на русском языке:
         Цель: ${currentGoal.title}
         Описание цели: ${currentGoal.description}
         Категория: ${currentGoal.category}
         Мотивация: ${currentGoal.motivation}
+        ${recentContext}
         ${specificInstructions}
         
-        Создай JSON массив tasks с задачами, каждая должна содержать:
+        Создай JSON массив tasks с 2-3 задачами, каждая должна содержать:
         - title: конкретное название задачи (не общее, а специфичное)
         - description: ОЧЕНЬ подробное описание с конкретными деталями - что именно делать, какие слова учить, какие упражнения делать, сколько повторений и т.д. (3-5 предложений)
         - estimatedTime: время в минутах (число от 15 до 90)
-        - difficulty: сложность (easy/medium/hard)
+        - difficulty: сложность (easy/medium/hard) - варьируй сложность, не делай все задачи одинаковой сложности
         - priority: приоритет (high/medium/low)
         - tips: массив из 3-4 практических советов как лучше выполнить
         - subtasks: массив из 2-4 подзадач с полями title (конкретное действие) и estimatedTime
         
-        Задачи должны быть:
-        - МАКСИМАЛЬНО КОНКРЕТНЫМИ - с числами, списками, именами
+        КРИТИЧЕСКИ ВАЖНО:
+        - Задачи должны быть ВЗАИМОСВЯЗАНЫ и образовывать ЕДИНУЮ СТРУКТУРУ
+        - Каждая следующая задача должна ОТТАЛКИВАТЬСЯ от предыдущей
+        - Если есть выполненные задачи - продолжай их логику, развивай результаты
+        - Создавай ГИБКИЙ ПЛАН, который адаптируется к прогрессу пользователя
+        - Задачи должны быть МАКСИМАЛЬНО КОНКРЕТНЫМИ - с числами, списками, именами
         - Практичными и сразу выполнимыми - пользователь должен точно понимать что делать
-        - Разнообразными по типу активности
+        - Разнообразными по сложности (легкие, средние, сложные)
         - С измеримым результатом
         
         Формат ответа: { "tasks": [...] }

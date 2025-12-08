@@ -198,9 +198,21 @@ export default function ProgressScreen() {
                 <View style={styles.mainStatRow}>
                   <View style={styles.mainStatItem}>
                     <Trophy size={20} color={theme.colors.warning} />
-                    <Text style={styles.mainStatLabel}>Всего выполнено</Text>
+                    <Text style={styles.mainStatLabel}>За месяц</Text>
                     <Text style={styles.mainStatValue}>
-                      {completedTasks}
+                      {(() => {
+                        const today = new Date();
+                        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                        monthEnd.setHours(23, 59, 59, 999);
+                        
+                        const monthTasks = dailyTasks.filter(t => {
+                          const taskDate = new Date(t.date);
+                          return t.goalId === currentGoal?.id && taskDate >= monthStart && taskDate <= monthEnd;
+                        });
+                        const completed = monthTasks.filter(t => t.completed).length;
+                        return `${completed}/30`;
+                      })()}
                     </Text>
                   </View>
                 </View>
