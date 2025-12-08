@@ -310,6 +310,37 @@ export async function getUserFullProfile(userId: string): Promise<any | null> {
   return null;
 }
 
+export async function saveUserSubscription(userId: string, subscriptionData: any): Promise<void> {
+  console.log('[Firebase] Saving subscription data:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  const cleanedData = removeUndefinedValues(subscriptionData);
+  
+  await setDoc(userRef, {
+    subscription: cleanedData,
+    subscriptionUpdatedAt: serverTimestamp(),
+  }, { merge: true });
+  
+  console.log('[Firebase] Subscription data saved');
+}
+
+export async function getUserSubscription(userId: string): Promise<any | null> {
+  console.log('[Firebase] Getting subscription data:', userId);
+  const firestore = getFirebaseDB();
+  const userRef = doc(firestore, 'users', userId);
+  
+  const docSnap = await getDoc(userRef);
+  
+  if (docSnap.exists() && docSnap.data().subscription) {
+    console.log('[Firebase] Subscription data found');
+    return docSnap.data().subscription;
+  }
+  
+  console.log('[Firebase] No subscription data found');
+  return null;
+}
+
 function removeUndefinedValues(obj: any): any {
   if (obj === null || obj === undefined) {
     return null;

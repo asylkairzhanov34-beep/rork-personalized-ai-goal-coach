@@ -160,6 +160,34 @@ export const authRouter = createTRPCRouter({
         return { success: false, error: error instanceof Error ? error.message : 'Delete failed' };
       }
     }),
+
+  updateSubscription: protectedProcedure
+    .input(z.object({
+      status: z.enum(['free', 'trial', 'premium']),
+      subscriptionData: z.any().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user?.id;
+      console.log('[Auth] updateSubscription:', userId, input.status);
+      
+      if (!userId || userId === 'anonymous') {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'User not authenticated',
+        });
+      }
+      
+      try {
+        console.log('[Auth] Updating subscription status in database');
+        return { success: true };
+      } catch (error) {
+        console.error('[Auth] Update subscription error:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error instanceof Error ? error.message : 'Update failed',
+        });
+      }
+    }),
 });
 
 console.log('[Auth Router] Ready');

@@ -18,6 +18,8 @@ import {
   RevenueCatCustomerInfo,
   RevenueCatPackage,
 } from '@/lib/revenuecat';
+import { saveUserSubscription } from '@/lib/firebase';
+import { useAuth } from '@/hooks/use-auth-store';
 
 const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000;
 const SUBSCRIPTION_STORAGE_KEY = '@subscription_status';
@@ -186,6 +188,7 @@ export type PurchaseResult = {
 export type TrialState = ReturnType<typeof buildTrialState>;
 
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
+  const { user } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
   const [status, setStatus] = useState<SubscriptionStatus>('loading');
   const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
@@ -242,6 +245,16 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         await AsyncStorage.removeItem(SUBSCRIPTION_OFFER_KEYS.trialStartISO);
         setTrialState(defaultTrialState);
         trialStateRef.current = defaultTrialState;
+        
+        if (user?.id) {
+          await saveUserSubscription(user.id, {
+            status: 'premium',
+            customerInfo: mapped,
+            updatedAt: new Date().toISOString(),
+          }).catch((err: Error) => {
+            console.error('[SubscriptionStore] Failed to save subscription to Firebase:', err);
+          });
+        }
       } else {
         await secureDelete(SECURE_KEYS.subscriptionActive);
         if (trialStateRef.current.isActive) {
@@ -249,9 +262,19 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         } else if (!trialStateRef.current.startedAt) {
           setStatus('free');
         }
+        
+        if (user?.id) {
+          await saveUserSubscription(user.id, {
+            status: trialStateRef.current.isActive ? 'trial' : 'free',
+            trialState: trialStateRef.current,
+            updatedAt: new Date().toISOString(),
+          }).catch((err: Error) => {
+            console.error('[SubscriptionStore] Failed to save subscription to Firebase:', err);
+          });
+        }
       }
     },
-    [mapCustomerInfo],
+    [mapCustomerInfo, user?.id],
   );
 
   const hydratePaywallSeen = useCallback(async () => {
@@ -541,8 +564,19 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     trialStateRef.current = nextState;
     setStatus('trial');
     emitAnalytics(ANALYTICS_EVENTS.TRIAL_STARTED, { started_at: now });
+    
+    if (user?.id) {
+      await saveUserSubscription(user.id, {
+        status: 'trial',
+        trialState: nextState,
+        updatedAt: new Date().toISOString(),
+      }).catch((err: Error) => {
+        console.error('[SubscriptionStore] Failed to save trial to Firebase:', err);
+      });
+    }
+    
     return nextState;
-  }, []);
+  }, [user?.id]);
 
   const purchasePackage = useCallback(
     async (packageIdentifier: string): Promise<PurchaseResult | null> => {
@@ -565,10 +599,25 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
             identifier: normalized.identifier,
             expiryDate,
           });
+          const mockInfo = buildCustomerInfoFromMock(normalized.packageId);
           setStatus('premium');
-          setCustomerInfo(buildCustomerInfoFromMock(normalized.packageId));
+          setCustomerInfo(mockInfo);
           await secureSet(SECURE_KEYS.subscriptionActive, 'true');
-            return {
+          
+          if (user?.id) {
+            await saveUserSubscription(user.id, {
+              status: 'premium',
+              customerInfo: mockInfo,
+              packageId: normalized.packageId,
+              identifier: normalized.identifier,
+              expiryDate,
+              updatedAt: new Date().toISOString(),
+            }).catch((err: Error) => {
+              console.error('[SubscriptionStore] Failed to save mock subscription to Firebase:', err);
+            });
+          }
+          
+          return {
             planName: normalized.identifier,
             productId: normalized.packageId,
             priceString: packages.find(pkg => pkg.identifier === packageIdentifier)?.product.priceString ?? '',
@@ -617,7 +666,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         setIsPurchasing(false);
       }
     },
-    [isMockMode, packages, persistCustomerInfo, persistMockSubscription],
+    [isMockMode, packages, persistCustomerInfo, persistMockSubscription, user?.id],
   );
 
   const restorePurchases = useCallback(async (): Promise<boolean> => {
