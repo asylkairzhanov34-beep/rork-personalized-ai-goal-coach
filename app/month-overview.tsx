@@ -291,7 +291,7 @@ export default function MonthOverviewScreen() {
                       {formatDayDate(day.date)}
                     </Text>
                     <Text style={styles.dayListTasks}>
-                      {totalTasks === 0 ? 'Нет задач' : completedTasks > 0 ? '1 задача выполнена' : '0 задач выполнено'}
+                      {totalTasks === 0 ? 'Нет задач' : `${completedTasks}/${totalTasks} выполнено`}
                     </Text>
                   </View>
                 </View>
@@ -368,7 +368,7 @@ export default function MonthOverviewScreen() {
           
           <View style={styles.headerContent}>
             <Text style={styles.title}>Обзор месяца</Text>
-            <Text style={styles.subtitle}>{currentMonth} {currentYear} • 0/30 задач</Text>
+            <Text style={styles.subtitle}>{currentMonth} {currentYear}</Text>
           </View>
         </View>
         

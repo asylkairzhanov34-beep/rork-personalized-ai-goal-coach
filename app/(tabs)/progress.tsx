@@ -188,7 +188,8 @@ export default function ProgressScreen() {
                           return t.goalId === currentGoal?.id && taskDate >= weekStart && taskDate <= weekEnd;
                         });
                         const completed = weekTasks.filter(t => t.completed).length;
-                        return `${completed}/7`;
+                        const total = weekTasks.length;
+                        return total > 0 ? `${completed}/${total}` : '0';
                       })()}
                     </Text>
                   </View>
