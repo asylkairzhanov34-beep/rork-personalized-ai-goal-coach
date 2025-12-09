@@ -18,7 +18,7 @@ import {
   RevenueCatCustomerInfo,
   RevenueCatPackage,
 } from '@/lib/revenuecat';
-import { saveUserSubscription } from '@/lib/firebase';
+import { saveUserSubscription, getUserSubscription } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth-store';
 
 const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -411,6 +411,31 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         const trial = await hydrateTrialState();
         await checkFirstLaunch();
 
+        if (user?.id) {
+          console.log('[SubscriptionProvider] Loading subscription from Firebase...');
+          try {
+            const savedSubscription = await getUserSubscription(user.id);
+            if (savedSubscription) {
+              console.log('[SubscriptionProvider] Found saved subscription:', savedSubscription.status);
+              if (savedSubscription.status === 'premium' && savedSubscription.customerInfo) {
+                setStatus('premium');
+                setCustomerInfo(savedSubscription.customerInfo as CustomerInfo);
+                await secureSet(SECURE_KEYS.subscriptionActive, 'true');
+              } else if (savedSubscription.status === 'trial' && savedSubscription.trialState) {
+                const restoredTrialState = buildTrialState(savedSubscription.trialState.startedAt);
+                if (restoredTrialState.isActive) {
+                  setTrialState(restoredTrialState);
+                  trialStateRef.current = restoredTrialState;
+                  setStatus('trial');
+                  await secureSet(SECURE_KEYS.trialStartAt, restoredTrialState.startedAt || '');
+                }
+              }
+            }
+          } catch (error) {
+            console.error('[SubscriptionProvider] Failed to load subscription from Firebase:', error);
+          }
+        }
+
         // Web platform or Rork Sandbox always uses mock mode
         if (Platform.OS === 'web' || isRorkSandbox) {
           console.log('[SubscriptionProvider]', isRorkSandbox ? 'Rork Sandbox' : 'Web platform', '- using mock mode');
@@ -476,7 +501,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     };
 
     bootstrap();
-  }, [checkFirstLaunch, hydratePaywallSeen, hydrateSecurePremiumFlag, hydrateTrialState, loadOfferingsFromRevenueCat, persistCustomerInfo]);
+  }, [checkFirstLaunch, hydratePaywallSeen, hydrateSecurePremiumFlag, hydrateTrialState, loadOfferingsFromRevenueCat, persistCustomerInfo, user?.id]);
 
   useEffect(() => {
     if (!trialState.startedAt || trialState.isExpired) {

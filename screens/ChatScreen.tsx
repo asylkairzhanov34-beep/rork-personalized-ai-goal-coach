@@ -99,15 +99,24 @@ const ChatScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
 
   const [isSending, setIsSending] = useState(false);
-  const { getFeatureAccess, checkSubscriptionStatus } = useSubscription();
+  const { getFeatureAccess, checkSubscriptionStatus, status, isPremium, trialState } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
 
   const featureAccess = getFeatureAccess();
 
-  // Refresh subscription status when screen mounts
   useEffect(() => {
+    console.log('[ChatScreen] Mounted - checking subscription status');
+    console.log('[ChatScreen] Current status:', status);
+    console.log('[ChatScreen] Is Premium:', isPremium);
+    console.log('[ChatScreen] Trial active:', trialState.isActive);
+    console.log('[ChatScreen] Has AI chat access:', featureAccess.aiChatAssistant);
     checkSubscriptionStatus();
-  }, [checkSubscriptionStatus]);
+  }, [checkSubscriptionStatus, status, isPremium, trialState.isActive, featureAccess.aiChatAssistant]);
+
+  useEffect(() => {
+    console.log('[ChatScreen] Status changed:', status);
+    console.log('[ChatScreen] AI chat access:', featureAccess.aiChatAssistant);
+  }, [status, featureAccess.aiChatAssistant]);
 
   const handleSend = async () => {
     if (inputText.trim()) {
