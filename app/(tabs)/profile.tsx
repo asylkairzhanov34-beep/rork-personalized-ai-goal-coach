@@ -98,7 +98,7 @@ export default function ProfileScreen() {
       icon: Settings,
       title: 'Настройки',
       subtitle: 'Предпочтения приложения',
-      onPress: () => Alert.alert('Скоро', 'Настройки будут доступны в ближайшее время'),
+      onPress: () => router.push('/settings'),
     },
     {
       icon: Info,
