@@ -431,7 +431,7 @@ export default function SettingsScreen() {
 
           <View style={styles.appInfo}>
             <Text style={styles.appName}>GoalCoach AI</Text>
-            <Text style={styles.appVersion}>Версия 1.0.0</Text>
+            <Text style={styles.appVersion}>Версия 1.0.4</Text>
             <Text style={styles.appCopyright}>© 2024 GoalCoach. Все права защищены.</Text>
           </View>
         </ScrollView>
