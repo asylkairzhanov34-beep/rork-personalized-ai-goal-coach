@@ -12,18 +12,18 @@ import { useGoalStore } from '@/hooks/use-goal-store';
 const onboardingSteps = [
   {
     icon: Target,
-    title: 'Поставьте свою цель',
-    description: 'Расскажите нам, чего вы хотите достичь, и мы создадим персональный план',
+    title: 'Set Your Goal',
+    description: 'Tell us what you want to achieve and we\'ll create a personalized plan',
   },
   {
     icon: Sparkles,
-    title: 'Планирование с ИИ',
-    description: 'Наш ИИ анализирует вашу цель и создаёт 14-дневный план действий',
+    title: 'AI Planning',
+    description: 'Our AI analyzes your goal and creates a 14-day action plan',
   },
   {
     icon: TrendingUp,
-    title: 'Отслеживайте прогресс',
-    description: 'Выполняйте ежедневные задачи и наблюдайте за своим ростом',
+    title: 'Track Progress',
+    description: 'Complete daily tasks and watch your growth',
   },
 ];
 
@@ -42,7 +42,7 @@ export function OnboardingScreen() {
 
   const handleComplete = () => {
     updateProfile({ 
-      name: name || 'Достижитель целей',
+      name: name || 'Goal Achiever',
       onboardingCompleted: true 
     });
     router.replace('/(tabs)/home');
@@ -50,7 +50,7 @@ export function OnboardingScreen() {
 
   const handleSkip = () => {
     updateProfile({ 
-      name: 'Достижитель целей',
+      name: 'Goal Achiever',
       onboardingCompleted: true 
     });
     router.replace('/(tabs)/home');
@@ -112,13 +112,13 @@ export function OnboardingScreen() {
                   <View style={styles.iconContainer}>
                     <Sparkles size={64} color={theme.colors.primary} />
                   </View>
-                  <Text style={styles.title}>Как вас зовут?</Text>
+                  <Text style={styles.title}>What's your name?</Text>
                   <Text style={styles.description}>
-                    Давайте персонализируем ваш опыт
+                    Let's personalize your experience
                   </Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Введите ваше имя"
+                    placeholder="Enter your name"
                     placeholderTextColor={theme.colors.textLight}
                     value={name}
                     onChangeText={setName}
@@ -131,7 +131,7 @@ export function OnboardingScreen() {
 
             <View style={styles.footer}>
               <Button
-                title={currentStep === onboardingSteps.length ? "Начать" : "Далее"}
+                title={currentStep === onboardingSteps.length ? "Get Started" : "Next"}
                 onPress={handleNext}
                 variant="premium"
                 size="large"
@@ -139,7 +139,7 @@ export function OnboardingScreen() {
               />
               {currentStep < onboardingSteps.length && (
                 <Button
-                  title="Пропустить"
+                  title="Skip"
                   onPress={handleSkip}
                   variant="outline"
                   size="medium"

@@ -35,11 +35,11 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
 
   const validateNickname = (text: string): boolean => {
     if (text.length < 2) {
-      setNicknameError('Минимум 2 символа');
+      setNicknameError('Minimum 2 characters');
       return false;
     }
     if (text.length > 20) {
-      setNicknameError('Максимум 20 символов');
+      setNicknameError('Maximum 20 characters');
       return false;
     }
     setNicknameError('');
@@ -72,7 +72,7 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
 
     const age = calculateAge(birthdate);
     if (age < 13) {
-      setNicknameError('Требуется возраст 13+');
+      setNicknameError('Must be 13+ years old');
       return;
     }
 
@@ -81,8 +81,8 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
 
   const years = Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i);
   const months = [
-    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
   ];
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
@@ -98,8 +98,8 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
       >
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <View style={styles.header}>
-            <Text style={styles.title}>Привет! 👋</Text>
-            <Text style={styles.subtitle}>Как к тебе обращаться?</Text>
+            <Text style={styles.title}>Hi! 👋</Text>
+            <Text style={styles.subtitle}>What should we call you?</Text>
           </View>
 
           <View style={styles.card}>
@@ -110,7 +110,7 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
             </View>
 
             <View style={styles.inputSection}>
-              <Text style={styles.label}>Никнейм</Text>
+              <Text style={styles.label}>Nickname</Text>
               <TextInput
                 style={[
                   styles.input,
@@ -119,7 +119,7 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
                 ]}
                 value={nickname}
                 onChangeText={handleNicknameChange}
-                placeholder="Введи своё имя"
+                placeholder="Enter your name"
                 placeholderTextColor={theme.colors.textLight}
                 maxLength={20}
                 autoCapitalize="words"
@@ -131,12 +131,12 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
             </View>
 
             <View style={styles.inputSection}>
-              <Text style={styles.label}>Дата рождения</Text>
+              <Text style={styles.label}>Date of Birth</Text>
               <View style={styles.datePickerRow}>
                 {Platform.OS === 'web' ? (
                   <>
                     <View style={styles.datePickerItem}>
-                      <Text style={styles.datePickerLabel}>День</Text>
+                      <Text style={styles.datePickerLabel}>Day</Text>
                       <ScrollView 
                         style={styles.dateScroll}
                         showsVerticalScrollIndicator={false}
@@ -163,7 +163,7 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
                     </View>
 
                     <View style={styles.datePickerItem}>
-                      <Text style={styles.datePickerLabel}>Месяц</Text>
+                      <Text style={styles.datePickerLabel}>Month</Text>
                       <ScrollView 
                         style={styles.dateScroll}
                         showsVerticalScrollIndicator={false}
@@ -190,7 +190,7 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
                     </View>
 
                     <View style={styles.datePickerItem}>
-                      <Text style={styles.datePickerLabel}>Год</Text>
+                      <Text style={styles.datePickerLabel}>Year</Text>
                       <ScrollView 
                         style={styles.dateScroll}
                         showsVerticalScrollIndicator={false}
@@ -229,7 +229,7 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
                           <Picker.Item key={day} label={day.toString()} value={day} />
                         ))}
                       </Picker>
-                      <Text style={styles.pickerUnit}>день</Text>
+                      <Text style={styles.pickerUnit}>day</Text>
                     </View>
 
                     <View style={styles.pickerWrapper}>
@@ -243,7 +243,7 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
                           <Picker.Item key={idx} label={month} value={idx} />
                         ))}
                       </Picker>
-                      <Text style={styles.pickerUnit}>месяц</Text>
+                      <Text style={styles.pickerUnit}>month</Text>
                     </View>
 
                     <View style={styles.pickerWrapper}>
@@ -257,7 +257,7 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
                           <Picker.Item key={year} label={year.toString()} value={year} />
                         ))}
                       </Picker>
-                      <Text style={styles.pickerUnit}>год</Text>
+                      <Text style={styles.pickerUnit}>year</Text>
                     </View>
                   </>
                 )}
@@ -274,7 +274,7 @@ export default function Step1Profile({ onNext, initialData }: Step1ProfileProps)
             disabled={!nickname || !!nicknameError}
             activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Продолжить</Text>
+            <Text style={styles.buttonText}>Continue</Text>
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>

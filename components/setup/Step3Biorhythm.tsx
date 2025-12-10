@@ -35,20 +35,20 @@ export default function Step3Biorhythm({ onNext, onSkip, initialTime }: Step3Bio
     {
       id: 'morning',
       icon: 'sunrise',
-      title: 'Утром',
-      time: '6:00 - 12:00',
+      title: 'Morning',
+      time: '6:00 AM - 12:00 PM',
     },
     {
       id: 'afternoon',
       icon: 'sun',
-      title: 'После обеда',
-      time: '12:00 - 18:00',
+      title: 'Afternoon',
+      time: '12:00 PM - 6:00 PM',
     },
     {
       id: 'evening',
       icon: 'moon',
-      title: 'Вечером',
-      time: '18:00 - 00:00',
+      title: 'Evening',
+      time: '6:00 PM - 12:00 AM',
     },
   ];
 
@@ -92,8 +92,8 @@ export default function Step3Biorhythm({ onNext, onSkip, initialTime }: Step3Bio
     <View style={styles.container}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>Когда у тебя пик энергии?</Text>
-          <Text style={styles.subtitle}>Настроим уведомления под твой ритм</Text>
+          <Text style={styles.title}>When is your peak energy?</Text>
+          <Text style={styles.subtitle}>We'll customize notifications for your rhythm</Text>
         </View>
 
         <View style={styles.timesContainer}>
@@ -144,7 +144,7 @@ export default function Step3Biorhythm({ onNext, onSkip, initialTime }: Step3Bio
           disabled={!selectedTime}
           activeOpacity={0.8}
         >
-          <Text style={styles.buttonText}>Продолжить</Text>
+          <Text style={styles.buttonText}>Continue</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -152,7 +152,7 @@ export default function Step3Biorhythm({ onNext, onSkip, initialTime }: Step3Bio
           onPress={onSkip}
           activeOpacity={0.7}
         >
-          <Text style={styles.skipButtonText}>Пропустить</Text>
+          <Text style={styles.skipButtonText}>Skip</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>

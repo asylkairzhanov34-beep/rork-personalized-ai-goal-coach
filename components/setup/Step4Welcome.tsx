@@ -131,9 +131,9 @@ export default function Step4Welcome({ nickname, onComplete }: Step4WelcomeProps
             },
           ]}
         >
-          <Text style={styles.welcomeText}>Добро пожаловать,</Text>
+          <Text style={styles.welcomeText}>Welcome,</Text>
           <Text style={styles.nicknameText}>{nickname}!</Text>
-          <Text style={styles.subtitleText}>Твой путь начинается</Text>
+          <Text style={styles.subtitleText}>Your journey begins</Text>
         </Animated.View>
       </View>
     </View>

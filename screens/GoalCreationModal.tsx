@@ -25,21 +25,21 @@ import { useGoalStore } from '@/hooks/use-goal-store';
 import { Goal, DailyTask } from '@/types/goal';
 
 const questions = [
-  "Какую конкретную цель вы хотите достичь?",
-  "Почему эта цель важна для вас?",
-  "Какие препятствия вы можете встретить?",
-  "Какие ресурсы или поддержка у вас есть?",
-  "Сколько времени в день вы можете уделять?",
-  "Как бы выглядел успех для вас?",
+  "What specific goal do you want to achieve?",
+  "Why is this goal important to you?",
+  "What obstacles might you face?",
+  "What resources or support do you have?",
+  "How much time per day can you dedicate?",
+  "What would success look like for you?",
 ];
 
 const examples = [
-  "Например: Выучить английский до уровня B2, пробежать марафон, запустить свой бизнес",
-  "Например: Для карьерного роста, чтобы путешествовать без языкового барьера, для личного развития",
-  "Например: Нехватка времени, отсутствие мотивации, финансовые ограничения, страх неудачи",
-  "Например: Онлайн-курсы, друзья-носители языка, спортзал рядом с домом, накопления",
-  "Например: 30 минут утром, 1 час вечером, выходные по 2 часа",
-  "Например: Свободно общаюсь на английском, пробежал 42 км без остановки, получаю первую прибыль",
+  "For example: Learn English to B2 level, run a marathon, start my own business",
+  "For example: Career growth, travel without language barriers, personal development",
+  "For example: Lack of time, lack of motivation, financial constraints, fear of failure",
+  "For example: Online courses, native speaker friends, gym nearby, savings",
+  "For example: 30 minutes in the morning, 1 hour in the evening, 2 hours on weekends",
+  "For example: Fluent English conversations, ran 42 km non-stop, earning first profit",
 ];
 
 interface ChatMessage {
@@ -107,7 +107,7 @@ export function GoalCreationModal() {
             // Optional: refocus or keep focus
             // inputRef.current.focus();
           }
-           AccessibilityInfo.announceForAccessibility(`Вопрос ${currentQuestion + 1}: ${questions[currentQuestion]}`);
+           AccessibilityInfo.announceForAccessibility(`Question ${currentQuestion + 1}: ${questions[currentQuestion]}`);
         });
       }, 50);
     });
@@ -206,7 +206,7 @@ export function GoalCreationModal() {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Извините, произошла ошибка. Попробуйте еще раз.',
+        content: 'Sorry, an error occurred. Please try again.',
         timestamp: new Date()
       };
       setChatMessages(prev => [...prev, errorMessage]);
@@ -221,7 +221,7 @@ export function GoalCreationModal() {
       const welcomeMessage: ChatMessage = {
         id: '0',
         role: 'assistant',
-        content: 'Привет! 👋 Расскажи подробнее о своей цели. Что именно ты хочешь достичь и почему это важно для тебя?',
+        content: 'Hi! 👋 Tell me more about your goal. What exactly do you want to achieve and why is it important to you?',
         timestamp: new Date()
       };
       setChatMessages([welcomeMessage]);
@@ -456,7 +456,7 @@ export function GoalCreationModal() {
           >
             <X size={24} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Создать цель</Text>
+          <Text style={styles.headerTitle}>Create Goal</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -468,15 +468,15 @@ export function GoalCreationModal() {
             }) }]} />
           </View>
           <Text style={styles.progressText}>
-            Вопрос {currentQuestion + 1} из {questions.length}
+            Question {currentQuestion + 1} of {questions.length}
           </Text>
         </View>
 
         {isGenerating ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>Создаём ваш персональный план...</Text>
-            <Text style={styles.loadingSubtext}>Это может занять немного времени</Text>
+            <Text style={styles.loadingText}>Creating your personalized plan...</Text>
+            <Text style={styles.loadingSubtext}>This may take a moment</Text>
           </View>
         ) : (
           <ScrollView 
@@ -498,7 +498,7 @@ export function GoalCreationModal() {
               <TextInput
                 ref={inputRef}
                 style={[styles.input, { height: Math.max(48, Math.min(inputHeight, 200)) }]}
-                placeholder="Опиши свою цель..."
+                placeholder="Describe your goal..."
                 placeholderTextColor={theme.colors.textLight}
                 value={currentAnswer}
                 onChangeText={setCurrentAnswer}
@@ -518,8 +518,8 @@ export function GoalCreationModal() {
                 activeOpacity={0.7}
               >
                 <Sparkles size={20} color={theme.colors.primary} />
-                <Text style={styles.aiChatButtonText}>Обсудить с ИИ</Text>
-                <Text style={styles.aiChatButtonSubtext}>Помощь в формулировке цели</Text>
+                <Text style={styles.aiChatButtonText}>Discuss with AI</Text>
+                <Text style={styles.aiChatButtonSubtext}>Help with goal formulation</Text>
               </TouchableOpacity>
             </Animated.View>
 
@@ -527,7 +527,7 @@ export function GoalCreationModal() {
               <View style={styles.buttonRow}>
                 {currentQuestion > 0 && (
                   <Button
-                    title="Назад"
+                    title="Back"
                     onPress={handleBack}
                     variant="outline"
                     style={styles.backButton}
@@ -539,7 +539,7 @@ export function GoalCreationModal() {
                   currentQuestion === 0 && { flex: 1 } // Full width if no back button
                 ]}>
                   <Button
-                    title={currentQuestion === questions.length - 1 ? "Создать план" : "Далее"}
+                    title={currentQuestion === questions.length - 1 ? "Create Plan" : "Next"}
                     onPress={handleNext}
                     variant="premium"
                     disabled={!currentAnswer.trim()}
@@ -560,7 +560,7 @@ export function GoalCreationModal() {
             <View style={styles.chatHeader}>
               <View style={styles.chatHeaderLeft}>
                 <Bot size={24} color={theme.colors.primary} />
-                <Text style={styles.chatHeaderTitle}>ИИ-помощник</Text>
+                <Text style={styles.chatHeaderTitle}>AI Assistant</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setShowAIChat(false)}
@@ -593,7 +593,7 @@ export function GoalCreationModal() {
             {isChatLoading && (
               <View style={styles.chatLoadingContainer}>
                 <ActivityIndicator size="small" color={theme.colors.primary} />
-                <Text style={styles.chatLoadingText}>ИИ думает...</Text>
+                <Text style={styles.chatLoadingText}>AI is thinking...</Text>
               </View>
             )}
 
@@ -610,7 +610,7 @@ export function GoalCreationModal() {
               <View style={styles.chatInputRow}>
                 <TextInput
                   style={styles.chatInput}
-                  placeholder="Напишите сообщение..."
+                  placeholder="Type a message..."
                   placeholderTextColor="rgba(255,255,255,0.5)"
                   value={chatInput}
                   onChangeText={setChatInput}
@@ -634,7 +634,7 @@ export function GoalCreationModal() {
                   style={styles.applySuggestionButton}
                   onPress={applyAISuggestion}
                 >
-                  <Text style={styles.applySuggestionText}>Применить предложение ИИ</Text>
+                  <Text style={styles.applySuggestionText}>Apply AI Suggestion</Text>
                 </TouchableOpacity>
               )}
             </View>

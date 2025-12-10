@@ -75,18 +75,18 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const testFirebaseConnection = async () => {
     console.log('[AuthScreen] Testing Firebase...');
     setIsTestingBackend(true);
-    setDebugInfo('⏳ Проверка Firebase...');
+    setDebugInfo('⏳ Checking Firebase...');
 
     if (firebaseInitialized) {
       setDebugInfo(
-        `✅ Firebase готов\n` +
+        `✅ Firebase ready\n` +
         `Project: goalforge-ai-data\n` +
         `Domain: goalforge-ai-data.firebaseapp.com`
       );
     } else if (initError) {
-      setDebugInfo(`❌ Ошибка Firebase:\n${initError}`);
+      setDebugInfo(`❌ Firebase error:\n${initError}`);
     } else {
-      setDebugInfo('⏳ Firebase инициализируется...');
+      setDebugInfo('⏳ Firebase initializing...');
     }
 
     setIsTestingBackend(false);
@@ -94,7 +94,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   const handleAppleAuth = async () => {
     if (Platform.OS !== 'ios') {
-      Alert.alert('Ошибка', 'Apple Sign In доступен только на iOS');
+      Alert.alert('Error', 'Apple Sign In is only available on iOS');
       return;
     }
 
@@ -114,11 +114,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     } catch (error) {
       console.error('[AuthScreen] Auth error:', error);
       
-      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
       if (!errorMessage.includes('cancel')) {
         Alert.alert(
-          'Ошибка авторизации',
+          'Authorization Error',
           errorMessage,
           [{ text: 'OK' }]
         );
@@ -176,9 +176,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               { opacity: fadeAnim },
             ]}
           >
-            <Text style={styles.title}>Добро пожаловать!</Text>
+            <Text style={styles.title}>Welcome!</Text>
             <Text style={styles.subtitle}>
-              Ваш ИИ-коуч ждёт — начните путь к целям
+              Your AI coach awaits — start your journey to goals
             </Text>
           </Animated.View>
 
@@ -202,7 +202,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={styles.debugButtonText}>
-                      🔧 Тест Firebase
+                      🔧 Test Firebase
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -230,7 +230,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
                   )}
                   <Text style={styles.appleButtonText}>
-                    {isLoading ? 'Входим...' : 'Войти с Apple'}
+                    {isLoading ? 'Signing in...' : 'Sign in with Apple'}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -238,7 +238,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               <View style={styles.webNotice}>
                 <Ionicons name="information-circle-outline" size={24} color="#FFD700" />
                 <Text style={styles.webNoticeText}>
-                  Вход через Apple доступен только на iOS устройствах
+                  Apple Sign In is only available on iOS devices
                 </Text>
               </View>
             )}
@@ -251,9 +251,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             ]}
           >
             <Text style={styles.footerText}>
-              Продолжая, вы соглашаетесь с{' '}
+              By continuing, you agree to our{' '}
               <Text style={styles.linkText} onPress={handlePrivacyPress}>
-                Политикой конфиденциальности
+                Privacy Policy
               </Text>
             </Text>
           </Animated.View>

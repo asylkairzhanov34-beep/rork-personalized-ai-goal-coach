@@ -185,7 +185,7 @@ const ChatScreen: React.FC = () => {
                 <Text style={styles.headerTitle}>GoalForge</Text>
                 <View style={styles.statusContainer}>
                   <View style={[styles.statusDot, { backgroundColor: theme.colors.textSecondary }]} />
-                  <Text style={styles.headerSubtitle}>Premium функция</Text>
+                  <Text style={styles.headerSubtitle}>Premium Feature</Text>
                 </View>
               </View>
             </View>
@@ -194,12 +194,12 @@ const ChatScreen: React.FC = () => {
         <PaywallModal
           visible
           variant="feature"
-          featureName="ИИ-чат GoalForge"
+          featureName="GoalForge AI Chat"
           onPrimaryAction={() => router.push('/subscription')}
           onSecondaryAction={() => router.back()}
           onRequestClose={() => router.back()}
-          primaryLabel="Оформить Premium"
-          secondaryLabel="Вернуться"
+          primaryLabel="Get Premium"
+          secondaryLabel="Go Back"
           testID="chat-paywall"
         />
       </View>
@@ -211,15 +211,15 @@ const ChatScreen: React.FC = () => {
       <PaywallModal
         visible={showPaywall}
         variant="feature"
-        featureName="ИИ-чат GoalForge"
+        featureName="GoalForge AI Chat"
         onPrimaryAction={() => {
           setShowPaywall(false);
           router.push('/subscription');
         }}
         onSecondaryAction={() => setShowPaywall(false)}
         onRequestClose={() => setShowPaywall(false)}
-        primaryLabel="Оформить Premium"
-        secondaryLabel="Не сейчас"
+        primaryLabel="Get Premium"
+        secondaryLabel="Not Now"
       />
       <View style={styles.container}>
       <SafeAreaView style={styles.headerContainer} edges={['top']}>
@@ -234,7 +234,7 @@ const ChatScreen: React.FC = () => {
               <Text style={styles.headerTitle}>GoalForge</Text>
               <View style={styles.statusContainer}>
                 <View style={styles.statusDot} />
-                <Text style={styles.headerSubtitle}>Онлайн</Text>
+                <Text style={styles.headerSubtitle}>Online</Text>
               </View>
             </View>
           </View>
@@ -264,36 +264,36 @@ const ChatScreen: React.FC = () => {
               <View style={styles.emptyIcon}>
                 <Bot size={48} color={theme.colors.primary} />
               </View>
-              <Text style={styles.emptyTitle}>Привет! Я GoalForge</Text>
+              <Text style={styles.emptyTitle}>Hi! I'm GoalForge</Text>
               <Text style={styles.emptyText}>
-                Я помогу проанализировать твой прогресс и дам советы.{"\n"}
-                Спроси меня о продуктивности или анализе твоих целей.
+                I'll help analyze your progress and give you advice.{"\n"}
+                Ask me about productivity or your goals analysis.
               </Text>
               
               <View style={styles.suggestionsContainer}>
                 <TouchableOpacity 
                   style={styles.suggestionChip}
-                  onPress={() => setInputText("Дай советы по продуктивности")}
+                  onPress={() => setInputText("Give me productivity tips")}
                 >
-                  <Text style={styles.suggestionText}>📝 Советы по продуктивности</Text>
+                  <Text style={styles.suggestionText}>📝 Productivity Tips</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.suggestionChip}
-                  onPress={() => setInputText("Проанализируй мой прогресс")}
+                  onPress={() => setInputText("Analyze my progress")}
                 >
-                  <Text style={styles.suggestionText}>📊 Проанализируй прогресс</Text>
+                  <Text style={styles.suggestionText}>📊 Analyze Progress</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.suggestionChip}
-                  onPress={() => setInputText("Добавь задачу на завтра")}
+                  onPress={() => setInputText("Add a task for tomorrow")}
                 >
-                  <Text style={styles.suggestionText}>➕ Добавь задачу</Text>
+                  <Text style={styles.suggestionText}>➕ Add Task</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.suggestionChip}
-                  onPress={() => setInputText("Покажи мои задачи")}
+                  onPress={() => setInputText("Show my tasks")}
                 >
-                  <Text style={styles.suggestionText}>📋 Покажи задачи</Text>
+                  <Text style={styles.suggestionText}>📋 Show Tasks</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -342,7 +342,7 @@ const ChatScreen: React.FC = () => {
             style={styles.input}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Напишите сообщение..."
+            placeholder="Type a message..."
             placeholderTextColor="rgba(255,255,255,0.5)"
             multiline
             maxLength={1000}

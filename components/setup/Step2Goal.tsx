@@ -35,26 +35,26 @@ export default function Step2Goal({ onNext, onSkip, initialGoal }: Step2GoalProp
     {
       id: 'focus',
       icon: 'brain',
-      title: 'Фокус и продуктивность',
-      description: 'Научись концентрироваться и управлять вниманием',
+      title: 'Focus & Productivity',
+      description: 'Learn to concentrate and manage your attention',
     },
     {
       id: 'discipline',
       icon: 'target',
-      title: 'Самодисциплина',
-      description: 'Развивай силу воли и достигай поставленных целей',
+      title: 'Self-Discipline',
+      description: 'Build willpower and achieve your goals',
     },
     {
       id: 'calm',
       icon: 'heart',
-      title: 'Спокойствие и контроль',
-      description: 'Управляй эмоциями и находи внутреннее равновесие',
+      title: 'Calm & Control',
+      description: 'Manage emotions and find inner balance',
     },
     {
       id: 'ambition',
       icon: 'zap',
-      title: 'Целеустремлённость',
-      description: 'Ставь амбициозные цели и иди к ним уверенно',
+      title: 'Ambition',
+      description: 'Set ambitious goals and pursue them confidently',
     },
   ];
 
@@ -91,8 +91,8 @@ export default function Step2Goal({ onNext, onSkip, initialGoal }: Step2GoalProp
       >
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <View style={styles.header}>
-            <Text style={styles.title}>Что хочешь прокачать?</Text>
-            <Text style={styles.subtitle}>Выбери главное направление для старта</Text>
+            <Text style={styles.title}>What do you want to improve?</Text>
+            <Text style={styles.subtitle}>Choose your main focus area to start</Text>
           </View>
 
           <View style={styles.goalsContainer}>
@@ -145,7 +145,7 @@ export default function Step2Goal({ onNext, onSkip, initialGoal }: Step2GoalProp
             disabled={!selectedGoal}
             activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Продолжить</Text>
+            <Text style={styles.buttonText}>Continue</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -153,7 +153,7 @@ export default function Step2Goal({ onNext, onSkip, initialGoal }: Step2GoalProp
             onPress={onSkip}
             activeOpacity={0.7}
           >
-            <Text style={styles.skipButtonText}>Пропустить</Text>
+            <Text style={styles.skipButtonText}>Skip</Text>
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>

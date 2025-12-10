@@ -53,17 +53,17 @@ const isProductionBuild = () => {
 };
 
 const FEATURE_LIST = [
-  { title: 'Ежедневный ИИ-коуч', subtitle: 'ИИ анализирует ваш день и подбирает оптимальные шаги', icon: Bot },
-  { title: 'Полный недельный/месячный план', subtitle: 'Видна картина прогресса и расписание', icon: Calendar },
-  { title: 'Weekly AI Report', subtitle: 'Точные инсайты и рекомендации', icon: FileText },
-  { title: 'Все персональные советы', subtitle: 'Под задания подстроены под ваш профиль', icon: Sparkles },
-  { title: 'Умные задачи', subtitle: 'ИИ генерирует задачи под цель', icon: CheckSquare },
-  { title: 'История 7–90 дней', subtitle: 'Аналитика и тренды', icon: History },
-  { title: 'Уровни и награды', subtitle: 'Рост мотивации и достижения', icon: Trophy },
-  { title: 'ИИ-чат помощник', subtitle: 'Быстрые ответы и поддержка', icon: MessageCircle },
-  { title: 'Приоритетная скорость', subtitle: 'Функции работают быстрее', icon: Zap },
-  { title: 'Умный Pomodoro таймер с аналитикой', subtitle: 'Детальная статистика фокуса', icon: Timer },
-  { title: 'Все будущие функции', subtitle: 'Доступ ко всем обновлениям', icon: Infinity },
+  { title: 'Daily AI Coach', subtitle: 'AI analyzes your day and suggests optimal steps', icon: Bot },
+  { title: 'Full Weekly/Monthly Plan', subtitle: 'See the big picture of progress and schedule', icon: Calendar },
+  { title: 'Weekly AI Report', subtitle: 'Precise insights and recommendations', icon: FileText },
+  { title: 'All Personal Tips', subtitle: 'Tasks tailored to your profile', icon: Sparkles },
+  { title: 'Smart Tasks', subtitle: 'AI generates tasks for your goal', icon: CheckSquare },
+  { title: '7-90 Days History', subtitle: 'Analytics and trends', icon: History },
+  { title: 'Levels and Rewards', subtitle: 'Motivation growth and achievements', icon: Trophy },
+  { title: 'AI Chat Assistant', subtitle: 'Quick answers and support', icon: MessageCircle },
+  { title: 'Priority Speed', subtitle: 'Features work faster', icon: Zap },
+  { title: 'Smart Pomodoro Timer with Analytics', subtitle: 'Detailed focus statistics', icon: Timer },
+  { title: 'All Future Features', subtitle: 'Access to all updates', icon: Infinity },
 ];
 
 export default function SubscriptionScreen({ skipButton = false }: SubscriptionScreenProps) {
@@ -115,7 +115,7 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
 
   const handlePurchase = async () => {
     if (!selectedPackage) {
-      Alert.alert('Ошибка', 'Выберите план подписки');
+      Alert.alert('Error', 'Please select a subscription plan');
       return;
     }
     
@@ -127,7 +127,7 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
     
     if (success) {
       console.log('[SubscriptionScreen] ✅ Purchase completed successfully');
-      Alert.alert('Успешно!', 'Подписка активирована', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert('Success!', 'Subscription activated', [{ text: 'OK', onPress: () => router.back() }]);
     } else {
       console.error('[SubscriptionScreen] ❌ Purchase failed or was cancelled');
     }
@@ -136,9 +136,9 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
   const handleRestore = async () => {
     const success = await restorePurchases();
     if (success) {
-      Alert.alert('Успешно!', 'Подписка восстановлена', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert('Success!', 'Subscription restored', [{ text: 'OK', onPress: () => router.back() }]);
     } else {
-      Alert.alert('Информация', 'Активные подписки не найдены');
+      Alert.alert('Info', 'No active subscriptions found');
     }
   };
 
@@ -172,17 +172,17 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
               </LinearGradient>
             </View>
             
-            <Text style={styles.heroTitle}>Вы уже с нами!</Text>
+            <Text style={styles.heroTitle}>You're already with us!</Text>
             <Text style={styles.heroSubtitle}>
-              Ваша Premium подписка активна. Наслаждайтесь полным доступом ко всем функциям GoalForge.
+              Your Premium subscription is active. Enjoy full access to all GoalForge features.
             </Text>
 
             <View style={styles.activePlanCard}>
               <View style={styles.planRow}>
                 <CreditCard size={20} color="#FFD700" />
-                <Text style={styles.planLabel}>Статус подписки</Text>
+                <Text style={styles.planLabel}>Subscription Status</Text>
               </View>
-              <Text style={styles.planValue}>Активна</Text>
+              <Text style={styles.planValue}>Active</Text>
               
               {customerInfo?.entitlements.active.premium?.productIdentifier && (
                  <Text style={styles.planId}>
@@ -192,7 +192,7 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
             </View>
 
             <TouchableOpacity style={styles.manageButton} onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}>
-              <Text style={styles.manageButtonText}>Управление подпиской</Text>
+              <Text style={styles.manageButtonText}>Manage Subscription</Text>
             </TouchableOpacity>
 
             {/* Debug Info */}
@@ -200,15 +200,15 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
               <View style={styles.debugCard}>
                 <Bug size={20} color="#FF6B6B" />
                 <Text style={styles.debugText}>
-                  ⚠️ Offerings не загружены{'\n'}
-                  {!isInitialized && 'RevenueCat инициализируется...'}{' '}
-                  {isInitialized && 'Проверьте RevenueCat Dashboard'}
+                  ⚠️ Offerings not loaded{'\n'}
+                  {!isInitialized && 'RevenueCat initializing...'}{' '}
+                  {isInitialized && 'Check RevenueCat Dashboard'}
                 </Text>
                 <TouchableOpacity 
                   style={styles.debugButton}
                   onPress={() => router.push('/dev-subscription-tools')}
                 >
-                  <Text style={styles.debugButtonText}>Открыть Debug Tools</Text>
+                  <Text style={styles.debugButtonText}>Open Debug Tools</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -220,21 +220,21 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
                   style={styles.devCancelButton} 
                   onPress={() => {
                     Alert.alert(
-                      'Отмена подписки (Тест)',
+                      'Cancel Subscription (Test)',
                       Platform.select({
-                        ios: 'TestFlight/Sandbox: Эта кнопка сбрасывает локальный статус подписки в приложении.\n\nДля полной отмены:\n1. Settings → [Your Name] → Subscriptions\n2. Найдите GoalForge → Cancel Subscription\n\nИли очистите историю в App Store Connect → Sandbox.',
-                        default: 'Это действие сбросит локальный статус подписки.'
+                        ios: 'TestFlight/Sandbox: This button resets local subscription status in the app.\n\nFor full cancellation:\n1. Settings → [Your Name] → Subscriptions\n2. Find GoalForge → Cancel Subscription\n\nOr clear history in App Store Connect → Sandbox.',
+                        default: 'This action will reset the local subscription status.'
                       }),
                       [
-                        { text: 'Отмена', style: 'cancel' },
+                        { text: 'Cancel', style: 'cancel' },
                         { 
-                          text: 'Сбросить', 
+                          text: 'Reset', 
                           style: 'destructive', 
                           onPress: async () => {
                             await cancelSubscriptionForDev();
                             Alert.alert(
-                              'Сброшено',
-                              'Локальный статус подписки сброшен.\n\nДля полной отмены подписки в Sandbox используйте настройки iOS.'
+                              'Reset',
+                              'Local subscription status has been reset.\n\nTo fully cancel subscription in Sandbox, use iOS settings.'
                             );
                             router.back();
                           }
@@ -306,9 +306,9 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
         >
           {/* Hero Block */}
           <View style={styles.heroBlock}>
-            <Text style={styles.heroTitle}>Открой полный потенциал GoalForge</Text>
+            <Text style={styles.heroTitle}>Unlock the Full Potential of GoalForge</Text>
             <Text style={styles.heroSubtitle}>
-              Инвестируйте в свою продуктивность и будущее
+              Invest in your productivity and future
             </Text>
           </View>
 
@@ -371,7 +371,7 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
             <View style={styles.loadingPackagesContainer}>
               <ActivityIndicator size="large" color="#FFD700" />
               <Text style={styles.loadingText}>
-                {isInitialized ? 'Загрузка планов подписки...' : 'Инициализация...'}
+                {isInitialized ? 'Loading subscription plans...' : 'Initializing...'}
               </Text>
               {!isProductionBuild() && (
                 <TouchableOpacity 
@@ -379,7 +379,7 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
                   onPress={() => router.push('/dev-subscription-tools')}
                 >
                   <Bug size={16} color="#FF6B6B" />
-                  <Text style={styles.debugLinkText}>Открыть Debug Tools</Text>
+                  <Text style={styles.debugLinkText}>Open Debug Tools</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -400,17 +400,17 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
              {isPurchasing ? (
                <ActivityIndicator color="#000" />
              ) : (
-               <Text style={styles.ctaText}>Попробовать Premium</Text>
+               <Text style={styles.ctaText}>Try Premium</Text>
              )}
           </TouchableOpacity>
           
           <View style={styles.policyLinks}>
             <TouchableOpacity onPress={handleRestore}>
-              <Text style={styles.policyText}>Восстановить</Text>
+              <Text style={styles.policyText}>Restore</Text>
             </TouchableOpacity>
             <Text style={styles.policyDivider}>•</Text>
              <TouchableOpacity onPress={() => Linking.openURL('https://goalforge.app/terms')}>
-              <Text style={styles.policyText}>Условия</Text>
+              <Text style={styles.policyText}>Terms</Text>
             </TouchableOpacity>
           </View>
         </View>
