@@ -11,9 +11,9 @@ interface ActivityCalendarProps {
 export function ActivityCalendar({ completedDates, currentStreak }: ActivityCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
-  const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 
-                      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-  const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   
   const calendarData = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -149,7 +149,7 @@ export function ActivityCalendar({ completedDates, currentStreak }: ActivityCale
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Calendar size={20} color={theme.colors.primary} />
-          <Text style={styles.title}>Активность</Text>
+          <Text style={styles.title}>Activity</Text>
         </View>
         <View style={styles.streakBadge}>
           <Flame size={16} color={theme.colors.warning} />
@@ -218,7 +218,7 @@ export function ActivityCalendar({ completedDates, currentStreak }: ActivityCale
       </View>
       
       <View style={styles.legend}>
-        <Text style={styles.legendLabel}>Интенсивность:</Text>
+        <Text style={styles.legendLabel}>Intensity:</Text>
         <View style={styles.legendItems}>
           <View style={[styles.legendSquare, { backgroundColor: theme.colors.surfaceElevated, borderWidth: 1, borderColor: theme.colors.border }]} />
           <View style={[styles.legendSquare, { backgroundColor: '#3D3200' }]} />
@@ -234,7 +234,7 @@ export function ActivityCalendar({ completedDates, currentStreak }: ActivityCale
             <CheckCircle2 size={18} color={theme.colors.success} />
           </View>
           <Text style={styles.statValue}>{monthStats.totalTasks}</Text>
-          <Text style={styles.statLabel}>задач за месяц</Text>
+          <Text style={styles.statLabel}>tasks this month</Text>
         </View>
         
         <View style={styles.statDivider} />
@@ -244,7 +244,7 @@ export function ActivityCalendar({ completedDates, currentStreak }: ActivityCale
             <Calendar size={18} color={theme.colors.primary} />
           </View>
           <Text style={styles.statValue}>{monthStats.activeDays}</Text>
-          <Text style={styles.statLabel}>активных дней</Text>
+          <Text style={styles.statLabel}>active days</Text>
         </View>
         
         <View style={styles.statDivider} />
@@ -254,7 +254,7 @@ export function ActivityCalendar({ completedDates, currentStreak }: ActivityCale
             <Flame size={18} color={theme.colors.warning} />
           </View>
           <Text style={styles.statValue}>{currentStreak}</Text>
-          <Text style={styles.statLabel}>дней подряд</Text>
+          <Text style={styles.statLabel}>days in a row</Text>
         </View>
       </View>
     </View>
