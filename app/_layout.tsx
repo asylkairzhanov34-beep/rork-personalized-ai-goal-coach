@@ -222,6 +222,14 @@ function RootLayoutNav() {
           animation: 'fade'
         }} 
       />
+      <Stack.Screen 
+        name="settings" 
+        options={{ 
+          headerShown: false,
+          presentation: 'modal',
+          animation: 'slide_from_bottom'
+        }} 
+      />
     </Stack>
   );
 }

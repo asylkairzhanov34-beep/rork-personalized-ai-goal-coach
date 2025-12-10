@@ -317,6 +317,9 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
     initializeStore();
   }, [getBackgroundState, clearBackgroundState]);
 
+  const backgroundDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInBackground = useRef<boolean>(false);
+
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
@@ -324,10 +327,15 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
       const previousAppState = appState.current;
       console.log('[TimerStore] AppState:', previousAppState, '->', nextAppState);
       
-      if (
-        previousAppState === 'active' &&
-        nextAppState.match(/inactive|background/)
-      ) {
+      // Only schedule notification when app goes to actual background (not just inactive)
+      if (nextAppState === 'background' && !isInBackground.current) {
+        // Clear any pending delay timer
+        if (backgroundDelayTimer.current) {
+          clearTimeout(backgroundDelayTimer.current);
+          backgroundDelayTimer.current = null;
+        }
+        
+        isInBackground.current = true;
         console.log('[TimerStore] Going to background');
         console.log('[TimerStore] Timer state - running:', state.isRunning, 'paused:', state.isPaused, 'time:', state.currentTime);
         
@@ -350,11 +358,12 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
         } else {
           console.log('[TimerStore] Timer not active, no notification scheduled');
         }
-      } else if (
-        previousAppState.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
-        console.log('[TimerStore] Returning to foreground');
+      } else if (nextAppState === 'inactive' && previousAppState === 'active') {
+        // Ignore inactive state (notification center, control center, etc.)
+        console.log('[TimerStore] App became inactive (ignoring - waiting for background)');
+      } else if (nextAppState === 'active' && isInBackground.current) {
+        isInBackground.current = false;
+        console.log('[TimerStore] Returning to foreground from background');
         console.log('[TimerStore] Cancelling background notifications');
         
         await cancelBackgroundNotification();
@@ -381,6 +390,13 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
           await clearBackgroundState();
         } else {
           console.log('[TimerStore] No active background timer to restore');
+        }
+      } else if (nextAppState === 'active' && previousAppState === 'inactive') {
+        // Returning from inactive (notification center) - just cancel any pending timers
+        console.log('[TimerStore] Returning from inactive state (no restoration needed)');
+        if (backgroundDelayTimer.current) {
+          clearTimeout(backgroundDelayTimer.current);
+          backgroundDelayTimer.current = null;
         }
       }
 

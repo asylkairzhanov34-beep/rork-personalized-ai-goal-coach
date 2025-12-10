@@ -305,7 +305,66 @@ export function useNotifications() {
         minute,
         repeats: true,
       },
+    });
+  };
 
+  const getNotificationTimeForProductivity = (productivityTime: 'morning' | 'afternoon' | 'evening' | 'unknown' | undefined): { hour: number; minute: number } => {
+    switch (productivityTime) {
+      case 'morning':
+        return { hour: 8, minute: 0 };
+      case 'afternoon':
+        return { hour: 13, minute: 0 };
+      case 'evening':
+        return { hour: 19, minute: 0 };
+      default:
+        return { hour: 9, minute: 0 };
+    }
+  };
+
+  const scheduleGoalReminder = async (productivityTime: 'morning' | 'afternoon' | 'evening' | 'unknown' | undefined, goalTitle?: string) => {
+    const { hour, minute } = getNotificationTimeForProductivity(productivityTime);
+    
+    const timeLabels: Record<string, string> = {
+      morning: 'утро',
+      afternoon: 'день',
+      evening: 'вечер',
+    };
+    
+    const timeLabel = productivityTime ? timeLabels[productivityTime] || '' : '';
+    const goalText = goalTitle ? `«${goalTitle}»` : 'свою цель';
+    
+    console.log(`[Notifications] Scheduling goal reminder at ${hour}:${minute} for ${productivityTime}`);
+    
+    await cancelAllNotifications();
+    
+    return await scheduleNotification({
+      title: '🎯 Время для цели!',
+      body: `Пора поработать над ${goalText}. Твой пик продуктивности — ${timeLabel}!`,
+      data: { type: 'goal_reminder', productivityTime },
+      trigger: {
+        hour,
+        minute,
+        repeats: true,
+      },
+    });
+  };
+
+  const scheduleProductivityReminder = async (
+    productivityTime: 'morning' | 'afternoon' | 'evening' | 'unknown' | undefined
+  ) => {
+    const { hour, minute } = getNotificationTimeForProductivity(productivityTime);
+    
+    console.log(`[Notifications] Scheduling productivity reminder at ${hour}:${minute}`);
+    
+    return await scheduleNotification({
+      title: '⚡ Твой пик энергии!',
+      body: 'Сейчас лучшее время для важных задач. Начни прямо сейчас!',
+      data: { type: 'productivity_reminder', productivityTime },
+      trigger: {
+        hour,
+        minute,
+        repeats: true,
+      },
     });
   };
 
@@ -317,10 +376,12 @@ export function useNotifications() {
     scheduleNotification,
     cancelNotification,
     cancelAllNotifications,
-    // Специализированные функции
     scheduleTaskReminder,
     schedulePomodoroBreak,
     scheduleWorkSession,
     scheduleDailyReminder,
+    scheduleGoalReminder,
+    scheduleProductivityReminder,
+    getNotificationTimeForProductivity,
   };
 }
