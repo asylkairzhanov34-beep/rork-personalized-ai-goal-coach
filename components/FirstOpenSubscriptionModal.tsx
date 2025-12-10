@@ -109,23 +109,23 @@ export default function FirstOpenSubscriptionModal({
               <Crown color="#000" size={32} />
             </LinearGradient>
           </View>
-          <Text style={styles.title}>Открой весь потенциал GoalForge</Text>
+          <Text style={styles.title}>Unlock the Full Potential of GoalForge</Text>
           <Text style={styles.subtitle}>
-            Получи полный доступ к ИИ-планам, коучу и аналитике — 1 день бесплатно.
+            Get full access to AI plans, coach and analytics — 1 day free.
           </Text>
 
           <View style={styles.benefitsBlock}>
             <View style={styles.benefitRow}>
               <View style={styles.dot} />
-              <Text style={styles.benefitText}>ИИ план на неделю и день</Text>
+              <Text style={styles.benefitText}>AI weekly and daily plan</Text>
             </View>
             <View style={styles.benefitRow}>
               <View style={styles.dot} />
-              <Text style={styles.benefitText}>Помодоро-аналитика и smart задачи</Text>
+              <Text style={styles.benefitText}>Pomodoro analytics and smart tasks</Text>
             </View>
             <View style={styles.benefitRow}>
               <View style={styles.dot} />
-              <Text style={styles.benefitText}>Приоритетная скорость и все будущие функции</Text>
+              <Text style={styles.benefitText}>Priority speed and all future features</Text>
             </View>
           </View>
 

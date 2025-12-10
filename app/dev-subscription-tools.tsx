@@ -109,9 +109,9 @@ export default function DevSubscriptionTools() {
       await cancelSubscriptionForDev();
       await refreshStatus();
       await loadStorageValues();
-      Alert.alert('✅ Успех', 'Локальный кеш подписки сброшен. Статус теперь определяется сервером.');
+      Alert.alert('✅ Success', 'Local subscription cache has been reset. Status is now determined by the server.');
     } catch (error) {
-      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsProcessing(false);
     }
@@ -124,12 +124,12 @@ export default function DevSubscriptionTools() {
       const result = await forceRefreshFromServer();
       await loadStorageValues();
       if (result) {
-        Alert.alert('✅ Успех', `Синхронизация с сервером завершена.\nСтатус: ${status}`);
+        Alert.alert('✅ Success', `Server sync completed.\nStatus: ${status}`);
       } else {
-        Alert.alert('⚠️ Внимание', 'Не удалось получить данные с сервера. Возможно, RevenueCat недоступен.');
+        Alert.alert('⚠️ Warning', 'Failed to fetch data from server. RevenueCat may be unavailable.');
       }
     } catch (error) {
-      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsProcessing(false);
     }
@@ -137,21 +137,21 @@ export default function DevSubscriptionTools() {
 
   const performFullReset = useCallback(async () => {
     Alert.alert(
-      '⚠️ Полный сброс',
-      'Это сбросит ВСЕ данные подписки локально и синхронизирует с сервером. Продолжить?',
+      '⚠️ Full Reset',
+      'This will reset ALL subscription data locally and sync with the server. Continue?',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Сбросить',
+          text: 'Reset',
           style: 'destructive',
           onPress: async () => {
             setIsProcessing(true);
             try {
               await fullResetForTesting();
               await loadStorageValues();
-              Alert.alert('✅ Успех', 'Полный сброс завершен. Приложение как при первом запуске.');
+              Alert.alert('✅ Success', 'Full reset completed. App is like a fresh install.');
             } catch (error) {
-              Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
+              Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
             } finally {
               setIsProcessing(false);
             }
@@ -168,12 +168,12 @@ export default function DevSubscriptionTools() {
       const result = await restorePurchases();
       await loadStorageValues();
       if (result) {
-        Alert.alert('✅ Успех', 'Покупки восстановлены! Премиум активен.');
+        Alert.alert('✅ Success', 'Purchases restored! Premium is active.');
       } else {
-        Alert.alert('ℹ️ Информация', 'Активных покупок не найдено.');
+        Alert.alert('ℹ️ Info', 'No active purchases found.');
       }
     } catch (error) {
-      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsProcessing(false);
     }
@@ -191,9 +191,9 @@ export default function DevSubscriptionTools() {
       }
       await refreshStatus();
       await loadStorageValues();
-      Alert.alert('✅ Успех', 'Trial принудительно истёк.');
+      Alert.alert('✅ Success', 'Trial has been forcefully expired.');
     } catch (error) {
-      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsProcessing(false);
     }
@@ -201,12 +201,12 @@ export default function DevSubscriptionTools() {
 
   const clearAllData = useCallback(async () => {
     Alert.alert(
-      '⚠️ Предупреждение',
-      'Это удалит ВСЕ данные приложения включая авторизацию. Уверены?',
+      '⚠️ Warning',
+      'This will delete ALL app data including authentication. Are you sure?',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Удалить всё',
+          text: 'Delete All',
           style: 'destructive',
           onPress: async () => {
             setIsProcessing(true);
@@ -220,10 +220,10 @@ export default function DevSubscriptionTools() {
                 }
               }
               await logout();
-              Alert.alert('✅ Успех', 'Все данные удалены.');
+              Alert.alert('✅ Success', 'All data has been deleted.');
               router.replace('/');
             } catch (error) {
-              Alert.alert('Ошибка', error instanceof Error ? error.message : 'Unknown error');
+              Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
             } finally {
               setIsProcessing(false);
             }
@@ -247,7 +247,7 @@ export default function DevSubscriptionTools() {
     <>
       <Stack.Screen 
         options={{ 
-          title: 'Инструменты подписки',
+          title: 'Subscription Tools',
           headerStyle: { backgroundColor: '#000' },
           headerTintColor: '#FFD700',
         }} 
@@ -255,23 +255,23 @@ export default function DevSubscriptionTools() {
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            <Text style={styles.title}>🛠 Тестирование подписки</Text>
-            <Text style={styles.subtitle}>Доступно в TestFlight и Dev</Text>
+            <Text style={styles.title}>🛠 Subscription Testing</Text>
+            <Text style={styles.subtitle}>Available in TestFlight and Dev</Text>
           </View>
 
           <View style={styles.statusCard}>
-            <Text style={styles.statusTitle}>Текущий статус</Text>
+            <Text style={styles.statusTitle}>Current Status</Text>
             <View style={styles.statusGrid}>
               <View style={styles.statusItem}>
                 <User size={16} color="#888" />
-                <Text style={styles.statusLabel}>Пользователь:</Text>
+                <Text style={styles.statusLabel}>User:</Text>
                 <Text style={styles.statusValue} numberOfLines={1}>
-                  {user?.email || 'Не авторизован'}
+                  {user?.email || 'Not authenticated'}
                 </Text>
               </View>
               <View style={styles.statusItem}>
                 <Shield size={16} color="#888" />
-                <Text style={styles.statusLabel}>Статус:</Text>
+                <Text style={styles.statusLabel}>Status:</Text>
                 <Text style={[styles.statusValue, status === 'premium' && styles.premiumText]}>
                   {status === 'premium' ? 'Premium' : status === 'trial' ? 'Trial' : 'Free'}
                 </Text>
@@ -280,22 +280,22 @@ export default function DevSubscriptionTools() {
                 <CreditCard size={16} color="#888" />
                 <Text style={styles.statusLabel}>Premium:</Text>
                 <Text style={[styles.statusValue, isPremium && styles.premiumText]}>
-                  {isPremium ? 'Активен' : 'Неактивен'}
+                  {isPremium ? 'Active' : 'Inactive'}
                 </Text>
               </View>
               <View style={styles.statusItem}>
                 <Clock size={16} color="#888" />
                 <Text style={styles.statusLabel}>Trial:</Text>
                 <Text style={styles.statusValue}>
-                  {isTrialActive ? 'Активен' : isTrialExpired ? 'Истёк' : 'Не начат'}
+                  {isTrialActive ? 'Active' : isTrialExpired ? 'Expired' : 'Not started'}
                 </Text>
               </View>
               {trialExpiresAt && (
                 <View style={styles.statusItem}>
                   <Settings size={16} color="#888" />
-                  <Text style={styles.statusLabel}>Истекает:</Text>
+                  <Text style={styles.statusLabel}>Expires:</Text>
                   <Text style={styles.statusValue} numberOfLines={1}>
-                    {new Date(trialExpiresAt).toLocaleString('ru-RU')}
+                    {new Date(trialExpiresAt).toLocaleString('en-US')}
                   </Text>
                 </View>
               )}
@@ -312,9 +312,9 @@ export default function DevSubscriptionTools() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🔄 Синхронизация с сервером</Text>
+            <Text style={styles.sectionTitle}>🔄 Server Sync</Text>
             <Text style={styles.sectionSubtitle}>
-              Используйте эти кнопки для синхронизации с RevenueCat
+              Use these buttons to sync with RevenueCat
             </Text>
             
             <TouchableOpacity
@@ -323,7 +323,7 @@ export default function DevSubscriptionTools() {
               disabled={isProcessing}
             >
               <Server size={20} color="#FFF" />
-              <Text style={styles.actionButtonText}>Синхронизировать с сервером</Text>
+              <Text style={styles.actionButtonText}>Sync with Server</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -332,12 +332,12 @@ export default function DevSubscriptionTools() {
               disabled={isProcessing}
             >
               <RefreshCw size={20} color="#FFF" />
-              <Text style={styles.actionButtonText}>Восстановить покупки</Text>
+              <Text style={styles.actionButtonText}>Restore Purchases</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🧪 Тестовые действия</Text>
+            <Text style={styles.sectionTitle}>🧪 Test Actions</Text>
             
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
@@ -345,7 +345,7 @@ export default function DevSubscriptionTools() {
               disabled={isProcessing}
             >
               <CloudOff size={20} color="#FFF" />
-              <Text style={styles.actionButtonText}>Сбросить локальный кеш подписки</Text>
+              <Text style={styles.actionButtonText}>Reset Local Subscription Cache</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -354,7 +354,7 @@ export default function DevSubscriptionTools() {
               disabled={isProcessing}
             >
               <XCircle size={20} color="#FFF" />
-              <Text style={styles.actionButtonText}>Принудительно завершить Trial</Text>
+              <Text style={styles.actionButtonText}>Force Expire Trial</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -363,13 +363,13 @@ export default function DevSubscriptionTools() {
               disabled={isProcessing}
             >
               <RotateCcw size={20} color="#FFF" />
-              <Text style={styles.actionButtonText}>Полный сброс (как первый запуск)</Text>
+              <Text style={styles.actionButtonText}>Full Reset (like first launch)</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📦 Хранилище</Text>
-            <Text style={styles.sectionSubtitle}>Текущие значения в хранилище</Text>
+            <Text style={styles.sectionTitle}>📦 Storage</Text>
+            <Text style={styles.sectionSubtitle}>Current storage values</Text>
             
             {Object.entries(storageValues).map(([key, value]) => (
               <TouchableOpacity
@@ -395,7 +395,7 @@ export default function DevSubscriptionTools() {
               onPress={loadStorageValues}
             >
               <RefreshCw size={16} color="#FFD700" />
-              <Text style={styles.refreshButtonText}>Обновить значения</Text>
+              <Text style={styles.refreshButtonText}>Refresh Values</Text>
             </TouchableOpacity>
 
             {selectedKeys.length > 0 && (
@@ -419,12 +419,12 @@ export default function DevSubscriptionTools() {
                       }
                     }
                     
-                    Alert.alert('✅ Успех', `Удалено ${selectedKeys.length} ключей`);
+                    Alert.alert('✅ Success', `Deleted ${selectedKeys.length} keys`);
                     setSelectedKeys([]);
                     await loadStorageValues();
                     await refreshStatus();
                   } catch {
-                    Alert.alert('Ошибка', 'Не удалось удалить ключи');
+                    Alert.alert('Error', 'Failed to delete keys');
                   } finally {
                     setIsProcessing(false);
                   }
@@ -432,31 +432,31 @@ export default function DevSubscriptionTools() {
               >
                 <Trash2 size={18} color="#FF6B6B" />
                 <Text style={styles.clearSelectedText}>
-                  Удалить {selectedKeys.length} выбранных
+                  Delete {selectedKeys.length} selected
                 </Text>
               </TouchableOpacity>
             )}
           </View>
 
           <View style={styles.dangerZone}>
-            <Text style={styles.dangerTitle}>⚠️ Опасная зона</Text>
+            <Text style={styles.dangerTitle}>⚠️ Danger Zone</Text>
             <TouchableOpacity
               style={styles.dangerButton}
               onPress={clearAllData}
               disabled={isProcessing}
             >
               <Trash2 size={20} color="#FFF" />
-              <Text style={styles.dangerButtonText}>Удалить ВСЕ данные приложения</Text>
+              <Text style={styles.dangerButtonText}>Delete ALL App Data</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.infoBox}>
-            <Text style={styles.infoTitle}>ℹ️ Информация</Text>
+            <Text style={styles.infoTitle}>ℹ️ Information</Text>
             <Text style={styles.infoText}>
-              • Синхронизировать с сервером - получает актуальный статус из RevenueCat{'\n'}
-              • Сбросить локальный кеш - удаляет локальные данные, но не отменяет подписку{'\n'}
-              • Полный сброс - сбрасывает всё и синхронизирует с сервером{'\n'}
-              • Для тестирования Sandbox подписок используйте тестовый Apple ID
+              • Sync with Server - fetches current status from RevenueCat{'\n'}
+              • Reset Local Cache - removes local data but doesn&apos;t cancel subscription{'\n'}
+              • Full Reset - resets everything and syncs with server{'\n'}
+              • To test Sandbox subscriptions, use a test Apple ID
             </Text>
           </View>
 

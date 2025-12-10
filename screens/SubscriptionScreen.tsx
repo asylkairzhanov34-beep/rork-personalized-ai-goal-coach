@@ -28,7 +28,6 @@ import {
   Timer, 
   Infinity,
   CreditCard,
-  AlertTriangle,
   Bug
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -76,7 +75,6 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
     restorePurchases,
     isPremium,
     customerInfo,
-    cancelSubscriptionForDev,
     isInitialized,
   } = useSubscription();
 
@@ -172,7 +170,7 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
               </LinearGradient>
             </View>
             
-            <Text style={styles.heroTitle}>You're already with us!</Text>
+            <Text style={styles.heroTitle}>You&apos;re already with us!</Text>
             <Text style={styles.heroSubtitle}>
               Your Premium subscription is active. Enjoy full access to all GoalForge features.
             </Text>
@@ -194,77 +192,6 @@ export default function SubscriptionScreen({ skipButton = false }: SubscriptionS
             <TouchableOpacity style={styles.manageButton} onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}>
               <Text style={styles.manageButtonText}>Manage Subscription</Text>
             </TouchableOpacity>
-
-            {/* Debug Info */}
-            {!isProductionBuild() && packages.length === 0 && (
-              <View style={styles.debugCard}>
-                <Bug size={20} color="#FF6B6B" />
-                <Text style={styles.debugText}>
-                  ⚠️ Offerings not loaded{'\n'}
-                  {!isInitialized && 'RevenueCat initializing...'}{' '}
-                  {isInitialized && 'Check RevenueCat Dashboard'}
-                </Text>
-                <TouchableOpacity 
-                  style={styles.debugButton}
-                  onPress={() => router.push('/dev-subscription-tools')}
-                >
-                  <Text style={styles.debugButtonText}>Open Debug Tools</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Test Cancel Button - Available in dev/testflight builds */}
-            {!isProductionBuild() && (
-              <View style={styles.devZone}>
-                <TouchableOpacity 
-                  style={styles.devCancelButton} 
-                  onPress={() => {
-                    Alert.alert(
-                      'Cancel Subscription (Test)',
-                      Platform.select({
-                        ios: 'TestFlight/Sandbox: This button resets local subscription status in the app.\n\nFor full cancellation:\n1. Settings → [Your Name] → Subscriptions\n2. Find GoalForge → Cancel Subscription\n\nOr clear history in App Store Connect → Sandbox.',
-                        default: 'This action will reset the local subscription status.'
-                      }),
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        { 
-                          text: 'Reset', 
-                          style: 'destructive', 
-                          onPress: async () => {
-                            await cancelSubscriptionForDev();
-                            Alert.alert(
-                              'Reset',
-                              'Local subscription status has been reset.\n\nTo fully cancel subscription in Sandbox, use iOS settings.'
-                            );
-                            router.back();
-                          }
-                        }
-                      ]
-                    );
-                  }}
-                >
-                   <AlertTriangle size={16} color="#FF4500" />
-                   <Text style={styles.devCancelText}>
-                     {Platform.OS === 'ios' ? 'Reset Subscription (TestFlight)' : 'Cancel Subscription (Test)'}
-                   </Text>
-                </TouchableOpacity>
-                
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity 
-                    style={styles.sandboxButton}
-                    onPress={() => {
-                      Alert.alert(
-                        'Sandbox Testing',
-                        '📱 Как тестировать:\n\n1. Settings → App Store → Sign Out\n2. Купите подписку в приложении\n3. Войдите Sandbox аккаунтом\n4. Проверьте "[Sandbox Environment]"\n\nПодробнее: TESTFLIGHT_SANDBOX_GUIDE.md',
-                        [{ text: 'OK' }]
-                      );
-                    }}
-                  >
-                    <Text style={styles.sandboxButtonText}>📖 Sandbox Guide</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
           </View>
         </SafeAreaView>
       </View>
