@@ -25,12 +25,15 @@ import {
   ChevronRight,
   Clock,
   Target,
-  RefreshCw
+  RefreshCw,
+  LogOut,
+  Trash2
 } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
 import { useGoalStore } from '@/hooks/use-goal-store';
+import { useAuth } from '@/hooks/use-auth-store';
 
 interface SettingItemProps {
   icon: React.ComponentType<any>;
@@ -100,6 +103,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { updateProfile } = useFirstTimeSetup();
   const store = useGoalStore();
+  const { deleteAccount, logout, user } = useAuth();
   
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
@@ -193,6 +197,70 @@ export default function SettingsScreen() {
 
   const handleTermsOfService = () => {
     Linking.openURL('https://goalcoach.app/terms');
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Выйти из аккаунта',
+      'Вы уверены, что хотите выйти?',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        { 
+          text: 'Выйти', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/auth');
+            } catch {
+              Alert.alert('Ошибка', 'Не удалось выйти из аккаунта');
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Удалить аккаунт',
+      'Это действие необратимо! Все ваши данные, включая прогресс, цели и подписку будут удалены навсегда.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        { 
+          text: 'Удалить', 
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Подтверждение',
+              'Вы точно хотите удалить аккаунт? Это действие нельзя отменить.',
+              [
+                { text: 'Нет, оставить', style: 'cancel' },
+                { 
+                  text: 'Да, удалить',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      const success = await deleteAccount();
+                      if (success) {
+                        Alert.alert('Готово', 'Аккаунт удалён', [
+                          { text: 'OK', onPress: () => router.replace('/auth') }
+                        ]);
+                      } else {
+                        Alert.alert('Ошибка', 'Не удалось удалить аккаунт. Попробуйте позже.');
+                      }
+                    } catch (error) {
+                      const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
+                      Alert.alert('Ошибка', message);
+                    }
+                  }
+                },
+              ]
+            );
+          }
+        },
+      ]
+    );
   };
 
   return (
@@ -318,6 +386,30 @@ export default function SettingsScreen() {
               iconColor="#8B5CF6"
             />
           </View>
+
+          {user && (
+            <>
+              <SectionHeader title="Аккаунт" />
+              <View style={styles.section}>
+                <SettingItem
+                  icon={LogOut}
+                  title="Выйти из аккаунта"
+                  subtitle={user.email}
+                  onPress={handleLogout}
+                  showArrow
+                  iconColor="#F59E0B"
+                />
+                <SettingItem
+                  icon={Trash2}
+                  title="Удалить аккаунт"
+                  subtitle="Удалить все данные навсегда"
+                  onPress={handleDeleteAccount}
+                  showArrow
+                  iconColor="#EF4444"
+                />
+              </View>
+            </>
+          )}
 
           <SectionHeader title="Юридическая информация" />
           <View style={styles.section}>
