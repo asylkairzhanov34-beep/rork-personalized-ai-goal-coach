@@ -318,8 +318,9 @@ const styles = StyleSheet.create({
     }) as any,
   },
   innerContainer: {
-    flex: 1,
+    flexDirection: 'row',
     marginHorizontal: 24,
+    height: TAB_BAR_HEIGHT,
     backgroundColor: 'rgba(26, 26, 26, 0.95)',
     borderRadius: 28,
     borderWidth: 1,
@@ -358,6 +359,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 215, 0, 0.2)',
   },
   tabBarContainer: {
+    flex: 1,
     flexDirection: 'row',
     height: TAB_BAR_HEIGHT,
     alignItems: 'center',
