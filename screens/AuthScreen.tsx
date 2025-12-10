@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/hooks/use-auth-store';
-import { Ionicons } from '@expo/vector-icons';
+import { Target, Sparkles, ChevronRight } from 'lucide-react-native';
+import { theme } from '@/constants/theme';
 
 interface AuthScreenProps {
   onAuthSuccess?: () => void;
@@ -24,73 +25,86 @@ interface AuthScreenProps {
 const { width, height } = Dimensions.get('window');
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
-  const [isTestingBackend, setIsTestingBackend] = useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const logoScale = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const titleSlide = useRef(new Animated.Value(30)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const subtitleOpacity = useRef(new Animated.Value(0)).current;
   const buttonSlide = useRef(new Animated.Value(50)).current;
-  const glowAnim = useRef(new Animated.Value(0.95)).current;
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const featuresOpacity = useRef(new Animated.Value(0)).current;
+  const glowPulse = useRef(new Animated.Value(0.8)).current;
 
-  const { loginWithApple, firebaseInitialized, initError } = useAuth();
+  const { loginWithApple } = useAuth();
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(logoScale, {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(logoScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(titleSlide, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.timing(subtitleOpacity, {
         toValue: 1,
-        tension: 10,
-        friction: 2,
+        duration: 400,
         useNativeDriver: true,
       }),
-      Animated.timing(fadeAnim, {
+      Animated.timing(featuresOpacity, {
         toValue: 1,
-        duration: 800,
+        duration: 400,
         useNativeDriver: true,
       }),
-      Animated.timing(buttonSlide, {
-        toValue: 0,
-        duration: 600,
-        delay: 300,
-        useNativeDriver: true,
-      }),
+      Animated.parallel([
+        Animated.timing(buttonSlide, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
     ]).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1.05,
-          duration: 1000,
+        Animated.timing(glowPulse, {
+          toValue: 1,
+          duration: 2000,
           useNativeDriver: true,
         }),
-        Animated.timing(glowAnim, {
-          toValue: 0.95,
-          duration: 1000,
+        Animated.timing(glowPulse, {
+          toValue: 0.8,
+          duration: 2000,
           useNativeDriver: true,
         }),
       ])
     ).start();
-  }, [logoScale, fadeAnim, buttonSlide, glowAnim]);
-
-  const testFirebaseConnection = async () => {
-    console.log('[AuthScreen] Testing Firebase...');
-    setIsTestingBackend(true);
-    setDebugInfo('⏳ Проверка Firebase...');
-
-    if (firebaseInitialized) {
-      setDebugInfo(
-        `✅ Firebase готов\n` +
-        `Project: goalforge-ai-data\n` +
-        `Domain: goalforge-ai-data.firebaseapp.com`
-      );
-    } else if (initError) {
-      setDebugInfo(`❌ Ошибка Firebase:\n${initError}`);
-    } else {
-      setDebugInfo('⏳ Firebase инициализируется...');
-    }
-
-    setIsTestingBackend(false);
-  };
+  }, [logoScale, logoOpacity, titleSlide, titleOpacity, subtitleOpacity, buttonSlide, buttonOpacity, featuresOpacity, glowPulse]);
 
   const handleAppleAuth = async () => {
     if (Platform.OS !== 'ios') {
@@ -99,7 +113,6 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     }
 
     setIsLoading(true);
-    setDebugInfo(null);
 
     try {
       console.log('[AuthScreen] Starting Apple auth...');
@@ -134,32 +147,45 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   const isAppleSignInAvailable = Platform.OS === 'ios';
 
+  const features = [
+    { icon: Target, text: 'Персональные цели' },
+    { icon: Sparkles, text: 'ИИ-коучинг' },
+  ];
+
   return (
-    <LinearGradient
-      colors={['#000000', '#001F3F']}
-      style={styles.container}
-    >
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#000000', '#0A0A0A', '#000000']}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <Animated.View 
+        style={[
+          styles.glowOrb,
+          {
+            opacity: glowPulse,
+            transform: [{ scale: glowPulse }],
+          }
+        ]} 
+      />
+
       <View style={styles.patternOverlay}>
-        {[...Array(6)].map((_, i) => (
+        {[...Array(8)].map((_, i) => (
           <View
             key={i}
             style={[
               styles.patternCircle,
               {
-                top: Math.random() * height,
-                left: Math.random() * width,
-                width: 100 + Math.random() * 200,
-                height: 100 + Math.random() * 200,
+                top: (height * 0.1) + (i * height * 0.12),
+                left: i % 2 === 0 ? -50 : width - 100,
+                width: 150 + (i * 20),
+                height: 150 + (i * 20),
+                opacity: 0.03 - (i * 0.003),
               },
             ]}
           />
         ))}
       </View>
-
-      <LinearGradient
-        colors={['transparent', 'rgba(255, 215, 0, 0.05)', 'transparent']}
-        style={styles.centerGlow}
-      />
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
@@ -170,48 +196,74 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.topSection}>
+            <Animated.View
+              style={[
+                styles.logoContainer,
+                {
+                  opacity: logoOpacity,
+                  transform: [{ scale: logoScale }],
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={[theme.colors.primary, theme.colors.primaryDark]}
+                style={styles.logoGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Target size={48} color="#000000" strokeWidth={2} />
+              </LinearGradient>
+              <View style={styles.logoGlow} />
+            </Animated.View>
+
+            <Animated.Text
+              style={[
+                styles.appName,
+                {
+                  opacity: titleOpacity,
+                  transform: [{ translateY: titleSlide }],
+                },
+              ]}
+            >
+              GoalCoach AI
+            </Animated.Text>
+
+            <Animated.Text
+              style={[
+                styles.tagline,
+                { opacity: subtitleOpacity },
+              ]}
+            >
+              Достигайте целей с умным помощником
+            </Animated.Text>
+          </View>
+
           <Animated.View
             style={[
-              styles.headerSection,
-              { opacity: fadeAnim },
+              styles.featuresContainer,
+              { opacity: featuresOpacity },
             ]}
           >
-            <Text style={styles.title}>Добро пожаловать!</Text>
-            <Text style={styles.subtitle}>
-              Ваш ИИ-коуч ждёт — начните путь к целям
-            </Text>
+            {features.map((feature, index) => (
+              <View key={index} style={styles.featureItem}>
+                <View style={styles.featureIconContainer}>
+                  <feature.icon size={20} color={theme.colors.primary} />
+                </View>
+                <Text style={styles.featureText}>{feature.text}</Text>
+              </View>
+            ))}
           </Animated.View>
 
           <Animated.View
             style={[
-              styles.form,
+              styles.buttonContainer,
               {
-                opacity: fadeAnim,
+                opacity: buttonOpacity,
                 transform: [{ translateY: buttonSlide }],
               },
             ]}
           >
-            {__DEV__ && (
-              <View style={styles.debugSection}>
-                <TouchableOpacity
-                  style={styles.debugButton}
-                  onPress={testFirebaseConnection}
-                  disabled={isTestingBackend}
-                >
-                  {isTestingBackend ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.debugButtonText}>
-                      🔧 Тест Firebase
-                    </Text>
-                  )}
-                </TouchableOpacity>
-                {debugInfo && (
-                  <Text style={styles.debugStatus}>{debugInfo}</Text>
-                )}
-              </View>
-            )}
-
             {isAppleSignInAvailable ? (
               <TouchableOpacity
                 style={[styles.appleButton, isLoading && styles.buttonDisabled]}
@@ -221,33 +273,51 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 testID="apple-auth-button"
               >
                 <LinearGradient
-                  colors={['#000000', '#1A1A1A']}
-                  style={styles.buttonGradient}
+                  colors={['#FFFFFF', '#F5F5F5']}
+                  style={styles.appleButtonGradient}
                 >
                   {isLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color="#000000" />
                   ) : (
-                    <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
+                    <>
+                      <Text style={styles.appleIcon}></Text>
+                      <Text style={styles.appleButtonText}>Войти с Apple</Text>
+                      <ChevronRight size={20} color="#000000" style={styles.chevron} />
+                    </>
                   )}
-                  <Text style={styles.appleButtonText}>
-                    {isLoading ? 'Входим...' : 'Войти с Apple'}
-                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             ) : (
               <View style={styles.webNotice}>
-                <Ionicons name="information-circle-outline" size={24} color="#FFD700" />
+                <View style={styles.webNoticeIcon}>
+                  <Target size={24} color={theme.colors.primary} />
+                </View>
                 <Text style={styles.webNoticeText}>
-                  Вход через Apple доступен только на iOS устройствах
+                  Вход через Apple доступен только на iOS устройствах.{'\n'}
+                  Скачайте приложение в App Store.
                 </Text>
               </View>
             )}
+
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>или</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.guestButton}
+              onPress={onAuthSuccess}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.guestButtonText}>Продолжить без входа</Text>
+            </TouchableOpacity>
           </Animated.View>
 
           <Animated.View
             style={[
               styles.footer,
-              { opacity: Animated.multiply(fadeAnim, 0.7) },
+              { opacity: buttonOpacity },
             ]}
           >
             <Text style={styles.footerText}>
@@ -259,16 +329,28 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   keyboardView: {
     flex: 1,
+  },
+  glowOrb: {
+    position: 'absolute',
+    top: '15%',
+    left: '50%',
+    marginLeft: -150,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: theme.colors.primary,
+    opacity: 0.08,
   },
   patternOverlay: {
     position: 'absolute',
@@ -280,124 +362,187 @@ const styles = StyleSheet.create({
   patternCircle: {
     position: 'absolute',
     borderRadius: 1000,
-    backgroundColor: 'rgba(255, 215, 0, 0.02)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.05)',
-  },
-  centerGlow: {
-    position: 'absolute',
-    top: '30%',
-    left: '-50%',
-    right: '-50%',
-    height: '40%',
-    opacity: 0.3,
+    borderColor: theme.colors.primary,
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 80,
+    paddingBottom: 40,
+  },
+  topSection: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logoContainer: {
+    position: 'relative',
+    marginBottom: 24,
+  },
+  logoGradient: {
+    width: 100,
+    height: 100,
+    borderRadius: 32,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 40,
-    paddingBottom: 32,
   },
-  headerSection: {
-    alignItems: 'center',
-    marginBottom: 32,
+  logoGlow: {
+    position: 'absolute',
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    borderRadius: 42,
+    backgroundColor: theme.colors.primary,
+    opacity: 0.15,
+    zIndex: -1,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '800' as const,
+  appName: {
+    fontSize: 36,
+    fontWeight: '700' as const,
     color: '#FFFFFF',
+    letterSpacing: -1,
     marginBottom: 12,
-    textAlign: 'center',
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#A9A9A9',
+  tagline: {
+    fontSize: 17,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
-    paddingHorizontal: 20,
   },
-  form: {
+  featuresContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 32,
+    marginBottom: 48,
+  },
+  featureItem: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  featureIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: theme.colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
+  },
+  featureText: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    fontWeight: '500' as const,
+  },
+  buttonContainer: {
     width: '100%',
-    maxWidth: 340,
-    marginBottom: 32,
+    maxWidth: 360,
+    alignSelf: 'center',
+    gap: 16,
   },
   appleButton: {
-    width: '100%',
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
-  buttonGradient: {
+  appleButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 18,
     paddingHorizontal: 24,
-    minHeight: 56,
-    gap: 12,
+    minHeight: 60,
+  },
+  appleIcon: {
+    fontSize: 24,
+    color: '#000000',
+    marginRight: 12,
   },
   appleButtonText: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600' as const,
-    color: '#FFFFFF',
+    color: '#000000',
+    flex: 1,
+  },
+  chevron: {
+    marginLeft: 8,
   },
   webNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     padding: 20,
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
-    gap: 12,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  webNoticeIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   webNoticeText: {
-    color: '#FFFFFF',
+    color: theme.colors.textSecondary,
     fontSize: 14,
-    textAlign: 'center',
     flex: 1,
+    lineHeight: 20,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  dividerText: {
+    color: theme.colors.textLight,
+    fontSize: 13,
+    marginHorizontal: 16,
+    fontWeight: '500' as const,
+  },
+  guestButton: {
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+  },
+  guestButtonText: {
+    fontSize: 16,
+    fontWeight: '500' as const,
+    color: theme.colors.textSecondary,
   },
   footer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingTop: 32,
   },
   footerText: {
     fontSize: 12,
-    color: '#666666',
+    color: theme.colors.textLight,
     textAlign: 'center',
     lineHeight: 18,
   },
   linkText: {
-    color: '#FFD700',
+    color: theme.colors.primary,
     fontWeight: '500' as const,
-  },
-  debugSection: {
-    marginBottom: 20,
-    width: '100%',
-  },
-  debugButton: {
-    backgroundColor: 'rgba(100, 100, 255, 0.3)',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  debugButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
-  debugStatus: {
-    color: '#AAAAAA',
-    fontSize: 12,
-    marginTop: 8,
-    textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 });
