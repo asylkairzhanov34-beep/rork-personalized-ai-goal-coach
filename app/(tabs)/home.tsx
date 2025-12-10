@@ -208,7 +208,7 @@ export default function TodayScreen() {
                 onPress={() => router.push('/chat')}
               >
                 <MessageCircle size={24} color={theme.colors.primary} />
-                <Text style={styles.quickActionLabel}>Support</Text>
+                <Text style={styles.quickActionLabel}>AI Assistant</Text>
               </TouchableOpacity>
             </View>
           </View>
