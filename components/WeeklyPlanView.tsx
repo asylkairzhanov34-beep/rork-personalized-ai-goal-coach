@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Dimensions } from 'react-native';
 import { Calendar, Clock, Target, CheckCircle, AlertCircle, Plus, ChevronRight, Star } from 'lucide-react-native';
 import { DailyTask, SubTask } from '@/types/goal';
 import { TaskDetailModal } from './TaskDetailModal';
@@ -41,6 +41,10 @@ const getPriorityIcon = (priority: 'high' | 'medium' | 'low') => {
   }
 };
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const DAY_BUTTON_WIDTH = 80;
+const DAY_BUTTON_GAP = 12;
+
 export function WeeklyPlanView({ 
   weeklyTasks, 
   onTaskToggle, 
@@ -52,6 +56,18 @@ export function WeeklyPlanView({
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [selectedTask, setSelectedTask] = useState<DailyTask | null>(null);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const currentDayIndex = DAYS_OF_WEEK.findIndex(day => day.key === selectedDay);
+    if (currentDayIndex !== -1 && scrollViewRef.current) {
+      const itemWidth = DAY_BUTTON_WIDTH + DAY_BUTTON_GAP;
+      const scrollPosition = (currentDayIndex * itemWidth) - (SCREEN_WIDTH / 2) + (DAY_BUTTON_WIDTH / 2) + 20;
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ x: Math.max(0, scrollPosition), animated: false });
+      }, 100);
+    }
+  }, []);
 
   const toggleTaskExpansion = (taskId: string) => {
     const newExpanded = new Set(expandedTasks);
@@ -207,6 +223,7 @@ export function WeeklyPlanView({
     <View style={styles.container}>
       {/* Week Navigation */}
       <ScrollView 
+        ref={scrollViewRef}
         horizontal 
         showsHorizontalScrollIndicator={false}
         style={styles.weekNavigation}
