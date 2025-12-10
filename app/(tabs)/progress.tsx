@@ -25,7 +25,7 @@ export default function ProgressScreen() {
       <GradientBackground>
         <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Загрузка...</Text>
+            <Text style={styles.loadingText}>Loading...</Text>
           </View>
         </SafeAreaView>
       </GradientBackground>
@@ -40,23 +40,23 @@ export default function ProgressScreen() {
   const stats = [
     {
       icon: Zap,
-      label: 'Текущая серия',
+      label: 'Current Streak',
       value: profile.currentStreak,
-      unit: 'дней',
+      unit: 'days',
       color: theme.colors.warning,
     },
     {
       icon: Award,
-      label: 'Лучшая серия',
+      label: 'Best Streak',
       value: profile.bestStreak,
-      unit: 'дней',
+      unit: 'days',
       color: theme.colors.primary,
     },
     {
       icon: Target,
-      label: 'Всего выполнено',
+      label: 'Total Completed',
       value: completedTasks,
-      unit: 'задач',
+      unit: 'tasks',
       color: theme.colors.success,
     },
   ];
@@ -74,24 +74,24 @@ export default function ProgressScreen() {
   
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
-      case 'day': return 'Сегодня';
-      case 'week': return 'За неделю';
-      case 'month': return 'За месяц';
-      default: return 'Сегодня';
+      case 'day': return 'Today';
+      case 'week': return 'This Week';
+      case 'month': return 'This Month';
+      default: return 'Today';
     }
   };
   
   const getEmptyMessage = () => {
     if (periodStats.total === 0) {
       switch (selectedPeriod) {
-        case 'day': return 'Сегодня у вас свободный день';
-        case 'week': return 'На этой неделе пока нет задач';
-        case 'month': return 'В этом месяце пока нет задач';
-        default: return 'Пока нет задач';
+        case 'day': return 'Today is a free day';
+        case 'week': return 'No tasks this week yet';
+        case 'month': return 'No tasks this month yet';
+        default: return 'No tasks yet';
       }
     }
     if (periodStats.percentage === 100) {
-      return 'Отлично! Все задачи выполнены!';
+      return 'Excellent! All tasks completed!';
     }
     return null;
   };
@@ -105,7 +105,7 @@ export default function ProgressScreen() {
 
         >
           <View style={styles.header}>
-            <Text style={styles.title}>Ваш прогресс</Text>
+            <Text style={styles.title}>Your Progress</Text>
             
             {/* Переключатель периодов */}
             <View style={styles.periodSelector}>
@@ -122,7 +122,7 @@ export default function ProgressScreen() {
                     styles.periodButtonText,
                     selectedPeriod === period && styles.periodButtonTextActive
                   ]}>
-                    {period === 'day' ? 'День' : period === 'week' ? 'Неделя' : 'Месяц'}
+                    {period === 'day' ? 'Day' : period === 'week' ? 'Week' : 'Month'}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -136,10 +136,10 @@ export default function ProgressScreen() {
                 <View style={styles.progressStats}>
                   <Text style={styles.progressLabel}>{getPeriodLabel()}</Text>
                   <Text style={styles.progressValue}>
-                    {periodStats.completed} {periodStats.completed === 1 ? 'задача' : periodStats.completed < 5 ? 'задачи' : 'задач'} выполнено
+                    {periodStats.completed} {periodStats.completed === 1 ? 'task' : 'tasks'} completed
                   </Text>
                   <Text style={styles.progressSubtext}>
-                    {getEmptyMessage() || 'Продолжайте в своём темпе'}
+                    {getEmptyMessage() || 'Keep going at your pace'}
                   </Text>
                 </View>
               </View>
@@ -149,7 +149,7 @@ export default function ProgressScreen() {
                 <View style={styles.mainStatRow}>
                   <View style={styles.mainStatItem}>
                     <Calendar size={20} color={theme.colors.primary} />
-                    <Text style={styles.mainStatLabel}>Сегодня</Text>
+                    <Text style={styles.mainStatLabel}>Today</Text>
                     <Text style={styles.mainStatValue}>
                       {(() => {
                         const today = new Date();
@@ -168,7 +168,7 @@ export default function ProgressScreen() {
                   <View style={styles.mainStatDivider} />
                   <View style={styles.mainStatItem}>
                     <Clock size={20} color={theme.colors.success} />
-                    <Text style={styles.mainStatLabel}>За неделю</Text>
+                    <Text style={styles.mainStatLabel}>This Week</Text>
                     <Text style={styles.mainStatValue}>
                       {(() => {
                         const today = new Date();
@@ -196,7 +196,7 @@ export default function ProgressScreen() {
                 <View style={styles.mainStatRow}>
                   <View style={styles.mainStatItem}>
                     <Trophy size={20} color={theme.colors.warning} />
-                    <Text style={styles.mainStatLabel}>За месяц</Text>
+                    <Text style={styles.mainStatLabel}>This Month</Text>
                     <Text style={styles.mainStatValue}>
                       {(() => {
                         const today = new Date();
@@ -240,7 +240,7 @@ export default function ProgressScreen() {
               
               {/* Блок достижений */}
               <View style={styles.achievementsCard}>
-                <Text style={styles.achievementsTitle}>Достижения</Text>
+                <Text style={styles.achievementsTitle}>Achievements</Text>
                 <View style={styles.achievementsGrid}>
                   <View style={[
                     styles.achievementBadge,
@@ -250,7 +250,7 @@ export default function ProgressScreen() {
                     ).length >= 5 && styles.achievementBadgeActive
                   ]}>
                     <Text style={styles.achievementEmoji}>✅</Text>
-                    <Text style={styles.achievementText}>5 задач за день</Text>
+                    <Text style={styles.achievementText}>5 tasks per day</Text>
                   </View>
                   
                   <View style={[
@@ -258,7 +258,7 @@ export default function ProgressScreen() {
                     profile.currentStreak >= 7 && styles.achievementBadgeActive
                   ]}>
                     <Text style={styles.achievementEmoji}>🔥</Text>
-                    <Text style={styles.achievementText}>Неделя без пропусков</Text>
+                    <Text style={styles.achievementText}>Week without misses</Text>
                   </View>
                   
                   <View style={[
@@ -266,7 +266,7 @@ export default function ProgressScreen() {
                     completedTasks >= 50 && styles.achievementBadgeActive
                   ]}>
                     <Text style={styles.achievementEmoji}>🏅</Text>
-                    <Text style={styles.achievementText}>50 задач за месяц</Text>
+                    <Text style={styles.achievementText}>50 tasks per month</Text>
                   </View>
                 </View>
               </View>
@@ -274,9 +274,9 @@ export default function ProgressScreen() {
           ) : (
             <View style={styles.emptyContainer}>
               <TrendingUp size={64} color={theme.colors.textLight} />
-              <Text style={styles.emptyTitle}>Пока нет прогресса</Text>
+              <Text style={styles.emptyTitle}>No progress yet</Text>
               <Text style={styles.emptyDescription}>
-                Начните свою первую цель, чтобы отслеживать прогресс
+                Start your first goal to track progress
               </Text>
             </View>
           )}

@@ -37,7 +37,7 @@ export function PomodoroStats() {
   if (!timerStore) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Загрузка...</Text>
+        <Text style={styles.title}>Loading...</Text>
       </View>
     );
   }
@@ -47,11 +47,11 @@ export function PomodoroStats() {
 
   const formatTime = (minutes: number): string => {
     if (minutes < 60) {
-      return `${minutes}м`;
+      return `${minutes}m`;
     }
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    return remainingMinutes > 0 ? `${hours}ч ${remainingMinutes}м` : `${hours}ч`;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
   };
 
   // Calculate stats from timer sessions
@@ -99,24 +99,24 @@ export function PomodoroStats() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: theme.spacing.xl }}
     >
-      <Text style={styles.title}>Аналитика времени</Text>
+      <Text style={styles.title}>Time Analytics</Text>
       
       {/* Main Stats Grid */}
       <View style={styles.statsGrid}>
         <View style={styles.statsRow}>
           <StatCard
             icon={<Zap size={18} color={theme.colors.primary} />}
-            title="Сегодня"
+            title="Today"
             value={todayFocusSessions.length.toString()}
-            subtitle={`${formatTime(todayWorkTime)} фокуса`}
+            subtitle={`${formatTime(todayWorkTime)} focus`}
             color={theme.colors.primary}
           />
           
           <StatCard
             icon={<Calendar size={18} color={theme.colors.success} />}
-            title="За неделю"
+            title="This Week"
             value={weekSessions.length.toString()}
-            subtitle={`${formatTime(weekWorkTime)} работы`}
+            subtitle={`${formatTime(weekWorkTime)} work`}
             color={theme.colors.success}
           />
         </View>
@@ -124,17 +124,17 @@ export function PomodoroStats() {
         <View style={styles.statsRow}>
           <StatCard
             icon={<Clock size={18} color="#FF9800" />}
-            title="Всего"
+            title="Total"
             value={formatTime(totalWorkTime)}
-            subtitle={`${totalFocusSessions.length} сессий`}
+            subtitle={`${totalFocusSessions.length} sessions`}
             color="#FF9800"
           />
           
           <StatCard
             icon={<Award size={18} color="#9C27B0" />}
-            title="Серия"
+            title="Streak"
             value={getStreakDays().toString()}
-            subtitle="дней подряд"
+            subtitle="days in a row"
             color="#9C27B0"
           />
         </View>
@@ -151,17 +151,17 @@ export function PomodoroStats() {
           <View style={styles.dreamMetrics}>
             <View style={styles.dreamMetric}>
               <Text style={styles.dreamMetricValue}>{formatTime(goalWorkTime)}</Text>
-              <Text style={styles.dreamMetricLabel}>Потрачено времени</Text>
+              <Text style={styles.dreamMetricLabel}>Time Spent</Text>
             </View>
             
             <View style={styles.dreamMetric}>
               <Text style={styles.dreamMetricValue}>{getProductivityScore()}%</Text>
-              <Text style={styles.dreamMetricLabel}>Продуктивность</Text>
+              <Text style={styles.dreamMetricLabel}>Productivity</Text>
             </View>
           </View>
           
           <View style={styles.progressContainer}>
-            <Text style={styles.progressLabel}>Прогресс к цели</Text>
+            <Text style={styles.progressLabel}>Progress to Goal</Text>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${getProductivityScore()}%` }]} />
             </View>
@@ -171,28 +171,28 @@ export function PomodoroStats() {
 
       {/* Insights */}
       <View style={styles.insights}>
-        <Text style={styles.insightsTitle}>Инсайты</Text>
+        <Text style={styles.insightsTitle}>Insights</Text>
         
         {totalFocusSessions.length > 0 ? (
           <>
             <View style={styles.insightCard}>
               <TrendingUp size={16} color={theme.colors.primary} />
               <Text style={styles.insightText}>
-                Средняя сессия: {Math.round(totalWorkTime / Math.max(totalFocusSessions.length, 1))} минут
+                Average session: {Math.round(totalWorkTime / Math.max(totalFocusSessions.length, 1))} minutes
               </Text>
             </View>
             
             <View style={styles.insightCard}>
               <Clock size={16} color={theme.colors.success} />
               <Text style={styles.insightText}>
-                Лучшее время для фокуса: 19:00 - 21:00
+                Best focus time: 7:00 PM - 9:00 PM
               </Text>
             </View>
             
             <View style={styles.insightCard}>
               <Award size={16} color="#FF9800" />
               <Text style={styles.insightText}>
-                Цель на завтра: {Math.max(1, todayFocusSessions.length + 1)} сессий
+                Tomorrow goal: {Math.max(1, todayFocusSessions.length + 1)} sessions
               </Text>
             </View>
           </>
@@ -200,7 +200,7 @@ export function PomodoroStats() {
           <View style={styles.emptyInsights}>
             <Clock size={32} color={theme.colors.textSecondary} />
             <Text style={styles.emptyInsightsText}>
-              Начните первую сессию, чтобы получить персональные инсайты
+              Start your first session to get personalized insights
             </Text>
           </View>
         )}
@@ -209,9 +209,9 @@ export function PomodoroStats() {
       {totalFocusSessions.length === 0 && (
         <View style={styles.emptyState}>
           <Clock size={48} color={theme.colors.textSecondary} />
-          <Text style={styles.emptyTitle}>Начните отслеживать время</Text>
+          <Text style={styles.emptyTitle}>Start Tracking Time</Text>
           <Text style={styles.emptySubtitle}>
-            Запустите первую Pomodoro сессию, чтобы увидеть детальную аналитику
+            Start your first Pomodoro session to see detailed analytics
           </Text>
         </View>
       )}

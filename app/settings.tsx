@@ -121,18 +121,18 @@ export default function SettingsScreen() {
 
   const handleResetOnboarding = () => {
     Alert.alert(
-      'Сбросить настройку',
-      'Вы уверены, что хотите пройти настройку заново? Ваши данные сохранятся.',
+      'Reset Setup',
+      'Are you sure you want to redo the setup? Your data will be saved.',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Сбросить', 
+          text: 'Reset', 
           onPress: async () => {
             try {
               await updateProfile({ isCompleted: false });
               router.replace('/first-time-setup');
             } catch {
-              Alert.alert('Ошибка', 'Не удалось сбросить настройку');
+              Alert.alert('Error', 'Failed to reset setup');
             }
           }
         },
@@ -142,24 +142,24 @@ export default function SettingsScreen() {
 
   const handleResetGoal = () => {
     if (!store?.currentGoal) {
-      Alert.alert('Нет цели', 'У вас нет активной цели для сброса');
+      Alert.alert('No Goal', 'You have no active goal to reset');
       return;
     }
 
     Alert.alert(
-      'Сбросить цель',
-      'Вы уверены, что хотите сбросить текущую цель? Весь прогресс будет удален.',
+      'Reset Goal',
+      'Are you sure you want to reset your current goal? All progress will be deleted.',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Сбросить', 
+          text: 'Reset', 
           style: 'destructive',
           onPress: async () => {
             try {
               await store.resetGoal();
-              Alert.alert('Готово', 'Цель успешно сброшена');
+              Alert.alert('Done', 'Goal successfully reset');
             } catch {
-              Alert.alert('Ошибка', 'Не удалось сбросить цель');
+              Alert.alert('Error', 'Failed to reset goal');
             }
           }
         },
@@ -168,7 +168,7 @@ export default function SettingsScreen() {
   };
 
   const handleContactSupport = () => {
-    Linking.openURL('mailto:goalforge.dev1@gmail.com?subject=Поддержка GoalCoach');
+    Linking.openURL('mailto:goalforge.dev1@gmail.com?subject=GoalCoach Support');
   };
 
   const handleRateApp = () => {
@@ -179,12 +179,12 @@ export default function SettingsScreen() {
     });
     
     Alert.alert(
-      'Оценить приложение',
-      'Ваш отзыв поможет нам стать лучше!',
+      'Rate App',
+      'Your review will help us improve!',
       [
-        { text: 'Позже', style: 'cancel' },
+        { text: 'Later', style: 'cancel' },
         { 
-          text: 'Оценить', 
+          text: 'Rate', 
           onPress: () => Linking.openURL(storeUrl)
         },
       ]
@@ -201,19 +201,19 @@ export default function SettingsScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Выйти из аккаунта',
-      'Вы уверены, что хотите выйти?',
+      'Sign Out',
+      'Are you sure you want to sign out?',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Выйти', 
+          text: 'Sign Out', 
           style: 'destructive',
           onPress: async () => {
             try {
               await logout();
               router.replace('/auth');
             } catch {
-              Alert.alert('Ошибка', 'Не удалось выйти из аккаунта');
+              Alert.alert('Error', 'Failed to sign out');
             }
           }
         },
@@ -223,35 +223,35 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Удалить аккаунт',
-      'Это действие необратимо! Все ваши данные, включая прогресс, цели и подписку будут удалены навсегда.',
+      'Delete Account',
+      'This action is irreversible! All your data, including progress, goals, and subscription will be deleted permanently.',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Удалить', 
+          text: 'Delete', 
           style: 'destructive',
           onPress: () => {
             Alert.alert(
-              'Подтверждение',
-              'Вы точно хотите удалить аккаунт? Это действие нельзя отменить.',
+              'Confirmation',
+              'Are you sure you want to delete your account? This action cannot be undone.',
               [
-                { text: 'Нет, оставить', style: 'cancel' },
+                { text: 'No, keep it', style: 'cancel' },
                 { 
-                  text: 'Да, удалить',
+                  text: 'Yes, delete',
                   style: 'destructive',
                   onPress: async () => {
                     try {
                       const success = await deleteAccount();
                       if (success) {
-                        Alert.alert('Готово', 'Аккаунт удалён', [
+                        Alert.alert('Done', 'Account deleted', [
                           { text: 'OK', onPress: () => router.replace('/auth') }
                         ]);
                       } else {
-                        Alert.alert('Ошибка', 'Не удалось удалить аккаунт. Попробуйте позже.');
+                        Alert.alert('Error', 'Failed to delete account. Please try again later.');
                       }
                     } catch (error) {
-                      const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
-                      Alert.alert('Ошибка', message);
+                      const message = error instanceof Error ? error.message : 'Unknown error';
+                      Alert.alert('Error', message);
                     }
                   }
                 },
@@ -274,7 +274,7 @@ export default function SettingsScreen() {
           >
             <ChevronLeft size={28} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Настройки</Text>
+          <Text style={styles.headerTitle}>Settings</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -283,66 +283,66 @@ export default function SettingsScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <SectionHeader title="Звук и уведомления" />
+          <SectionHeader title="Sound & Notifications" />
           <View style={styles.section}>
             <SettingItem
               icon={Volume2}
-              title="Звуковые эффекты"
-              subtitle="Звуки в таймере и приложении"
+              title="Sound Effects"
+              subtitle="Sounds in timer and app"
               value={soundEnabled}
               onValueChange={setSoundEnabled}
             />
             <SettingItem
               icon={Vibrate}
-              title="Вибрация"
-              subtitle="Тактильная обратная связь"
+              title="Vibration"
+              subtitle="Haptic feedback"
               value={vibrationEnabled}
               onValueChange={setVibrationEnabled}
             />
             <SettingItem
               icon={Bell}
-              title="Уведомления"
-              subtitle="Настройка напоминаний"
+              title="Notifications"
+              subtitle="Reminder settings"
               onPress={handleOpenNotifications}
               showArrow
             />
           </View>
 
-          <SectionHeader title="Таймер" />
+          <SectionHeader title="Timer" />
           <View style={styles.section}>
             <SettingItem
               icon={Clock}
-              title="Автозапуск"
-              subtitle="Автоматически начинать следующую сессию"
+              title="Auto Start"
+              subtitle="Automatically start next session"
               value={autoStartTimer}
               onValueChange={setAutoStartTimer}
             />
             <SettingItem
               icon={Bell}
-              title="Ежедневное напоминание"
-              subtitle="Напоминать о фокус-сессиях"
+              title="Daily Reminder"
+              subtitle="Remind about focus sessions"
               value={dailyReminder}
               onValueChange={setDailyReminder}
             />
           </View>
 
-          <SectionHeader title="Отчёты" />
+          <SectionHeader title="Reports" />
           <View style={styles.section}>
             <SettingItem
               icon={FileText}
-              title="Еженедельный отчёт"
-              subtitle="Получать сводку каждую неделю"
+              title="Weekly Report"
+              subtitle="Receive summary every week"
               value={weeklyReport}
               onValueChange={setWeeklyReport}
             />
           </View>
 
-          <SectionHeader title="Данные" />
+          <SectionHeader title="Data" />
           <View style={styles.section}>
             <SettingItem
               icon={RefreshCw}
-              title="Пройти настройку заново"
-              subtitle="Обновить профиль и биоритм"
+              title="Redo Setup"
+              subtitle="Update profile and biorhythm"
               onPress={handleResetOnboarding}
               showArrow
               iconColor="#3B82F6"
@@ -350,8 +350,8 @@ export default function SettingsScreen() {
             {store?.currentGoal && (
               <SettingItem
                 icon={Target}
-                title="Сбросить цель"
-                subtitle="Удалить текущую цель и прогресс"
+                title="Reset Goal"
+                subtitle="Delete current goal and progress"
                 onPress={handleResetGoal}
                 showArrow
                 iconColor="#EF4444"
@@ -359,20 +359,20 @@ export default function SettingsScreen() {
             )}
           </View>
 
-          <SectionHeader title="Помощь и поддержка" />
+          <SectionHeader title="Help & Support" />
           <View style={styles.section}>
             <SettingItem
               icon={Mail}
-              title="Связаться с поддержкой"
-              subtitle="Задать вопрос или сообщить о проблеме"
+              title="Contact Support"
+              subtitle="Ask a question or report an issue"
               onPress={handleContactSupport}
               showArrow
               iconColor="#10B981"
             />
             <SettingItem
               icon={Star}
-              title="Оценить приложение"
-              subtitle="Поделитесь мнением в магазине"
+              title="Rate App"
+              subtitle="Share your opinion in the store"
               onPress={handleRateApp}
               showArrow
               iconColor="#F59E0B"
@@ -380,8 +380,8 @@ export default function SettingsScreen() {
             <SettingItem
               icon={HelpCircle}
               title="FAQ"
-              subtitle="Часто задаваемые вопросы"
-              onPress={() => Alert.alert('FAQ', 'Раздел будет доступен в ближайшее время')}
+              subtitle="Frequently asked questions"
+              onPress={() => Alert.alert('FAQ', 'This section will be available soon')}
               showArrow
               iconColor="#8B5CF6"
             />
@@ -389,11 +389,11 @@ export default function SettingsScreen() {
 
           {user && (
             <>
-              <SectionHeader title="Аккаунт" />
+              <SectionHeader title="Account" />
               <View style={styles.section}>
                 <SettingItem
                   icon={LogOut}
-                  title="Выйти из аккаунта"
+                  title="Sign Out"
                   subtitle={user.email}
                   onPress={handleLogout}
                   showArrow
@@ -401,8 +401,8 @@ export default function SettingsScreen() {
                 />
                 <SettingItem
                   icon={Trash2}
-                  title="Удалить аккаунт"
-                  subtitle="Удалить все данные навсегда"
+                  title="Delete Account"
+                  subtitle="Delete all data permanently"
                   onPress={handleDeleteAccount}
                   showArrow
                   iconColor="#EF4444"
@@ -411,18 +411,18 @@ export default function SettingsScreen() {
             </>
           )}
 
-          <SectionHeader title="Юридическая информация" />
+          <SectionHeader title="Legal Information" />
           <View style={styles.section}>
             <SettingItem
               icon={Shield}
-              title="Политика конфиденциальности"
+              title="Privacy Policy"
               onPress={handlePrivacyPolicy}
               showArrow
               iconColor="#6366F1"
             />
             <SettingItem
               icon={FileText}
-              title="Условия использования"
+              title="Terms of Use"
               onPress={handleTermsOfService}
               showArrow
               iconColor="#6366F1"
@@ -431,8 +431,8 @@ export default function SettingsScreen() {
 
           <View style={styles.appInfo}>
             <Text style={styles.appName}>GoalCoach AI</Text>
-            <Text style={styles.appVersion}>Версия 1.0.4</Text>
-            <Text style={styles.appCopyright}>© 2024 GoalCoach. Все права защищены.</Text>
+            <Text style={styles.appVersion}>Version 1.0.4</Text>
+            <Text style={styles.appCopyright}>© 2024 GoalCoach. All rights reserved.</Text>
           </View>
         </ScrollView>
       </View>

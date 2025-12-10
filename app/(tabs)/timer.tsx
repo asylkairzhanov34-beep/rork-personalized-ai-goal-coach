@@ -44,7 +44,7 @@ export default function TimerScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Premium Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Фокус</Text>
+        <Text style={styles.title}>Focus</Text>
         <View style={styles.headerButtons}>
           <TouchableOpacity 
             style={styles.headerButton}
@@ -69,7 +69,7 @@ export default function TimerScreen() {
         >
           <Timer size={18} color={activeTab === 'timer' ? theme.colors.background : theme.colors.textSecondary} />
           <Text style={[styles.tabLabel, activeTab === 'timer' && styles.tabLabelActive]}>
-            Таймер
+            Timer
           </Text>
         </TouchableOpacity>
         
@@ -79,7 +79,7 @@ export default function TimerScreen() {
         >
           <BarChart3 size={18} color={activeTab === 'stats' ? theme.colors.background : theme.colors.textSecondary} />
           <Text style={[styles.tabLabel, activeTab === 'stats' && styles.tabLabelActive]}>
-            Анализ
+            Analytics
           </Text>
         </TouchableOpacity>
       </View>

@@ -88,7 +88,7 @@ export default function PlanScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Загрузка...</Text>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </View>
     );
@@ -130,15 +130,15 @@ export default function PlanScreen() {
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <View>
-              <Text style={styles.title}>Свободный план</Text>
-              <Text style={styles.subtitle}>Работайте над целью в удобном темпе</Text>
+              <Text style={styles.title}>Free Plan</Text>
+              <Text style={styles.subtitle}>Work on your goal at your own pace</Text>
             </View>
             <TouchableOpacity 
               style={styles.monthButton}
               onPress={() => router.push('/month-overview')}
             >
               <Calendar size={18} color="#000000" />
-              <Text style={styles.monthButtonText}>Месяц</Text>
+              <Text style={styles.monthButtonText}>Month</Text>
             </TouchableOpacity>
           </View>
         </View>

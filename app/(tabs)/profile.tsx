@@ -31,7 +31,7 @@ export default function ProfileScreen() {
       <GradientBackground>
         <View style={[styles.container, { paddingTop: insets.top }]}> 
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Загрузка...</Text>
+            <Text style={styles.loadingText}>Loading...</Text>
           </View>
         </View>
       </GradientBackground>
@@ -42,19 +42,19 @@ export default function ProfileScreen() {
 
   const handleResetGoal = () => {
     Alert.alert(
-      'Сброс цели',
-      'Вы уверены, что хотите сбросить текущую цель? Все прогресс и задачи будут удалены.',
+      'Reset Goal',
+      'Are you sure you want to reset your current goal? All progress and tasks will be deleted.',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Сбросить', 
+          text: 'Reset', 
           style: 'destructive',
           onPress: async () => {
             try {
               await resetGoal();
-              Alert.alert('Готово', 'Цель успешно сброшена');
+              Alert.alert('Done', 'Goal successfully reset');
             } catch {
-              Alert.alert('Ошибка', 'Не удалось сбросить цель');
+              Alert.alert('Error', 'Failed to reset goal');
             }
           }
         },
@@ -65,64 +65,64 @@ export default function ProfileScreen() {
   const menuItems = [
     ...(!isPremium ? [{
       icon: Sparkles,
-      title: 'Получить Premium',
-      subtitle: 'Безграничный доступ ко всем функциям',
+      title: 'Get Premium',
+      subtitle: 'Unlimited access to all features',
       onPress: () => router.push('/subscription'),
       isPremium: true,
     }] : [{
       icon: Sparkles,
-      title: 'Premium активна',
-      subtitle: 'Спасибо за поддержку!',
+      title: 'Premium Active',
+      subtitle: 'Thank you for your support!',
       onPress: () => router.push('/subscription'),
       isPremium: true,
     }]),
     {
       icon: MessageCircle,
-      title: 'Помощник',
-      subtitle: 'Чат с ИИ-тренером',
+      title: 'Assistant',
+      subtitle: 'Chat with AI coach',
       onPress: () => router.push('/chat'),
     },
     ...(currentGoal ? [{
       icon: RotateCcw,
-      title: 'Сбросить цель',
-      subtitle: 'Удалить текущую цель и прогресс',
+      title: 'Reset Goal',
+      subtitle: 'Delete current goal and progress',
       onPress: handleResetGoal,
     }] : []),
     {
       icon: Bell,
-      title: 'Уведомления',
-      subtitle: 'Настройка напоминаний',
+      title: 'Notifications',
+      subtitle: 'Reminder settings',
       onPress: () => router.push('/notifications'),
     },
     {
       icon: Settings,
-      title: 'Настройки',
-      subtitle: 'Предпочтения приложения',
+      title: 'Settings',
+      subtitle: 'App preferences',
       onPress: () => router.push('/settings'),
     },
     {
       icon: Info,
-      title: 'О приложении',
-      subtitle: 'Версия 1.0.0',
-      onPress: () => Alert.alert('GoalCoach AI', 'Ваш персональный ИИ-тренер для достижения целей\n\nВерсия 1.0.0'),
+      title: 'About',
+      subtitle: 'Version 1.0.0',
+      onPress: () => Alert.alert('GoalCoach AI', 'Your personal AI coach for achieving goals\n\nVersion 1.0.0'),
     },
     {
       icon: LogOut,
-      title: 'Удалить аккаунт',
-      subtitle: 'Безвозвратное удаление данных',
+      title: 'Delete Account',
+      subtitle: 'Permanently delete data',
       onPress: () => handleDeleteAccount(),
-      color: '#EF4444', // Custom property for red color
+      color: '#EF4444',
     },
   ];
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Удаление аккаунта',
-      'Вы уверены? Это действие необратимо. Все ваши данные, включая подписку и прогресс, будут удалены.',
+      'Delete Account',
+      'Are you sure? This action is irreversible. All your data, including subscription and progress, will be deleted.',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Удалить', 
+          text: 'Delete', 
           style: 'destructive', 
           onPress: async () => {
             try {
@@ -130,9 +130,9 @@ export default function ProfileScreen() {
               // await trpcClient.auth.deleteAccount.mutate();
               await logout();
               router.replace('/auth');
-              Alert.alert('Аккаунт удален');
+              Alert.alert('Account Deleted');
             } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось удалить аккаунт');
+              Alert.alert('Error', 'Failed to delete account');
             }
           }
         }
@@ -142,19 +142,19 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Выход',
-      'Вы уверены, что хотите выйти?',
+      'Sign Out',
+      'Are you sure you want to sign out?',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Выйти', 
+          text: 'Sign Out', 
           style: 'destructive',
           onPress: async () => {
             try {
               await logout();
               router.replace('/auth');
             } catch {
-              Alert.alert('Ошибка', 'Не удалось выйти из аккаунта');
+              Alert.alert('Error', 'Failed to sign out');
             }
           }
         },
@@ -169,16 +169,16 @@ export default function ProfileScreen() {
 
   const handleSaveNickname = async () => {
     if (!newNickname.trim()) {
-      Alert.alert('Ошибка', 'Никнейм не может быть пустым');
+      Alert.alert('Error', 'Nickname cannot be empty');
       return;
     }
 
     try {
       await updateSetupProfile({ nickname: newNickname.trim() });
       setIsEditingNickname(false);
-      Alert.alert('Успешно', 'Никнейм обновлён');
+      Alert.alert('Success', 'Nickname updated');
     } catch {
-      Alert.alert('Ошибка', 'Не удалось обновить никнейм');
+      Alert.alert('Error', 'Failed to update nickname');
     }
   };
 
@@ -206,7 +206,7 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.memberSince}>
-                Участник с {new Date(profile.joinedAt).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
+                Member since {new Date(profile.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </Text>
             </View>
           </View>
@@ -254,8 +254,8 @@ export default function ProfileScreen() {
               <LogOut size={24} color="#EF4444" />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.logoutTitle}>В��йти из аккаунта</Text>
-              <Text style={styles.menuSubtitle}>Завершить сеанс</Text>
+              <Text style={styles.logoutTitle}>Sign Out</Text>
+              <Text style={styles.menuSubtitle}>End session</Text>
             </View>
             <ChevronRight size={20} color={theme.colors.textLight} />
           </TouchableOpacity>
@@ -270,7 +270,7 @@ export default function ProfileScreen() {
               <View style={{ marginRight: 8 }}>
                 <Wrench size={20} color="#FFD700" />
               </View>
-              <Text style={styles.devEntryText}>🛠 Инструменты разработчика</Text>
+              <Text style={styles.devEntryText}>🛠 Developer Tools</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -284,7 +284,7 @@ export default function ProfileScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Изменить никнейм</Text>
+                <Text style={styles.modalTitle}>Change Nickname</Text>
                 <TouchableOpacity onPress={() => setIsEditingNickname(false)}>
                   <X size={24} color={theme.colors.text} />
                 </TouchableOpacity>
@@ -294,7 +294,7 @@ export default function ProfileScreen() {
                 style={styles.nicknameInput}
                 value={newNickname}
                 onChangeText={setNewNickname}
-                placeholder="Введите никнейм"
+                placeholder="Enter nickname"
                 placeholderTextColor={theme.colors.textLight}
                 autoFocus
                 maxLength={30}
@@ -305,13 +305,13 @@ export default function ProfileScreen() {
                   style={[styles.modalButton, styles.cancelButton]}
                   onPress={() => setIsEditingNickname(false)}
                 >
-                  <Text style={styles.cancelButtonText}>Отмена</Text>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.saveButton]}
                   onPress={handleSaveNickname}
                 >
-                  <Text style={styles.saveButtonText}>Сохранить</Text>
+                  <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
               </View>
             </View>
