@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GradientBackground } from '@/components/GradientBackground';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
+import { useNotifications } from '@/hooks/use-notifications';
 import Step1Profile from '@/components/setup/Step1Profile';
 import Step2Goal from '@/components/setup/Step2Goal';
 import Step3Biorhythm from '@/components/setup/Step3Biorhythm';
@@ -11,7 +12,9 @@ import Step4Welcome from '@/components/setup/Step4Welcome';
 
 export default function FirstTimeSetupScreen() {
   const { profile, updateProfile, completeSetup, setStep } = useFirstTimeSetup();
+  const { requestPermissions, scheduleGoalReminder } = useNotifications();
   const [localStep, setLocalStep] = useState<number>(0);
+  const [selectedProductivityTime, setSelectedProductivityTime] = useState<'morning' | 'afternoon' | 'evening' | undefined>();
 
   const handleStep1Next = async (data: { nickname: string; birthdate: Date }) => {
     await updateProfile({
@@ -40,6 +43,7 @@ export default function FirstTimeSetupScreen() {
     await updateProfile({
       productivityTime: time,
     });
+    setSelectedProductivityTime(time);
     setLocalStep(3);
     setStep(3);
   };
@@ -51,6 +55,21 @@ export default function FirstTimeSetupScreen() {
 
   const handleWelcomeComplete = async () => {
     await completeSetup();
+    
+    const productivityTime = selectedProductivityTime || profile?.productivityTime;
+    if (productivityTime && productivityTime !== 'unknown') {
+      console.log('[FirstTimeSetup] Setting up notifications for productivity time:', productivityTime);
+      
+      const permissionGranted = await requestPermissions();
+      
+      if (permissionGranted) {
+        await scheduleGoalReminder(productivityTime);
+        console.log('[FirstTimeSetup] Goal reminder scheduled successfully');
+      } else {
+        console.log('[FirstTimeSetup] Notification permission not granted');
+      }
+    }
+    
     router.replace('/(tabs)/home');
   };
 

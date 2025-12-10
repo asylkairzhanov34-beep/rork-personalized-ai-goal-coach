@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
+import { safeStorageGet } from '@/utils/storage-helper';
+import { FirstTimeProfile } from '@/types/first-time-setup';
 
 let Notifications: any = null;
 try {
@@ -10,6 +12,7 @@ try {
 
 export function useAppBackgroundInit() {
   const isInitialized = useRef(false);
+  const notificationsScheduled = useRef(false);
 
   const requestNotificationPermissions = useCallback(async () => {
     if (!Notifications || Platform.OS === 'web') {
@@ -107,6 +110,78 @@ export function useAppBackgroundInit() {
     console.log('[BackgroundInit] Notification handler configured');
   }, []);
 
+  const getNotificationTimeForProductivity = (productivityTime: string | undefined): { hour: number; minute: number } => {
+    switch (productivityTime) {
+      case 'morning':
+        return { hour: 8, minute: 0 };
+      case 'afternoon':
+        return { hour: 13, minute: 0 };
+      case 'evening':
+        return { hour: 19, minute: 0 };
+      default:
+        return { hour: 9, minute: 0 };
+    }
+  };
+
+  const scheduleGoalReminderForUser = useCallback(async () => {
+    if (!Notifications || Platform.OS === 'web' || notificationsScheduled.current) {
+      return;
+    }
+
+    try {
+      const profile = await safeStorageGet<FirstTimeProfile | null>('first_time_setup_default', null);
+      
+      if (!profile?.isCompleted || !profile?.productivityTime || profile.productivityTime === 'unknown') {
+        console.log('[BackgroundInit] User profile not complete or no productivity time set');
+        return;
+      }
+
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('[BackgroundInit] Notification permissions not granted, skipping scheduling');
+        return;
+      }
+
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      const hasGoalReminder = scheduled.some((n: any) => n.content?.data?.type === 'goal_reminder');
+
+      if (hasGoalReminder) {
+        console.log('[BackgroundInit] Goal reminder already scheduled');
+        notificationsScheduled.current = true;
+        return;
+      }
+
+      const { hour, minute } = getNotificationTimeForProductivity(profile.productivityTime);
+      const timeLabels: Record<string, string> = {
+        morning: 'утро',
+        afternoon: 'день',
+        evening: 'вечер',
+      };
+      const timeLabel = timeLabels[profile.productivityTime] || '';
+
+      console.log(`[BackgroundInit] Scheduling goal reminder at ${hour}:${minute} (${profile.productivityTime})`);
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🎯 Время для цели!',
+          body: `Пора поработать над своей целью. Твой пик продуктивности — ${timeLabel}!`,
+          data: { type: 'goal_reminder', productivityTime: profile.productivityTime },
+          sound: 'default',
+        },
+        trigger: {
+          hour,
+          minute,
+          repeats: true,
+        },
+      });
+
+      notificationsScheduled.current = true;
+      console.log('[BackgroundInit] Goal reminder scheduled successfully');
+    } catch (error) {
+      console.error('[BackgroundInit] Error scheduling goal reminder:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (isInitialized.current) {
       return;
@@ -122,12 +197,14 @@ export function useAppBackgroundInit() {
       
       await setupNotificationChannels();
       
+      await scheduleGoalReminderForUser();
+      
       isInitialized.current = true;
       console.log('[BackgroundInit] Background services initialized successfully');
     };
 
     initializeBackgroundServices();
-  }, [requestNotificationPermissions, setupNotificationChannels, configureNotificationHandler]);
+  }, [requestNotificationPermissions, setupNotificationChannels, configureNotificationHandler, scheduleGoalReminderForUser]);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -146,5 +223,6 @@ export function useAppBackgroundInit() {
 
   return {
     requestNotificationPermissions,
+    scheduleGoalReminderForUser,
   };
 }
