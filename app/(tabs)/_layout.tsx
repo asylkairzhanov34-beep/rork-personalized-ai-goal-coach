@@ -1,65 +1,202 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Tabs } from 'expo-router';
-import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Platform, useWindowDimensions, Animated, TouchableOpacity } from 'react-native';
 import { Home, Target, Timer, TrendingUp, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 
+interface AnimatedTabIconProps {
+  icon: any;
+  focused: boolean;
+  onPress: () => void;
+}
 
-function TabBarIcon({ icon: Icon, focused }: { icon: any; focused: boolean }) {
+function AnimatedTabIcon({ icon: Icon, focused, onPress }: AnimatedTabIconProps) {
+  const scaleAnim = useRef(new Animated.Value(focused ? 1 : 0.85)).current;
+  const backgroundOpacity = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const glowScale = useRef(new Animated.Value(focused ? 1 : 0.5)).current;
+  const iconTranslateY = useRef(new Animated.Value(focused ? -2 : 0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: focused ? 1 : 0.85,
+        friction: 6,
+        tension: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backgroundOpacity, {
+        toValue: focused ? 1 : 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.spring(glowScale, {
+        toValue: focused ? 1 : 0.5,
+        friction: 5,
+        tension: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(iconTranslateY, {
+        toValue: focused ? -2 : 0,
+        friction: 6,
+        tension: 250,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [focused, scaleAnim, backgroundOpacity, glowScale, iconTranslateY]);
+
+  const handlePress = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    
+    Animated.sequence([
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(rotateAnim, {
+        toValue: 0,
+        friction: 3,
+        tension: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    onPress();
+  };
+
+  const rotateInterpolate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '-5deg'],
+  });
+
   return (
-    <View style={styles.iconContainer}>
-      <View style={[
-        styles.iconWrapper,
-        focused && styles.activeIconWrapper
-      ]}>
-        <Icon 
-          size={26} 
-          color={focused ? '#FFD600' : 'rgba(255, 255, 255, 0.6)'}
-          strokeWidth={2}
+    <TouchableOpacity
+      onPress={handlePress}
+      activeOpacity={1}
+      style={styles.tabTouchable}
+    >
+      <View style={styles.iconContainer}>
+        <Animated.View
+          style={[
+            styles.glowOuter,
+            {
+              opacity: backgroundOpacity,
+              transform: [{ scale: glowScale }],
+            },
+          ]}
         />
-        {focused && (
-          <View style={styles.glowEffect} />
-        )}
+        
+        <Animated.View
+          style={[
+            styles.iconBackground,
+            {
+              opacity: backgroundOpacity,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        />
+        
+        <Animated.View
+          style={[
+            styles.iconWrapper,
+            {
+              transform: [
+                { scale: scaleAnim },
+                { translateY: iconTranslateY },
+                { rotate: rotateInterpolate },
+              ],
+            },
+          ]}
+        >
+          <Icon
+            size={26}
+            color={focused ? '#FFD600' : 'rgba(255, 255, 255, 0.5)'}
+            strokeWidth={focused ? 2.2 : 1.8}
+          />
+        </Animated.View>
+        
+        <Animated.View
+          style={[
+            styles.indicator,
+            {
+              opacity: backgroundOpacity,
+              transform: [
+                {
+                  scaleX: backgroundOpacity.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 function TabBarBackground() {
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
+
   return (
-    <View style={[
-      styles.tabBarBackground,
-      {
-        left: screenWidth * 0.04,
-        right: screenWidth * 0.04,
-        bottom: Math.max(insets.bottom, 20),
-      }
-    ]} />
+    <Animated.View
+      style={[
+        styles.tabBarBackground,
+        {
+          left: screenWidth * 0.04,
+          right: screenWidth * 0.04,
+          bottom: Math.max(insets.bottom, 20),
+          opacity: fadeAnim,
+          transform: [
+            {
+              translateY: fadeAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.innerGlow} />
+    </Animated.View>
   );
 }
 
 export default function TabLayout() {
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#FFD600',
-        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.7)',
+        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         tabBarShowLabel: false,
         tabBarStyle: [
           styles.tabBar,
           {
-            paddingHorizontal: screenWidth * 0.08,
+            paddingHorizontal: screenWidth * 0.06,
             bottom: 0,
             height: 80 + Math.max(insets.bottom, 20),
             paddingBottom: Math.max(insets.bottom, 20),
-          }
+          },
         ],
         tabBarBackground: () => <TabBarBackground />,
       }}
@@ -68,7 +205,14 @@ export default function TabLayout() {
         name="home"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabBarIcon icon={Home} focused={focused} />
+            <AnimatedTabIcon icon={Home} focused={focused} onPress={() => {}} />
+          ),
+          tabBarButton: (props) => (
+            <AnimatedTabIcon
+              icon={Home}
+              focused={props.accessibilityState?.selected ?? false}
+              onPress={props.onPress as () => void}
+            />
           ),
         }}
       />
@@ -76,7 +220,14 @@ export default function TabLayout() {
         name="plan"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabBarIcon icon={Target} focused={focused} />
+            <AnimatedTabIcon icon={Target} focused={focused} onPress={() => {}} />
+          ),
+          tabBarButton: (props) => (
+            <AnimatedTabIcon
+              icon={Target}
+              focused={props.accessibilityState?.selected ?? false}
+              onPress={props.onPress as () => void}
+            />
           ),
         }}
       />
@@ -84,7 +235,14 @@ export default function TabLayout() {
         name="progress"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabBarIcon icon={TrendingUp} focused={focused} />
+            <AnimatedTabIcon icon={TrendingUp} focused={focused} onPress={() => {}} />
+          ),
+          tabBarButton: (props) => (
+            <AnimatedTabIcon
+              icon={TrendingUp}
+              focused={props.accessibilityState?.selected ?? false}
+              onPress={props.onPress as () => void}
+            />
           ),
         }}
       />
@@ -92,7 +250,14 @@ export default function TabLayout() {
         name="timer"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabBarIcon icon={Timer} focused={focused} />
+            <AnimatedTabIcon icon={Timer} focused={focused} onPress={() => {}} />
+          ),
+          tabBarButton: (props) => (
+            <AnimatedTabIcon
+              icon={Timer}
+              focused={props.accessibilityState?.selected ?? false}
+              onPress={props.onPress as () => void}
+            />
           ),
         }}
       />
@@ -100,7 +265,14 @@ export default function TabLayout() {
         name="profile"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabBarIcon icon={User} focused={focused} />
+            <AnimatedTabIcon icon={User} focused={focused} onPress={() => {}} />
+          ),
+          tabBarButton: (props) => (
+            <AnimatedTabIcon
+              icon={User}
+              focused={props.accessibilityState?.selected ?? false}
+              onPress={props.onPress as () => void}
+            />
           ),
         }}
       />
@@ -124,59 +296,87 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.25,
-        shadowRadius: 28,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.35,
+        shadowRadius: 30,
       },
       android: {
-        elevation: 12,
+        elevation: 16,
       },
       web: {
-        boxShadow: '0 8px 28px rgba(0, 0, 0, 0.4)',
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
       },
     }) as any,
+  },
+  innerGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  tabTouchable: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
   },
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingVertical: 12,
+    width: 56,
+    height: 56,
+    position: 'relative',
+  },
+  glowOuter: {
+    position: 'absolute',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'transparent',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FFD600',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 0,
+      },
+      web: {
+        boxShadow: '0 0 24px rgba(255, 214, 0, 0.35)',
+      },
+    }) as any,
+  },
+  iconBackground: {
+    position: 'absolute',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 214, 0, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 214, 0, 0.2)',
   },
   iconWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
     width: 48,
     height: 48,
-    borderRadius: 24,
-    position: 'relative',
+    zIndex: 10,
   },
-  activeIconWrapper: {
-    backgroundColor: 'rgba(255, 214, 0, 0.1)',
-  },
-  glowEffect: {
+  indicator: {
     position: 'absolute',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    bottom: 4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: '#FFD600',
-    opacity: 0.15,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#FFD600',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 0,
-      },
-      web: {
-        boxShadow: '0 0 16px rgba(255, 214, 0, 0.4)',
-      },
-    }) as any,
   },
 });
 
