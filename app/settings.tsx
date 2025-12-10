@@ -168,7 +168,7 @@ export default function SettingsScreen() {
   };
 
   const handleContactSupport = () => {
-    Linking.openURL('mailto:support@goalcoach.app?subject=Поддержка GoalCoach');
+    Linking.openURL('mailto:goalforge.dev1@gmail.com?subject=Поддержка GoalCoach');
   };
 
   const handleRateApp = () => {
