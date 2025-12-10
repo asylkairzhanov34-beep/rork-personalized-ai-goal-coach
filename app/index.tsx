@@ -117,7 +117,7 @@ export default function Index() {
           </View>
         </Animated.View>
         
-        <Animated.Text style={[styles.loadingText, { opacity: pulseAnim }]}>Загрузка</Animated.Text>
+        <Animated.Text style={[styles.loadingText, { opacity: pulseAnim }]}>Loading</Animated.Text>
         <Animated.View style={[styles.dotsContainer, { opacity: pulseAnim }]}>
           <View style={styles.dot} />
           <View style={[styles.dot, styles.dotMiddle]} />

@@ -27,7 +27,7 @@ export default function TodayScreen() {
   const displayName = setupProfile?.nickname || user?.name || profile?.name || 'User';
   const currentGoal = store?.currentGoal;
   const todayTasks = store?.getTodayTasks() || [];
-  // Используем прогресс за сегодня
+  // Use today's progress
   const todayProgress = store?.getProgressForPeriod ? store.getProgressForPeriod('day') : { completed: 0, total: 0, percentage: 0 };
   const progress = todayProgress.percentage;
   const todayFocusMinutes = 0; // TODO: implement timer integration
@@ -36,7 +36,7 @@ export default function TodayScreen() {
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    // Меняем цитату при обновлении
+    // Change quote on refresh
     setCurrentQuoteIndex(Math.floor(Math.random() * getQuotes().length));
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
@@ -52,7 +52,7 @@ export default function TodayScreen() {
       <GradientBackground>
         <View style={[styles.container, { paddingTop: insets.top }]}>
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Загрузка...</Text>
+            <Text style={styles.loadingText}>Loading...</Text>
           </View>
         </View>
       </GradientBackground>
@@ -65,9 +65,9 @@ export default function TodayScreen() {
         <View style={[styles.container, { paddingTop: insets.top }]}>
           <View style={styles.emptyContainer}>
             <Target size={64} color={theme.colors.textLight} />
-            <Text style={styles.emptyTitle}>Нет активной цели</Text>
+            <Text style={styles.emptyTitle}>No Active Goal</Text>
             <Text style={styles.emptyDescription}>
-              Начните свой путь, поставив цель, и позвольте ИИ создать персональный план
+              Start your journey by setting a goal and let AI create a personalized plan
             </Text>
             <TouchableOpacity
               style={styles.createGoalButton}
@@ -76,7 +76,7 @@ export default function TodayScreen() {
             >
               <View style={styles.createGoalButtonInner}>
                 <Sparkles size={24} color="#000" style={{ marginRight: 8 }} />
-                <Text style={styles.createGoalButtonText}>Создать первую цель</Text>
+                <Text style={styles.createGoalButtonText}>Create First Goal</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -117,27 +117,27 @@ export default function TodayScreen() {
             <View style={styles.statCard}>
               <Zap size={20} color={theme.colors.primary} />
               <Text style={styles.statValue}>{profile?.currentStreak || 0}</Text>
-              <Text style={styles.statLabel}>Дней подряд</Text>
+              <Text style={styles.statLabel}>Days Streak</Text>
             </View>
             <View style={styles.statCard}>
               <CheckCircle2 size={20} color={theme.colors.primary} />
               <Text style={styles.statValue}>{completedToday}/{todayTasks.length}</Text>
-              <Text style={styles.statLabel}>Выполнено</Text>
+              <Text style={styles.statLabel}>Completed</Text>
             </View>
             <View style={styles.statCard}>
               <Timer size={20} color={theme.colors.primary} />
               <Text style={styles.statValue}>{todayFocusMinutes}</Text>
-              <Text style={styles.statLabel}>Минут фокуса</Text>
+              <Text style={styles.statLabel}>Focus Minutes</Text>
             </View>
             <View style={styles.statCard}>
               <Star size={20} color={theme.colors.primary} />
               <Text style={styles.statValue}>{Math.round(progress)}%</Text>
-              <Text style={styles.statLabel}>Прогресс сегодня</Text>
+              <Text style={styles.statLabel}>Today Progress</Text>
             </View>
             <View style={styles.statCard}>
               <Sparkles size={20} color={theme.colors.primary} />
               <Text style={styles.statValue}>{manifestationStats?.currentStreak || 0}</Text>
-              <Text style={styles.statLabel}>Дней манифестации</Text>
+              <Text style={styles.statLabel}>Manifestation Days</Text>
             </View>
           </ScrollView>
 
@@ -150,12 +150,12 @@ export default function TodayScreen() {
               activeOpacity={0.8}
             >
               <Calendar size={20} color={theme.colors.background} style={styles.planButtonIcon} />
-              <Text style={styles.planButtonText}>Перейти в план</Text>
+              <Text style={styles.planButtonText}>Go to Plan</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.manifestationSection}>
-            <Text style={styles.sectionTitle}>Guided Манифестация</Text>
+            <Text style={styles.sectionTitle}>Guided Manifestation</Text>
             <TouchableOpacity 
               style={styles.manifestationCard}
               onPress={() => router.push('/manifestation')}
@@ -165,9 +165,9 @@ export default function TodayScreen() {
                   <Sparkles size={32} color={theme.colors.primary} />
                 </View>
                 <View style={styles.manifestationContent}>
-                  <Text style={styles.manifestationTitle}>Визуализация успеха</Text>
+                  <Text style={styles.manifestationTitle}>Success Visualization</Text>
                   <Text style={styles.manifestationSubtitle}>
-                    3-минутная сессия аффирмаций и благодарности
+                    3-minute session of affirmations and gratitude
                   </Text>
                 </View>
               </View>
@@ -175,40 +175,40 @@ export default function TodayScreen() {
               {todayManifestationSessions.length > 0 ? (
                 <View style={styles.manifestationCompleted}>
                   <Text style={styles.manifestationCompletedText}>
-                    ✨ Сегодня: {todayManifestationSessions.length} сессий
+                    ✨ Today: {todayManifestationSessions.length} sessions
                   </Text>
                 </View>
               ) : (
                 <View style={styles.manifestationCta}>
-                  <Text style={styles.manifestationCtaText}>Начать сессию</Text>
+                  <Text style={styles.manifestationCtaText}>Start Session</Text>
                 </View>
               )}
             </TouchableOpacity>
           </View>
 
           <View style={styles.quickActionsSection}>
-            <Text style={styles.sectionTitle}>Быстрые действия</Text>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
             <View style={styles.quickActionsContainer}>
               <TouchableOpacity 
                 style={styles.quickActionCard}
                 onPress={() => router.push('/goal-creation')}
               >
                 <Plus size={24} color={theme.colors.primary} />
-                <Text style={styles.quickActionLabel}>Добавить задачу</Text>
+                <Text style={styles.quickActionLabel}>Add Task</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.quickActionCard}
                 onPress={() => router.push('/breathing')}
               >
                 <Wind size={24} color={theme.colors.primary} />
-                <Text style={styles.quickActionLabel}>Дыхание</Text>
+                <Text style={styles.quickActionLabel}>Breathing</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.quickActionCard}
                 onPress={() => router.push('/chat')}
               >
                 <MessageCircle size={24} color={theme.colors.primary} />
-                <Text style={styles.quickActionLabel}>Поддержка</Text>
+                <Text style={styles.quickActionLabel}>Support</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -216,9 +216,9 @@ export default function TodayScreen() {
           {completedToday === todayTasks.length && todayTasks.length > 0 && (
             <View style={styles.completionCard}>
               <Text style={styles.completionEmoji}>🎉</Text>
-              <Text style={styles.completionTitle}>День завершён!</Text>
+              <Text style={styles.completionTitle}>Day Completed!</Text>
               <Text style={styles.completionText}>
-                Отличная работа! Вы выполнили все задачи на сегодня.
+                Great work! You have completed all tasks for today.
               </Text>
             </View>
           )}
@@ -230,38 +230,38 @@ export default function TodayScreen() {
 
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Доброе утро';
-  if (hour < 18) return 'Добрый день';
-  return 'Добрый вечер';
+  if (hour < 12) return 'Good Morning';
+  if (hour < 18) return 'Good Afternoon';
+  return 'Good Evening';
 }
 
 function getQuotes() {
   return [
-    'Сегодня ты ближе к мечте, чем вчера',
-    'Каждый шаг приближает к цели',
-    'Великие дела начинаются с малых шагов',
-    'Твоя мечта стоит каждого усилия',
-    'Прогресс важнее совершенства',
-    'Сегодня — идеальный день для начала',
-    'Твоя настойчивость — ключ к успеху',
-    'Мечты сбываются у тех, кто действует',
-    'Успех — это сумма маленьких усилий',
-    'Верь в себя и всё получится',
-    'Начни с того, что необходимо, затем делай то, что возможно',
-    'Твоё будущее создаётся тем, что ты делаешь сегодня',
-    'Не жди идеального момента — создай его',
-    'Сила в постоянстве усилий',
-    'Каждый день — новая возможность стать лучше',
-    'Действие — основной ключ к успеху',
-    'Мечтай, планируй, действуй, достигай',
-    'Ты сильнее, чем думаешь',
-    'Фокус на процессе, а не на результате',
-    'Маленькие шаги ведут к большим переменам',
-    'Твоя единственная граница — это ты',
-    'Дисциплина — мост между целями и достижениями',
-    'Каждое усилие приближает тебя к мечте',
-    'Будь терпелив — всё приходит вовремя',
-    'Твоя энергия течёт туда, куда направлено внимание'
+    'Today you are closer to your dream than yesterday',
+    'Every step brings you closer to your goal',
+    'Great things start with small steps',
+    'Your dream is worth every effort',
+    'Progress is more important than perfection',
+    'Today is the perfect day to begin',
+    'Your persistence is the key to success',
+    'Dreams come true for those who take action',
+    'Success is the sum of small efforts',
+    'Believe in yourself and everything will work out',
+    'Start with what is necessary, then do what is possible',
+    'Your future is created by what you do today',
+    'Do not wait for the perfect moment — create it',
+    'Strength lies in consistency',
+    'Every day is a new opportunity to become better',
+    'Action is the fundamental key to success',
+    'Dream, plan, act, achieve',
+    'You are stronger than you think',
+    'Focus on the process, not the result',
+    'Small steps lead to big changes',
+    'Your only limit is you',
+    'Discipline is the bridge between goals and achievements',
+    'Every effort brings you closer to your dream',
+    'Be patient — everything comes at the right time',
+    'Your energy flows where your attention goes'
   ];
 }
 
