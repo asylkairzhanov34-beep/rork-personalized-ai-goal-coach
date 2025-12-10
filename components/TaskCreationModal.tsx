@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
-import { X, Plus, Clock, Target, AlertCircle, Star, Lightbulb, Sparkles, Bot, CheckCircle } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { X, Plus, Clock, Target, AlertCircle, Star, Lightbulb, Sparkles, Bot, CheckCircle, ChevronRight } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DailyTask, SubTask } from '@/types/goal';
 import { theme } from '@/constants/theme';
@@ -27,13 +26,13 @@ interface TaskCreationModalProps {
 
 const DIFFICULTY_OPTIONS = [
   { value: 'easy' as const, label: 'Easy', color: '#4ADE80' },
-  { value: 'medium' as const, label: 'Medium', color: '#FFD600' },
+  { value: 'medium' as const, label: 'Medium', color: theme.colors.primary },
   { value: 'hard' as const, label: 'Hard', color: '#FF6B6B' },
 ];
 
 const PRIORITY_OPTIONS = [
-  { value: 'low' as const, label: 'Low', icon: Clock, color: '#4ADE80' },
-  { value: 'medium' as const, label: 'Medium', icon: Target, color: '#FFD600' },
+  { value: 'low' as const, label: 'Low', icon: Clock, color: theme.colors.textSecondary },
+  { value: 'medium' as const, label: 'Medium', icon: Target, color: theme.colors.primary },
   { value: 'high' as const, label: 'High', icon: AlertCircle, color: '#FF6B6B' },
 ];
 
@@ -168,11 +167,11 @@ export function TaskCreationModal({
     }
 
     const task: Omit<DailyTask, 'id' | 'goalId'> = {
-      day: 0, // Will be set by parent
+      day: 0,
       date: new Date().toISOString(),
       title: title.trim(),
       description: description.trim(),
-      duration: `${finalTime}м`,
+      duration: `${finalTime}m`,
       priority: isCompletedMode ? 'medium' : priority,
       difficulty: finalDifficulty,
       estimatedTime: finalTime,
@@ -180,7 +179,7 @@ export function TaskCreationModal({
       subtasks: subtasks.length > 0 ? subtasks.map((st, index) => ({
         ...st,
         id: `subtask_${Date.now()}_${index}`,
-        completed: isCompletedMode ? true : st.completed, // Mark subtasks completed if parent is completed
+        completed: isCompletedMode ? true : st.completed,
       })) : undefined,
       completed: isCompletedMode,
       completedAt: isCompletedMode ? new Date().toISOString() : undefined,
@@ -257,22 +256,22 @@ export function TaskCreationModal({
       
       const recentCompleted = recentTasks.filter(t => t.completed);
       const recentContext = recentCompleted.length > 0 
-        ? `\n\nПРЕДЫДУЩИЕ ВЫПОЛНЕННЫЕ ЗАДАЧИ (для контекста):\n${recentCompleted.map((t, i) => `${i + 1}. ${t.title} - ${t.description}`).join('\n')}\n\nВАЖНО: Создай задачи которые ЛОГИЧЕСКИ ПРОДОЛЖАЮТ эти результаты и развивают их.`
+        ? `\n\nPREVIOUS COMPLETED TASKS (for context):\n${recentCompleted.map((t, i) => `${i + 1}. ${t.title} - ${t.description}`).join('\n')}\n\nIMPORTANT: Create tasks that LOGICALLY CONTINUE these results and develop them.`
         : '';
-      // Умный анализ категории цели для более специфичных задач
-      const isLanguageLearning = /английск|язык|english|изуч.*слов|vocabular/i.test(
+
+      const isLanguageLearning = /english|language|learn.*word|vocabular/i.test(
         `${currentGoal.title} ${currentGoal.description} ${currentGoal.category}`
       );
-      const isFitness = /похуд|тренир|фитнес|спорт|физ.*актив|упражнен|мышц|пресс|бег|качал|вес|килограмм|fitness|workout|exercise/i.test(
+      const isFitness = /fitness|training|workout|exercise|muscle|running|weight|kilogram/i.test(
         `${currentGoal.title} ${currentGoal.description} ${currentGoal.category}`
       );
-      const isCooking = /готов|кулинар|рецепт|еда|блюд|cook/i.test(
+      const isCooking = /cook|culinary|recipe|food|dish/i.test(
         `${currentGoal.title} ${currentGoal.description} ${currentGoal.category}`
       );
-      const isReading = /чита|книг|прочита|book|read/i.test(
+      const isReading = /read|book/i.test(
         `${currentGoal.title} ${currentGoal.description} ${currentGoal.category}`
       );
-      const isProgramming = /программ|код|разработ|js|python|react|web|develop/i.test(
+      const isProgramming = /programming|code|development|js|python|react|web|develop/i.test(
         `${currentGoal.title} ${currentGoal.description} ${currentGoal.category}`
       );
 
@@ -280,76 +279,76 @@ export function TaskCreationModal({
       
       if (isLanguageLearning) {
         specificInstructions = `
-        ВАЖНО: Для изучения языка давай КОНКРЕТНЫЙ КОНТЕНТ:
-        - Не пиши "Выучить новые слова", а дай 10-15 конкретных слов с переводом
-        - Не пиши "Практиковать грамматику", а дай конкретное грамматическое правило с примерами
-        - Давай готовые фразы и выражения для запоминания
-        - В описании включай сами слова/фразы, которые нужно выучить
-        - В подзадачах - конкретные слова или фразы для отработки`;
+        IMPORTANT: For language learning provide SPECIFIC CONTENT:
+        - Don't write "Learn new words", give 10-15 specific words with translation
+        - Don't write "Practice grammar", give specific grammar rule with examples
+        - Provide ready phrases and expressions to memorize
+        - In description include the actual words/phrases to learn
+        - In subtasks - specific words or phrases to practice`;
       } else if (isFitness) {
         specificInstructions = `
-        ВАЖНО: Для фитнеса давай КОНКРЕТНЫЕ УПРАЖНЕНИЯ С ЧИСЛАМИ:
-        - Не пиши "Сделать упражнения", а дай точный список: "20 приседаний, 15 отжиманий, 30 сек планка"
-        - Указывай количество повторений, подходов, время отдыха
-        - Давай технику выполнения в tips
-        - В подзадачах - разбивка по упражнениям с конкретными числами`;
+        IMPORTANT: For fitness provide SPECIFIC EXERCISES WITH NUMBERS:
+        - Don't write "Do exercises", give exact list: "20 squats, 15 push-ups, 30 sec plank"
+        - Specify number of reps, sets, rest time
+        - Give technique tips
+        - In subtasks - breakdown by exercises with specific numbers`;
       } else if (isCooking) {
         specificInstructions = `
-        ВАЖНО: Для готовки давай КОНКРЕТНЫЕ РЕЦЕПТЫ:
-        - Указывай конкретное блюдо, которое нужно приготовить
-        - Давай список ингредиентов с количеством
-        - Пошаговую инструкцию в подзадачах
-        - Время на каждый этап`;
+        IMPORTANT: For cooking provide SPECIFIC RECIPES:
+        - Specify the exact dish to prepare
+        - Give ingredient list with quantities
+        - Step-by-step instructions in subtasks
+        - Time for each step`;
       } else if (isReading) {
         specificInstructions = `
-        ВАЖНО: Для чтения давай КОНКРЕТНЫЙ ПЛАН:
-        - Указывай точное количество страниц/глав
-        - Давай конкретные книги если цель позволяет определить
-        - Предлагай конкретные вопросы для размышления о прочитанном`;
+        IMPORTANT: For reading provide SPECIFIC PLAN:
+        - Specify exact number of pages/chapters
+        - Give specific books if goal allows
+        - Suggest specific reflection questions`;
       } else if (isProgramming) {
         specificInstructions = `
-        ВАЖНО: Для программирования давай КОНКРЕТНЫЕ ЗАДАЧИ:
-        - Указывай точную задачу: "Создать компонент Button с пропсами", а не "Изучить React"
-        - Давай конкретные концепции для изучения
-        - В подзадачах - конкретный код или функционал для реализации`;
+        IMPORTANT: For programming provide SPECIFIC TASKS:
+        - Specify exact task: "Create Button component with props", not "Learn React"
+        - Give specific concepts to study
+        - In subtasks - specific code or functionality to implement`;
       } else {
         specificInstructions = `
-        ВАЖНО: Делай задачи максимально КОНКРЕТНЫМИ:
-        - Вместо "Изучить тему" -> "Прочитать главу 3 и сделать конспект на 1 страницу"
-        - Вместо "Поработать над проектом" -> "Создать первые 3 слайда презентации с титульным, содержанием и введением"
-        - Давай измеримые результаты и конкретные действия`;
+        IMPORTANT: Make tasks as SPECIFIC as possible:
+        - Instead of "Study topic" -> "Read chapter 3 and make 1-page summary"
+        - Instead of "Work on project" -> "Create first 3 slides with title, content, and intro"
+        - Give measurable results and specific actions`;
       }
 
       const prompt = `
-        Создай 2-3 конкретные взаимосвязанные задачи для достижения цели на русском языке:
-        Цель: ${currentGoal.title}
-        Описание цели: ${currentGoal.description}
-        Категория: ${currentGoal.category}
-        Мотивация: ${currentGoal.motivation}
+        Create 2-3 specific interconnected tasks to achieve the goal:
+        Goal: ${currentGoal.title}
+        Goal Description: ${currentGoal.description}
+        Category: ${currentGoal.category}
+        Motivation: ${currentGoal.motivation}
         ${recentContext}
         ${specificInstructions}
         
-        Создай JSON массив tasks с 2-3 задачами, каждая должна содержать:
-        - title: конкретное название задачи (не общее, а специфичное)
-        - description: ОЧЕНЬ подробное описание с конкретными деталями - что именно делать, какие слова учить, какие упражнения делать, сколько повторений и т.д. (3-5 предложений)
-        - estimatedTime: время в минутах (число от 15 до 90)
-        - difficulty: сложность (easy/medium/hard) - варьируй сложность, не делай все задачи одинаковой сложности
-        - priority: приоритет (high/medium/low)
-        - tips: массив из 3-4 практических советов как лучше выполнить
-        - subtasks: массив из 2-4 подзадач с полями title (конкретное действие) и estimatedTime
+        Create JSON array tasks with 2-3 tasks, each should contain:
+        - title: specific task name (not general, but specific)
+        - description: VERY detailed description with specific details - what exactly to do, which words to learn, which exercises to do, how many reps etc. (3-5 sentences)
+        - estimatedTime: time in minutes (number from 15 to 90)
+        - difficulty: difficulty (easy/medium/hard) - vary difficulty, don't make all tasks same difficulty
+        - priority: priority (high/medium/low)
+        - tips: array of 3-4 practical tips on how to complete better
+        - subtasks: array of 2-4 subtasks with fields title (specific action) and estimatedTime
         
-        КРИТИЧЕСКИ ВАЖНО:
-        - Задачи должны быть ВЗАИМОСВЯЗАНЫ и образовывать ЕДИНУЮ СТРУКТУРУ
-        - Каждая следующая задача должна ОТТАЛКИВАТЬСЯ от предыдущей
-        - Если есть выполненные задачи - продолжай их логику, развивай результаты
-        - Создавай ГИБКИЙ ПЛАН, который адаптируется к прогрессу пользователя
-        - Задачи должны быть МАКСИМАЛЬНО КОНКРЕТНЫМИ - с числами, списками, именами
-        - Практичными и сразу выполнимыми - пользователь должен точно понимать что делать
-        - Разнообразными по сложности (легкие, средние, сложные)
-        - С измеримым результатом
+        CRITICALLY IMPORTANT:
+        - Tasks must be INTERCONNECTED and form a UNIFIED STRUCTURE
+        - Each next task should BUILD upon the previous one
+        - If there are completed tasks - continue their logic, develop results
+        - Create FLEXIBLE PLAN that adapts to user's progress
+        - Tasks must be MAXIMALLY SPECIFIC - with numbers, lists, names
+        - Practical and immediately actionable - user should know exactly what to do
+        - Varied in difficulty (easy, medium, hard)
+        - With measurable results
         
-        Формат ответа: { "tasks": [...] }
-        Отвечай ТОЛЬКО JSON без markdown и объяснений.
+        Response format: { "tasks": [...] }
+        Respond ONLY JSON without markdown and explanations.
       `;
 
       const response = await fetch('https://toolkit.rork.com/text/llm/', {
@@ -359,7 +358,7 @@ export function TaskCreationModal({
           messages: [
             { 
               role: 'system', 
-              content: 'Ты эксперт по планированию задач и персональный тренер/преподаватель. Создаешь МАКСИМАЛЬНО КОНКРЕТНЫЕ, практичные задачи с детальными инструкциями. Отвечай только валидным JSON без markdown блоков и объяснений. Все тексты на русском языке.' 
+              content: 'You are a task planning expert and personal trainer/teacher. Create MAXIMALLY SPECIFIC, practical tasks with detailed instructions. Respond only with valid JSON without markdown blocks and explanations. All texts in English.' 
             },
             { role: 'user', content: prompt }
           ]
@@ -417,474 +416,629 @@ export function TaskCreationModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <LinearGradient
-          colors={['#1a1a2e', '#0f0f1e']}
-          style={StyleSheet.absoluteFillObject}
-        />
-        
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>
-            {isCompletedMode ? 'Log Result' : 'New Task'}
-          </Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <X size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+          <View style={styles.header}>
+            <View style={styles.headerHandle} />
+            <View style={styles.headerContent}>
+              <Text style={styles.headerTitle}>
+                {isCompletedMode ? 'Log Result' : 'New Task'}
+              </Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <X size={20} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-        {/* Toggle Mode */}
-        <View style={styles.modeToggleContainer}>
-          <TouchableOpacity 
-            style={[styles.modeButton, !isCompletedMode && styles.modeButtonActive]} 
-            onPress={() => setIsCompletedMode(false)}
-          >
-            <Target size={16} color={!isCompletedMode ? '#000' : '#888'} />
-            <Text style={[styles.modeButtonText, !isCompletedMode && styles.modeButtonTextActive]}>
-              Plan
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.modeButton, isCompletedMode && styles.modeButtonActive]} 
-            onPress={() => setIsCompletedMode(true)}
-          >
-            <CheckCircle size={16} color={isCompletedMode ? '#000' : '#888'} />
-            <Text style={[styles.modeButtonText, isCompletedMode && styles.modeButtonTextActive]}>
-              Completed
-            </Text>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.modeToggleContainer}>
+            <TouchableOpacity 
+              style={[styles.modeButton, !isCompletedMode && styles.modeButtonActive]} 
+              onPress={() => setIsCompletedMode(false)}
+              activeOpacity={0.8}
+            >
+              <Target size={18} color={!isCompletedMode ? theme.colors.background : theme.colors.textSecondary} />
+              <Text style={[styles.modeButtonText, !isCompletedMode && styles.modeButtonTextActive]}>
+                Plan
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.modeButton, isCompletedMode && styles.modeButtonActive]} 
+              onPress={() => setIsCompletedMode(true)}
+              activeOpacity={0.8}
+            >
+              <CheckCircle size={18} color={isCompletedMode ? theme.colors.background : theme.colors.textSecondary} />
+              <Text style={[styles.modeButtonText, isCompletedMode && styles.modeButtonTextActive]}>
+                Completed
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* AI Suggestions - Only for Planning Mode */}
-          {!isCompletedMode && (
-            <>
-              {currentGoal && (
-                <View style={styles.section}>
-                  <View style={styles.aiSectionHeader}>
-                    <Text style={styles.sectionTitle}>🤖 AI suggestions for your goal</Text>
-                    <TouchableOpacity 
-                      style={[styles.generateAIButton, isGeneratingAI && styles.generateAIButtonDisabled]}
-                      onPress={generateAITasks}
-                      disabled={isGeneratingAI}
-                    >
-                      {isGeneratingAI ? (
-                        <ActivityIndicator size="small" color="#000000" />
-                      ) : (
-                        <Sparkles size={16} color="#000000" />
-                      )}
-                      <Text style={styles.generateAIButtonText}>
-                        {isGeneratingAI ? 'Generating...' : 'Generate Tasks'}
-                      </Text>
-                    </TouchableOpacity>
+          <ScrollView 
+            style={styles.content} 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {!isCompletedMode && (
+              <>
+                {currentGoal && (
+                  <View style={styles.section}>
+                    <View style={styles.aiSectionHeader}>
+                      <View style={styles.sectionTitleRow}>
+                        <Sparkles size={18} color={theme.colors.primary} />
+                        <Text style={styles.sectionTitle}>AI Suggestions</Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={[styles.generateAIButton, isGeneratingAI && styles.generateAIButtonDisabled]}
+                        onPress={generateAITasks}
+                        disabled={isGeneratingAI}
+                        activeOpacity={0.8}
+                      >
+                        {isGeneratingAI ? (
+                          <ActivityIndicator size="small" color={theme.colors.background} />
+                        ) : (
+                          <>
+                            <Bot size={16} color={theme.colors.background} />
+                            <Text style={styles.generateAIButtonText}>Generate</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                    
+                    {aiSuggestions.length > 0 && (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <View style={styles.suggestedContainer}>
+                          {aiSuggestions.map((aiTask, index) => (
+                            <TouchableOpacity
+                              key={`ai_${index}`}
+                              style={styles.aiSuggestedCard}
+                              onPress={() => applyAITask(aiTask)}
+                              activeOpacity={0.8}
+                            >
+                              <View style={styles.aiCardHeader}>
+                                <View style={[styles.difficultyBadge, { backgroundColor: DIFFICULTY_OPTIONS.find(d => d.value === aiTask.difficulty)?.color + '20' }]}>
+                                  <Text style={[styles.difficultyBadgeText, { color: DIFFICULTY_OPTIONS.find(d => d.value === aiTask.difficulty)?.color }]}>
+                                    {aiTask.difficulty}
+                                  </Text>
+                                </View>
+                              </View>
+                              <Text style={styles.suggestedTitle} numberOfLines={2}>{aiTask.title}</Text>
+                              <View style={styles.suggestedMeta}>
+                                <Clock size={12} color={theme.colors.textSecondary} />
+                                <Text style={styles.suggestedTime}>{aiTask.estimatedTime}m</Text>
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </ScrollView>
+                    )}
                   </View>
-                  
-                  {aiSuggestions.length > 0 && (
+                )}
+
+                {SUGGESTED_TASKS.length > 0 && (
+                  <View style={styles.section}>
+                    <View style={styles.sectionTitleRow}>
+                      <Lightbulb size={18} color={theme.colors.primary} />
+                      <Text style={styles.sectionTitle}>Quick Templates</Text>
+                    </View>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View style={styles.suggestedContainer}>
-                        {aiSuggestions.map((aiTask, index) => (
+                        {SUGGESTED_TASKS.map((suggested) => (
                           <TouchableOpacity
-                            key={`ai_${index}`}
-                            style={[styles.suggestedCard, styles.aiSuggestedCard]}
-                            onPress={() => applyAITask(aiTask)}
+                            key={suggested.title}
+                            style={styles.suggestedCard}
+                            onPress={() => applySuggestedTask(suggested)}
+                            activeOpacity={0.8}
                           >
-                            <View style={styles.aiTaskBadge}>
-                              <Bot size={12} color="#FFD600" />
+                            <Text style={styles.suggestedTitle} numberOfLines={2}>{suggested.title}</Text>
+                            <View style={styles.suggestedMeta}>
+                              <Clock size={12} color={theme.colors.textSecondary} />
+                              <Text style={styles.suggestedTime}>{suggested.estimatedTime}m</Text>
                             </View>
-                            <Text style={styles.suggestedTitle}>{aiTask.title}</Text>
-                            <Text style={styles.suggestedTime}>{aiTask.estimatedTime}м</Text>
-                            <Text style={styles.aiTaskDifficulty}>{aiTask.difficulty}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
                     </ScrollView>
-                  )}
-                </View>
-              )}
+                  </View>
+                )}
 
-              {SUGGESTED_TASKS.length > 0 && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>💡 General Recommendations</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={styles.suggestedContainer}>
-                      {SUGGESTED_TASKS.map((suggested) => (
-                        <TouchableOpacity
-                          key={suggested.title}
-                          style={styles.suggestedCard}
-                          onPress={() => applySuggestedTask(suggested)}
-                        >
-                          <Text style={styles.suggestedTitle}>{suggested.title}</Text>
-                          <Text style={styles.suggestedTime}>{suggested.estimatedTime}м</Text>
-                        </TouchableOpacity>
-                      ))}
+                {previousDayTasks.length > 0 && (
+                  <View style={styles.section}>
+                    <View style={styles.sectionTitleRow}>
+                      <Star size={18} color={theme.colors.primary} />
+                      <Text style={styles.sectionTitle}>From Yesterday</Text>
                     </View>
-                  </ScrollView>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={styles.suggestedContainer}>
+                        {previousDayTasks.slice(0, 3).map((task) => (
+                          <TouchableOpacity
+                            key={task.id}
+                            style={styles.adaptedCard}
+                            onPress={() => adaptFromPreviousDay(task)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.suggestedTitle} numberOfLines={2}>{task.title}</Text>
+                            <View style={styles.suggestedMeta}>
+                              <Clock size={12} color={theme.colors.textSecondary} />
+                              <Text style={styles.suggestedTime}>{task.estimatedTime}m</Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                )}
+              </>
+            )}
+
+            <View style={styles.section}>
+              <View style={styles.sectionTitleRow}>
+                <Target size={18} color={theme.colors.primary} />
+                <Text style={styles.sectionTitle}>
+                  {isCompletedMode ? 'What was done?' : 'Task Details'}
+                </Text>
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Title</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder={isCompletedMode ? "E.g.: Read 20 pages" : "Task name..."}
+                  placeholderTextColor={theme.colors.textLight}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Description</Text>
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder={isCompletedMode ? "Details for AI assessment..." : "What needs to be done..."}
+                  placeholderTextColor={theme.colors.textLight}
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
+              {!isCompletedMode && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Duration (minutes)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={estimatedTime}
+                    onChangeText={setEstimatedTime}
+                    placeholder="30"
+                    placeholderTextColor={theme.colors.textLight}
+                    keyboardType="numeric"
+                  />
                 </View>
               )}
-
-              {previousDayTasks.length > 0 && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>⭐ Adapt from previous day</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={styles.suggestedContainer}>
-                      {previousDayTasks.slice(0, 3).map((task) => (
-                        <TouchableOpacity
-                          key={task.id}
-                          style={[styles.suggestedCard, styles.adaptedCard]}
-                          onPress={() => adaptFromPreviousDay(task)}
-                        >
-                          <View style={styles.adaptedBadge}>
-                            <Star size={12} color="#FFD600" />
-                          </View>
-                          <Text style={styles.suggestedTitle}>{task.title}</Text>
-                          <Text style={styles.suggestedTime}>{task.estimatedTime}м</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </ScrollView>
-                </View>
-              )}
-            </>
-          )}
-
-          {/* Main Form */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {isCompletedMode ? 'What was done?' : 'Basic Information'}
-            </Text>
-            
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Task Name</Text>
-              <TextInput
-                style={styles.textInput}
-                value={title}
-                onChangeText={setTitle}
-                placeholder={isCompletedMode ? "E.g.: Read 20 pages of a book" : "Enter task name..."}
-                placeholderTextColor="rgba(255,255,255,0.4)"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Description</Text>
-              <TextInput
-                style={[styles.textInput, styles.textArea]}
-                value={description}
-                onChangeText={setDescription}
-                placeholder={isCompletedMode ? "Describe details so AI can assess difficulty..." : "Detailed task description..."}
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                multiline
-                numberOfLines={3}
-              />
             </View>
 
             {!isCompletedMode && (
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Duration (minutes)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={estimatedTime}
-                  onChangeText={setEstimatedTime}
-                  placeholder="30"
-                  placeholderTextColor="rgba(255,255,255,0.4)"
-                  keyboardType="numeric"
-                />
-              </View>
-            )}
-          </View>
+              <View style={styles.section}>
+                <View style={styles.sectionTitleRow}>
+                  <AlertCircle size={18} color={theme.colors.primary} />
+                  <Text style={styles.sectionTitle}>Priority & Difficulty</Text>
+                </View>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Priority</Text>
+                  <View style={styles.optionsContainer}>
+                    {PRIORITY_OPTIONS.map((option) => {
+                      const IconComponent = option.icon;
+                      const isSelected = priority === option.value;
+                      return (
+                        <TouchableOpacity
+                          key={option.value}
+                          style={[
+                            styles.optionButton,
+                            isSelected && styles.optionButtonSelected
+                          ]}
+                          onPress={() => setPriority(option.value)}
+                          activeOpacity={0.8}
+                        >
+                          <IconComponent size={16} color={isSelected ? theme.colors.primary : option.color} />
+                          <Text style={[
+                            styles.optionText,
+                            isSelected && styles.optionTextSelected
+                          ]}>
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
 
-          {/* Priority & Difficulty - Only for Planning Mode or if user wants to override */}
-          {!isCompletedMode && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Priority & Difficulty</Text>
-              
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Priority</Text>
-                <View style={styles.optionsContainer}>
-                  {PRIORITY_OPTIONS.map((option) => {
-                    const IconComponent = option.icon;
-                    return (
-                      <TouchableOpacity
-                        key={option.value}
-                        style={[
-                          styles.optionButton,
-                          priority === option.value && styles.optionButtonSelected
-                        ]}
-                        onPress={() => setPriority(option.value)}
-                      >
-                        <IconComponent size={16} color={option.color} />
-                        <Text style={[
-                          styles.optionText,
-                          priority === option.value && styles.optionTextSelected
-                        ]}>
-                          {option.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Difficulty</Text>
+                  <View style={styles.optionsContainer}>
+                    {DIFFICULTY_OPTIONS.map((option) => {
+                      const isSelected = difficulty === option.value;
+                      return (
+                        <TouchableOpacity
+                          key={option.value}
+                          style={[
+                            styles.optionButton,
+                            isSelected && styles.optionButtonSelected
+                          ]}
+                          onPress={() => setDifficulty(option.value)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[styles.difficultyDot, { backgroundColor: option.color }]} />
+                          <Text style={[
+                            styles.optionText,
+                            isSelected && styles.optionTextSelected
+                          ]}>
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
               </View>
+            )}
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Difficulty</Text>
-                <View style={styles.optionsContainer}>
-                  {DIFFICULTY_OPTIONS.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        styles.optionButton,
-                        difficulty === option.value && styles.optionButtonSelected
-                      ]}
-                      onPress={() => setDifficulty(option.value)}
+            {!isCompletedMode && (
+              <>
+                <View style={styles.section}>
+                  <View style={styles.sectionTitleRow}>
+                    <CheckCircle size={18} color={theme.colors.primary} />
+                    <Text style={styles.sectionTitle}>Subtasks</Text>
+                  </View>
+                  
+                  <View style={styles.addItemContainer}>
+                    <TextInput
+                      style={[styles.textInput, styles.addItemInput]}
+                      value={newSubtask}
+                      onChangeText={setNewSubtask}
+                      placeholder="Add subtask..."
+                      placeholderTextColor={theme.colors.textLight}
+                    />
+                    <TextInput
+                      style={[styles.textInput, styles.timeInput]}
+                      value={newSubtaskTime}
+                      onChangeText={setNewSubtaskTime}
+                      placeholder="10"
+                      placeholderTextColor={theme.colors.textLight}
+                      keyboardType="numeric"
+                    />
+                    <TouchableOpacity 
+                      style={[styles.addButton, !newSubtask.trim() && styles.addButtonDisabled]} 
+                      onPress={addSubtask}
+                      disabled={!newSubtask.trim()}
+                      activeOpacity={0.8}
                     >
-                      <View style={[styles.difficultyDot, { backgroundColor: option.color }]} />
-                      <Text style={[
-                        styles.optionText,
-                        difficulty === option.value && styles.optionTextSelected
-                      ]}>
-                        {option.label}
-                      </Text>
+                      <Plus size={20} color={newSubtask.trim() ? theme.colors.background : theme.colors.textLight} />
                     </TouchableOpacity>
+                  </View>
+
+                  {subtasks.map((subtask, index) => (
+                    <View key={`${subtask.title}_${index}`} style={styles.listItem}>
+                      <View style={styles.listItemDot} />
+                      <Text style={styles.listItemText}>{subtask.title}</Text>
+                      <Text style={styles.listItemTime}>{subtask.estimatedTime}m</Text>
+                      <TouchableOpacity 
+                        onPress={() => removeSubtask(index)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <X size={16} color={theme.colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
                   ))}
                 </View>
-              </View>
-            </View>
-          )}
 
-          {/* Subtasks & Tips - Mostly for Planning */}
-          {!isCompletedMode && (
-            <>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Subtasks</Text>
-                
-                <View style={styles.addItemContainer}>
-                  <TextInput
-                    style={[styles.textInput, styles.addItemInput]}
-                    value={newSubtask}
-                    onChangeText={setNewSubtask}
-                    placeholder="Add subtask..."
-                    placeholderTextColor="rgba(255,255,255,0.4)"
-                  />
-                  <TextInput
-                    style={[styles.textInput, styles.timeInput]}
-                    value={newSubtaskTime}
-                    onChangeText={setNewSubtaskTime}
-                    placeholder="10m"
-                    placeholderTextColor="rgba(255,255,255,0.4)"
-                    keyboardType="numeric"
-                  />
-                  <TouchableOpacity style={styles.addButton} onPress={addSubtask}>
-                    <Plus size={20} color="#0A0A0A" />
-                  </TouchableOpacity>
-                </View>
-
-                {subtasks.map((subtask) => (
-                  <View key={subtask.title} style={styles.listItem}>
-                    <Text style={styles.listItemText}>{subtask.title}</Text>
-                    <Text style={styles.listItemTime}>{subtask.estimatedTime}м</Text>
-                    <TouchableOpacity onPress={() => removeSubtask(subtasks.indexOf(subtask))}>
-                      <X size={16} color="#FF6B6B" />
+                <View style={styles.section}>
+                  <View style={styles.sectionTitleRow}>
+                    <Lightbulb size={18} color={theme.colors.primary} />
+                    <Text style={styles.sectionTitle}>Tips</Text>
+                  </View>
+                  
+                  <View style={styles.addItemContainer}>
+                    <TextInput
+                      style={[styles.textInput, styles.addItemInput]}
+                      value={newTip}
+                      onChangeText={setNewTip}
+                      placeholder="Add helpful tip..."
+                      placeholderTextColor={theme.colors.textLight}
+                    />
+                    <TouchableOpacity 
+                      style={[styles.addButton, !newTip.trim() && styles.addButtonDisabled]} 
+                      onPress={addTip}
+                      disabled={!newTip.trim()}
+                      activeOpacity={0.8}
+                    >
+                      <Plus size={20} color={newTip.trim() ? theme.colors.background : theme.colors.textLight} />
                     </TouchableOpacity>
                   </View>
-                ))}
-              </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Tips</Text>
-                
-                <View style={styles.addItemContainer}>
-                  <TextInput
-                    style={[styles.textInput, styles.addItemInput]}
-                    value={newTip}
-                    onChangeText={setNewTip}
-                    placeholder="Add tip..."
-                    placeholderTextColor="rgba(255,255,255,0.4)"
-                  />
-                  <TouchableOpacity style={styles.addButton} onPress={addTip}>
-                    <Plus size={20} color="#0A0A0A" />
-                  </TouchableOpacity>
+                  {tips.map((tip, index) => (
+                    <View key={`${tip}_${index}`} style={styles.listItem}>
+                      <Lightbulb size={14} color={theme.colors.primary} />
+                      <Text style={[styles.listItemText, styles.tipText]}>{tip}</Text>
+                      <TouchableOpacity 
+                        onPress={() => removeTip(index)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <X size={16} color={theme.colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                 </View>
-
-                {tips.map((tip) => (
-                  <View key={tip} style={styles.listItem}>
-                    <Lightbulb size={16} color="#FFD600" />
-                    <Text style={[styles.listItemText, { flex: 1, marginLeft: 8 }]}>{tip}</Text>
-                    <TouchableOpacity onPress={() => removeTip(tips.indexOf(tip))}>
-                      <X size={16} color="#FF6B6B" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-        </ScrollView>
-
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
-          <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.saveButton, (!title.trim() || isCalculating) && styles.saveButtonDisabled]} 
-            onPress={handleSave}
-            disabled={!title.trim() || isCalculating}
-          >
-            {isCalculating ? (
-              <ActivityIndicator color="#000" size="small" />
-            ) : (
-              <Text style={styles.saveButtonText}>
-                {isCompletedMode ? 'Save & Evaluate' : 'Save'}
-              </Text>
+              </>
             )}
-          </TouchableOpacity>
+
+            <View style={{ height: 100 }} />
+          </ScrollView>
+
+          <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={onClose}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.saveButton, (!title.trim() || isCalculating) && styles.saveButtonDisabled]} 
+              onPress={handleSave}
+              disabled={!title.trim() || isCalculating}
+              activeOpacity={0.8}
+            >
+              {isCalculating ? (
+                <ActivityIndicator color={theme.colors.background} size="small" />
+              ) : (
+                <>
+                  <Text style={styles.saveButtonText}>
+                    {isCompletedMode ? 'Save & Evaluate' : 'Create Task'}
+                  </Text>
+                  <ChevronRight size={18} color={theme.colors.background} />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoid: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: theme.colors.background,
   },
   header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  headerHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: theme.colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold' as const,
-    color: '#FFFFFF',
+    fontSize: theme.fontSize.xxl,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+    letterSpacing: -0.5,
   },
   closeButton: {
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modeToggleContainer: {
     flexDirection: 'row',
-    padding: theme.spacing.md,
-    gap: 12,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.sm,
   },
   modeButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: '#1A1A1A',
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    gap: 8,
+    borderColor: theme.colors.border,
+    gap: theme.spacing.sm,
   },
   modeButtonActive: {
-    backgroundColor: '#FFD600',
-    borderColor: '#FFD600',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+    ...theme.shadows.gold,
   },
   modeButtonText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
   },
   modeButtonTextActive: {
-    color: '#000000',
+    color: theme.colors.background,
   },
   content: {
     flex: 1,
-    padding: theme.spacing.lg,
+  },
+  scrollContent: {
+    paddingHorizontal: theme.spacing.lg,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: theme.spacing.xl,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-    marginBottom: 12,
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
+  },
+  aiSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  generateAIButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    gap: theme.spacing.xs,
+    ...theme.shadows.gold,
+  },
+  generateAIButtonDisabled: {
+    opacity: 0.6,
+  },
+  generateAIButtonText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.background,
   },
   suggestedContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: theme.spacing.md,
   },
   suggestedCard: {
-    minWidth: 120,
-    padding: 16,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    alignItems: 'center',
+    width: 140,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  aiSuggestedCard: {
+    width: 160,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    ...theme.shadows.gold,
+  },
+  aiCardHeader: {
+    marginBottom: theme.spacing.sm,
+  },
+  difficultyBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.xs,
+  },
+  difficultyBadgeText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.medium,
+    textTransform: 'capitalize' as const,
   },
   adaptedCard: {
+    width: 140,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
     borderWidth: 1,
-    borderColor: '#FFD600',
-    position: 'relative',
-  },
-  adaptedBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
+    borderColor: theme.colors.primary + '30',
   },
   suggestedTitle: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 8,
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+    lineHeight: 18,
+  },
+  suggestedMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
   },
   suggestedTime: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: theme.spacing.lg,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-    marginBottom: 8,
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
   },
   textInput: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: theme.colors.border,
   },
   textArea: {
-    height: 80,
+    height: 100,
     textAlignVertical: 'top',
+    paddingTop: theme.spacing.md,
   },
   optionsContainer: {
     flexDirection: 'row',
-    gap: 8,
+    gap: theme.spacing.sm,
   },
   optionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    gap: 6,
+    borderColor: theme.colors.border,
+    gap: theme.spacing.xs,
   },
   optionButtonSelected: {
-    borderColor: '#FFD600',
-    backgroundColor: 'rgba(255, 214, 0, 0.1)',
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary + '10',
   },
   optionText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium,
   },
   optionTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '600' as const,
+    color: theme.colors.primary,
   },
   difficultyDot: {
     width: 8,
@@ -893,114 +1047,101 @@ const styles = StyleSheet.create({
   },
   addItemContainer: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   addItemInput: {
     flex: 1,
   },
   timeInput: {
-    width: 80,
+    width: 70,
+    textAlign: 'center',
   },
   addButton: {
     width: 48,
     height: 48,
-    backgroundColor: '#FFD600',
-    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    ...theme.shadows.gold,
+  },
+  addButtonDisabled: {
+    backgroundColor: theme.colors.surface,
+    shadowOpacity: 0,
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 8,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.sm,
+    gap: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  listItemDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.primary,
   },
   listItemText: {
     flex: 1,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text,
+  },
+  tipText: {
+    marginLeft: theme.spacing.xs,
   },
   listItemTime: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    marginRight: theme.spacing.xs,
   },
   footer: {
     flexDirection: 'row',
-    padding: theme.spacing.lg,
-    gap: 12,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    gap: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
   },
   cancelButton: {
-    flex: 1,
-    height: 48,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 24,
+    height: 52,
+    paddingHorizontal: theme.spacing.xl,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
   },
   saveButton: {
     flex: 1,
-    height: 48,
-    backgroundColor: '#FFD600',
-    borderRadius: 24,
+    height: 52,
+    flexDirection: 'row',
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: theme.spacing.xs,
+    ...theme.shadows.gold,
   },
   saveButtonDisabled: {
-    backgroundColor: 'rgba(255, 214, 0, 0.3)',
+    opacity: 0.4,
+    shadowOpacity: 0,
   },
   saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#0A0A0A',
-  },
-  aiSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  generateAIButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFD600',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    gap: 6,
-  },
-  generateAIButtonDisabled: {
-    backgroundColor: 'rgba(255, 214, 0, 0.5)',
-  },
-  generateAIButtonText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: '#000000',
-  },
-  aiSuggestedCard: {
-    borderWidth: 1,
-    borderColor: '#4ADE80',
-    position: 'relative',
-  },
-  aiTaskBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-  },
-  aiTaskDifficulty: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.5)',
-    textTransform: 'capitalize',
-    marginTop: 4,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.background,
   },
 });
