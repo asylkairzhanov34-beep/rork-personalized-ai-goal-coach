@@ -66,12 +66,12 @@ export function SoundSelector({ selectedSound, onSoundChange }: SoundSelectorPro
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Звук уведомления</Text>
+      <Text style={styles.title}>Notification Sound</Text>
       {isLoading && Platform.OS !== 'web' && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={theme.colors.primary} />
           <Text style={styles.loadingText}>
-            Загрузка звуков... ({loadProgress.loaded}/{loadProgress.total})
+            Loading sounds... ({loadProgress.loaded}/{loadProgress.total})
           </Text>
         </View>
       )}

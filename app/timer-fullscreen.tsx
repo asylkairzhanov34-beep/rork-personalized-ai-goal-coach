@@ -32,9 +32,9 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const QUICK_PRESETS = [10, 25, 45, 60];
 
 const SESSION_LABELS = {
-  focus: 'Фокус',
-  shortBreak: 'Перерыв',
-  longBreak: 'Длинный перерыв',
+  focus: 'Focus',
+  shortBreak: 'Break',
+  longBreak: 'Long Break',
 };
 
 export default function TimerFullscreenScreen() {
@@ -147,12 +147,12 @@ export default function TimerFullscreenScreen() {
 
   const handleReset = async () => {
     Alert.alert(
-      'Сбросить таймер?',
-      'Текущий прогресс будет потерян',
+      'Reset Timer?',
+      'Current progress will be lost',
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Сбросить',
+          text: 'Reset',
           style: 'destructive',
           onPress: async () => {
             if (stopTimer) {
@@ -211,7 +211,7 @@ export default function TimerFullscreenScreen() {
   if (!timerStore) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Загрузка...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -254,7 +254,7 @@ export default function TimerFullscreenScreen() {
                   mode === 'focus' && styles.modePillTextActive,
                 ]}
               >
-                Фокус
+                Focus
               </Text>
             </TouchableOpacity>
 
@@ -274,7 +274,7 @@ export default function TimerFullscreenScreen() {
                   mode === 'shortBreak' && styles.modePillTextActive,
                 ]}
               >
-                Перерыв
+                Break
               </Text>
             </TouchableOpacity>
 
@@ -294,7 +294,7 @@ export default function TimerFullscreenScreen() {
                   mode === 'longBreak' && styles.modePillTextActive,
                 ]}
               >
-                Длинный
+                Long
               </Text>
             </TouchableOpacity>
           </View>
@@ -317,12 +317,12 @@ export default function TimerFullscreenScreen() {
                   <Text style={styles.timerText}>{formatTime(currentTime)}</Text>
                   <Text style={styles.timerStatus}>
                     {isRunning && !isPaused
-                      ? 'Идёт фокус'
+                      ? 'Focus in progress'
                       : isPaused
-                      ? 'На паузе'
+                      ? 'Paused'
                       : currentTime === 0
-                      ? 'Завершено!'
-                      : 'Нажми на таймер'}
+                      ? 'Completed!'
+                      : 'Tap the timer'}
                   </Text>
                 </View>
               </View>
@@ -336,7 +336,7 @@ export default function TimerFullscreenScreen() {
                 onPress={handleStart}
               >
                 <Play size={28} color="#111214" fill="#111214" strokeWidth={2.5} />
-                <Text style={styles.startButtonText}>Старт</Text>
+                <Text style={styles.startButtonText}>Start</Text>
               </Pressable>
             ) : (
               <View style={styles.controlRow}>
@@ -363,19 +363,19 @@ export default function TimerFullscreenScreen() {
 
           {!isRunning && (
             <Pressable style={styles.setTimeButton} onPress={openTimeSelector}>
-              <Text style={styles.setTimeText}>Установить время</Text>
+              <Text style={styles.setTimeText}>Set Time</Text>
             </Pressable>
           )}
         </View>
 
         <View style={styles.breathingSection}>
-          <Text style={styles.breathingTitle}>Быстрые действия</Text>
+          <Text style={styles.breathingTitle}>Quick Actions</Text>
           <TouchableOpacity
             style={styles.breathingButton}
             onPress={() => router.push('/breathing')}
           >
             <Wind size={20} color={theme.colors.primary} />
-            <Text style={styles.breathingText}>Дыхательные техники</Text>
+            <Text style={styles.breathingText}>Breathing Techniques</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -403,7 +403,7 @@ export default function TimerFullscreenScreen() {
 
               <View style={styles.panelContent}>
                 <View style={styles.panelHeader}>
-                  <Text style={styles.panelTitle}>Выберите время</Text>
+                  <Text style={styles.panelTitle}>Select Time</Text>
                   <TouchableOpacity onPress={closeTimeSelector} style={styles.closeButton}>
                     <X size={20} color="#AFAFAF" />
                   </TouchableOpacity>
@@ -470,7 +470,7 @@ export default function TimerFullscreenScreen() {
                       ))}
                     </Picker>
                   )}
-                  <Text style={styles.pickerLabel}>минут</Text>
+                  <Text style={styles.pickerLabel}>minutes</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -486,15 +486,15 @@ export default function TimerFullscreenScreen() {
       >
         <View style={styles.completionOverlay}>
           <View style={styles.completionCard}>
-            <Text style={styles.completionTitle}>🎯 Завершено!</Text>
+            <Text style={styles.completionTitle}>🎯 Complete!</Text>
             <Text style={styles.completionMessage}>
-              {mode === 'focus' ? 'Отличная работа! Время для перерыва.' : 'Перерыв окончен. Готовы продолжить?'}
+              {mode === 'focus' ? 'Great work! Time for a break.' : 'Break is over. Ready to continue?'}
             </Text>
             <TouchableOpacity
               style={styles.completionButton}
               onPress={() => setShowCompletionModal(false)}
             >
-              <Text style={styles.completionButtonText}>Понятно</Text>
+              <Text style={styles.completionButtonText}>Got it</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -509,12 +509,12 @@ export default function TimerFullscreenScreen() {
         <View style={styles.settingsOverlay}>
           <View style={styles.settingsCard}>
             <View style={styles.settingsHeader}>
-              <Text style={styles.settingsTitle}>Настройки</Text>
+              <Text style={styles.settingsTitle}>Settings</Text>
               <TouchableOpacity onPress={() => setShowSettings(false)}>
                 <X size={24} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.settingsMessage}>Настройки находятся на вкладке Фокус</Text>
+            <Text style={styles.settingsMessage}>Settings are available on the Focus tab</Text>
           </View>
         </View>
       </Modal>

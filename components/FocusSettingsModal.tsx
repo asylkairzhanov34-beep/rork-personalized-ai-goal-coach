@@ -28,7 +28,7 @@ export function FocusSettingsModal({
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Настройки Фокуса</Text>
+          <Text style={styles.title}>Focus Settings</Text>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <X size={24} color={theme.colors.text} />
           </TouchableOpacity>
@@ -41,9 +41,9 @@ export function FocusSettingsModal({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Звуковые уведомления</Text>
+            <Text style={styles.sectionTitle}>Sound Notifications</Text>
             <Text style={styles.sectionDescription}>
-              Выберите звук, который будет воспроизводиться при завершении таймера
+              Choose the sound that will play when the timer ends
             </Text>
             
             <SoundSelector
@@ -54,9 +54,9 @@ export function FocusSettingsModal({
 
           {/* Future settings can be added here */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Дополнительные настройки</Text>
+            <Text style={styles.sectionTitle}>Additional Settings</Text>
             <Text style={styles.sectionDescription}>
-              Больше настроек будет добавлено в будущих обновлениях
+              More settings will be added in future updates
             </Text>
           </View>
         </ScrollView>
