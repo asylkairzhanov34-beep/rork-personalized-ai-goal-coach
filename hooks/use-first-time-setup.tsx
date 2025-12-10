@@ -8,7 +8,8 @@ import { saveUserProfile, getUserProfile, updateUserProfile } from '@/lib/fireba
 const getFirstTimeSetupKey = (userId: string) => `first_time_setup_${userId}`;
 
 export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() => {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const [state, setState] = useState<FirstTimeSetupState>({
     profile: null,
     currentStep: 0,
