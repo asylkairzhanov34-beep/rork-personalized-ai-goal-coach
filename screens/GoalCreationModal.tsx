@@ -170,15 +170,15 @@ export function GoalCreationModal() {
         .map(msg => ({ role: msg.role, content: msg.content }))
         .slice(-10); // Keep last 10 messages for context
 
-      const systemPrompt = `Ты - эксперт-коуч по достижению целей. Помогаешь пользователю сформулировать четкую, достижимую цель. 
+      const systemPrompt = `You are an expert goal achievement coach. You help users formulate clear, achievable goals.
 
-Твоя задача:
-1. Задавать уточняющие вопросы о цели
-2. Помочь сделать цель более конкретной и измеримой
-3. Выяснить мотивацию и препятствия
-4. В конце предложить четко сформулированную цель
+Your tasks:
+1. Ask clarifying questions about the goal
+2. Help make the goal more specific and measurable
+3. Understand motivation and obstacles
+4. At the end, suggest a clearly formulated goal
 
-Отвечай дружелюбно, по-русски, задавай один вопрос за раз. Будь кратким но полезным.`;
+Respond in a friendly manner in English, ask one question at a time. Be concise but helpful.`;
 
       const response = await fetch('https://toolkit.rork.com/text/llm/', {
         method: 'POST',
@@ -245,58 +245,58 @@ export function GoalCreationModal() {
     
     try {
       const prompt = `
-        Создай детальный план достижения цели на русском языке:
-        Цель: ${finalAnswers[0]}
-        Мотивация: ${finalAnswers[1]}
-        Препятствия: ${finalAnswers[2]}
-        Ресурсы: ${finalAnswers[3]}
-        Время в день: ${finalAnswers[4]}
-        Критерии успеха: ${finalAnswers[5]}
+        Create a detailed goal achievement plan in English:
+        Goal: ${finalAnswers[0]}
+        Motivation: ${finalAnswers[1]}
+        Obstacles: ${finalAnswers[2]}
+        Resources: ${finalAnswers[3]}
+        Time per day: ${finalAnswers[4]}
+        Success criteria: ${finalAnswers[5]}
         
-        Создай JSON с:
-        1. Объект goal с полями: title, description, category, motivation
-        2. Массив dailyPlans - план на 30 дней, где каждый день содержит 2-3 ВЗАИМОСВЯЗАННЫЕ задачи
+        Create JSON with:
+        1. goal object with fields: title, description, category, motivation
+        2. dailyPlans array - 30-day plan where each day contains 2-3 INTERCONNECTED tasks
         
-        КРИТИЧЕСКИ ВАЖНО:
-        - Каждый день должен содержать РОВНО 2-3 задачи разной сложности
-        - Задачи в дне должны быть ЛОГИЧЕСКИ СВЯЗАНЫ и дополнять друг друга
-        - Задачи должны образовывать ЕДИНУЮ СТРУКТУРУ, где каждая следующая задача строится на предыдущей
-        - Прогресс должен быть постепенным - от простого к сложному на протяжении 30 дней
+        CRITICALLY IMPORTANT:
+        - Each day should contain EXACTLY 2-3 tasks of varying difficulty
+        - Tasks within a day should be LOGICALLY CONNECTED and complement each other
+        - Tasks should form a UNIFIED STRUCTURE where each subsequent task builds on the previous one
+        - Progress should be gradual - from simple to complex over 30 days
         
-        Структура dailyPlans:
+        Structure of dailyPlans:
         [
           {
             "dayNumber": 1,
-            "dailyTheme": "Тема дня (например: Основы и планирование)",
+            "dailyTheme": "Day theme (e.g.: Basics and planning)",
             "tasks": [
               {
-                "title": "Название задачи",
-                "description": "Подробное описание (2-3 предложения)",
-                "duration": "время (например 20 минут)",
+                "title": "Task name",
+                "description": "Detailed description (2-3 sentences)",
+                "duration": "time (e.g. 20 minutes)",
                 "priority": "high/medium/low",
                 "difficulty": "easy/medium/hard",
-                "estimatedTime": число в минутах,
-                "connectionToNext": "Как эта задача связана со следующей",
-                "tips": ["совет 1", "совет 2"],
+                "estimatedTime": number in minutes,
+                "connectionToNext": "How this task connects to the next",
+                "tips": ["tip 1", "tip 2"],
                 "subtasks": [
-                  { "title": "Конкретная подзадача", "estimatedTime": 5, "completed": false }
+                  { "title": "Specific subtask", "estimatedTime": 5, "completed": false }
                 ]
               }
             ]
           }
         ]
         
-        Примеры связности задач в дне:
-        - День изучения языка: 1) Изучить 10 новых слов → 2) Составить 5 предложений с этими словами → 3) Послушать диалог с этими словами
-        - День фитнеса: 1) Разминка 10 мин → 2) Основная тренировка → 3) Растяжка и анализ
-        - День бизнеса: 1) Изучить рынок → 2) Проанализировать конкурентов → 3) Составить план действий
+        Examples of task connectivity within a day:
+        - Language learning day: 1) Learn 10 new words → 2) Create 5 sentences with these words → 3) Listen to dialogue with these words
+        - Fitness day: 1) 10 min warm-up → 2) Main workout → 3) Stretching and analysis
+        - Business day: 1) Research market → 2) Analyze competitors → 3) Create action plan
         
-        Распределение сложности в дне:
-        - 1 лёгкая задача (easy) - подготовка/разогрев
-        - 1 средняя задача (medium) - основная работа  
-        - 1 сложная задача (hard) - применение/закрепление (опционально)
+        Difficulty distribution within a day:
+        - 1 easy task (easy) - preparation/warm-up
+        - 1 medium task (medium) - main work  
+        - 1 hard task (hard) - application/reinforcement (optional)
         
-        Формат: { "goal": {...}, "dailyPlans": [...] }
+        Format: { "goal": {...}, "dailyPlans": [...] }
       `;
 
       const response = await fetch('https://toolkit.rork.com/text/llm/', {
@@ -304,7 +304,7 @@ export function GoalCreationModal() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
-            { role: 'system', content: 'Ты эксперт-коуч по достижению целей. Создаешь ОЧЕНЬ ДЕТАЛЬНЫЕ, практичные планы. В подзадачах ВСЕГДА указывай конкретные действия с числами (количество повторений, конкретные упражнения, конкретные слова для изучения). НЕ используй общие формулировки. Отвечай только валидным JSON без дополнительного текста. Все тексты на русском языке.' },
+            { role: 'system', content: 'You are an expert goal achievement coach. Create VERY DETAILED, practical plans. In subtasks ALWAYS specify concrete actions with numbers (number of repetitions, specific exercises, specific words to learn). DO NOT use generic formulations. Respond only with valid JSON without additional text. All texts in English.' },
             { role: 'user', content: prompt }
           ]
         })
@@ -346,8 +346,8 @@ export function GoalCreationModal() {
 
       const goal: Omit<Goal, 'id' | 'createdAt' | 'isActive' | 'completedTasksCount' | 'totalTasksCount'> = {
         title: planData.goal?.title || finalAnswers[0],
-        description: planData.goal?.description || `Персональный план для достижения: ${finalAnswers[0]}`,
-        category: planData.goal?.category || 'Личное развитие',
+        description: planData.goal?.description || `Personal plan to achieve: ${finalAnswers[0]}`,
+        category: planData.goal?.category || 'Personal Development',
         motivation: planData.goal?.motivation || finalAnswers[1],
         obstacles: [finalAnswers[2]],
         resources: [finalAnswers[3]],
@@ -379,11 +379,11 @@ export function GoalCreationModal() {
             tasks.push({
               day: dayIndex + 1,
               date: dayDate.toISOString(),
-              title: task?.title || `Задача ${dayIndex + 1}.${taskIndex + 1}`,
-              description: task?.description || 'Работайте над своей целью сегодня',
-              duration: task?.duration || finalAnswers[4] || '30 минут',
+              title: task?.title || `Task ${dayIndex + 1}.${taskIndex + 1}`,
+              description: task?.description || 'Work on your goal today',
+              duration: task?.duration || finalAnswers[4] || '30 minutes',
               priority: (task?.priority as 'high' | 'medium' | 'low') || 'medium',
-              tips: Array.isArray(task?.tips) ? task.tips : ['Сохраняйте фокус', 'Делайте перерывы при необходимости'],
+              tips: Array.isArray(task?.tips) ? task.tips : ['Stay focused', 'Take breaks when needed'],
               difficulty: (task?.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
               estimatedTime: task?.estimatedTime || 30,
               subtasks,

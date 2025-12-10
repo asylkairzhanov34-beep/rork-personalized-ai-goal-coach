@@ -26,41 +26,41 @@ interface TaskCreationModalProps {
 }
 
 const DIFFICULTY_OPTIONS = [
-  { value: 'easy' as const, label: 'Легко', color: '#4ADE80' },
-  { value: 'medium' as const, label: 'Средне', color: '#FFD600' },
-  { value: 'hard' as const, label: 'Сложно', color: '#FF6B6B' },
+  { value: 'easy' as const, label: 'Easy', color: '#4ADE80' },
+  { value: 'medium' as const, label: 'Medium', color: '#FFD600' },
+  { value: 'hard' as const, label: 'Hard', color: '#FF6B6B' },
 ];
 
 const PRIORITY_OPTIONS = [
-  { value: 'low' as const, label: 'Низкий', icon: Clock, color: '#4ADE80' },
-  { value: 'medium' as const, label: 'Средний', icon: Target, color: '#FFD600' },
-  { value: 'high' as const, label: 'Высокий', icon: AlertCircle, color: '#FF6B6B' },
+  { value: 'low' as const, label: 'Low', icon: Clock, color: '#4ADE80' },
+  { value: 'medium' as const, label: 'Medium', icon: Target, color: '#FFD600' },
+  { value: 'high' as const, label: 'High', icon: AlertCircle, color: '#FF6B6B' },
 ];
 
 const SUGGESTED_TASKS = [
   {
-    title: 'Утренняя медитация',
-    description: 'Начните день с 10-минутной медитации для ясности ума',
+    title: 'Morning Meditation',
+    description: 'Start your day with a 10-minute meditation for mental clarity',
     estimatedTime: 10,
     difficulty: 'easy' as const,
     priority: 'medium' as const,
-    tips: ['Найдите тихое место', 'Используйте приложение для медитации', 'Сосредоточьтесь на дыхании']
+    tips: ['Find a quiet place', 'Use a meditation app', 'Focus on your breathing']
   },
   {
-    title: 'Планирование дня',
-    description: 'Составьте список приоритетных задач на день',
+    title: 'Day Planning',
+    description: 'Create a list of priority tasks for the day',
     estimatedTime: 15,
     difficulty: 'easy' as const,
     priority: 'high' as const,
-    tips: ['Используйте правило 3-х важных дел', 'Оцените время на каждую задачу', 'Оставьте буферное время']
+    tips: ['Use the rule of 3 important tasks', 'Estimate time for each task', 'Leave buffer time']
   },
   {
-    title: 'Физическая активность',
-    description: 'Выполните комплекс упражнений или прогулку',
+    title: 'Physical Activity',
+    description: 'Complete a workout routine or go for a walk',
     estimatedTime: 30,
     difficulty: 'medium' as const,
     priority: 'high' as const,
-    tips: ['Начните с разминки', 'Выберите активность по настроению', 'Не забывайте про воду']
+    tips: ['Start with a warm-up', 'Choose activity based on mood', "Don't forget water"]
   },
 ];
 
@@ -231,7 +231,7 @@ export function TaskCreationModal({
   const adaptFromPreviousDay = (previousTask: DailyTask) => {
     if (!previousTask?.title?.trim()) return;
     setTitle(previousTask.title);
-    setDescription(`Адаптировано: ${previousTask.description}`);
+    setDescription(`Adapted: ${previousTask.description}`);
     setEstimatedTime(previousTask.estimatedTime.toString());
     setDifficulty(previousTask.difficulty);
     setPriority(previousTask.priority);
@@ -425,7 +425,7 @@ export function TaskCreationModal({
         
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
-            {isCompletedMode ? 'Внести результат' : 'Новая задача'}
+            {isCompletedMode ? 'Log Result' : 'New Task'}
           </Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <X size={24} color="#FFFFFF" />
@@ -440,7 +440,7 @@ export function TaskCreationModal({
           >
             <Target size={16} color={!isCompletedMode ? '#000' : '#888'} />
             <Text style={[styles.modeButtonText, !isCompletedMode && styles.modeButtonTextActive]}>
-              Запланировать
+              Plan
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -449,7 +449,7 @@ export function TaskCreationModal({
           >
             <CheckCircle size={16} color={isCompletedMode ? '#000' : '#888'} />
             <Text style={[styles.modeButtonText, isCompletedMode && styles.modeButtonTextActive]}>
-              Выполнено
+              Completed
             </Text>
           </TouchableOpacity>
         </View>
@@ -461,7 +461,7 @@ export function TaskCreationModal({
               {currentGoal && (
                 <View style={styles.section}>
                   <View style={styles.aiSectionHeader}>
-                    <Text style={styles.sectionTitle}>🤖 ИИ-предложения для вашей цели</Text>
+                    <Text style={styles.sectionTitle}>🤖 AI suggestions for your goal</Text>
                     <TouchableOpacity 
                       style={[styles.generateAIButton, isGeneratingAI && styles.generateAIButtonDisabled]}
                       onPress={generateAITasks}
@@ -473,7 +473,7 @@ export function TaskCreationModal({
                         <Sparkles size={16} color="#000000" />
                       )}
                       <Text style={styles.generateAIButtonText}>
-                        {isGeneratingAI ? 'Генерирую...' : 'Создать задачи'}
+                        {isGeneratingAI ? 'Generating...' : 'Generate Tasks'}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -503,7 +503,7 @@ export function TaskCreationModal({
 
               {SUGGESTED_TASKS.length > 0 && (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>💡 Общие рекомендации</Text>
+                  <Text style={styles.sectionTitle}>💡 General Recommendations</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={styles.suggestedContainer}>
                       {SUGGESTED_TASKS.map((suggested) => (
@@ -523,7 +523,7 @@ export function TaskCreationModal({
 
               {previousDayTasks.length > 0 && (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>⭐ Адаптировать из предыдущего дня</Text>
+                  <Text style={styles.sectionTitle}>⭐ Adapt from previous day</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={styles.suggestedContainer}>
                       {previousDayTasks.slice(0, 3).map((task) => (
@@ -549,27 +549,27 @@ export function TaskCreationModal({
           {/* Main Form */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              {isCompletedMode ? 'Что было сделано?' : 'Основная информация'}
+              {isCompletedMode ? 'What was done?' : 'Basic Information'}
             </Text>
             
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Название задачи</Text>
+              <Text style={styles.inputLabel}>Task Name</Text>
               <TextInput
                 style={styles.textInput}
                 value={title}
                 onChangeText={setTitle}
-                placeholder={isCompletedMode ? "Например: Прочитал 20 страниц книги" : "Введите название задачи..."}
+                placeholder={isCompletedMode ? "E.g.: Read 20 pages of a book" : "Enter task name..."}
                 placeholderTextColor="rgba(255,255,255,0.4)"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Описание</Text>
+              <Text style={styles.inputLabel}>Description</Text>
               <TextInput
                 style={[styles.textInput, styles.textArea]}
                 value={description}
                 onChangeText={setDescription}
-                placeholder={isCompletedMode ? "Опишите детали, чтобы ИИ мог оценить сложность..." : "Подробное описание задачи..."}
+                placeholder={isCompletedMode ? "Describe details so AI can assess difficulty..." : "Detailed task description..."}
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 multiline
                 numberOfLines={3}
@@ -578,7 +578,7 @@ export function TaskCreationModal({
 
             {!isCompletedMode && (
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Время выполнения (минуты)</Text>
+                <Text style={styles.inputLabel}>Duration (minutes)</Text>
                 <TextInput
                   style={styles.textInput}
                   value={estimatedTime}
@@ -594,10 +594,10 @@ export function TaskCreationModal({
           {/* Priority & Difficulty - Only for Planning Mode or if user wants to override */}
           {!isCompletedMode && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Приоритет и сложность</Text>
+              <Text style={styles.sectionTitle}>Priority & Difficulty</Text>
               
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Приоритет</Text>
+                <Text style={styles.inputLabel}>Priority</Text>
                 <View style={styles.optionsContainer}>
                   {PRIORITY_OPTIONS.map((option) => {
                     const IconComponent = option.icon;
@@ -624,7 +624,7 @@ export function TaskCreationModal({
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Сложность</Text>
+                <Text style={styles.inputLabel}>Difficulty</Text>
                 <View style={styles.optionsContainer}>
                   {DIFFICULTY_OPTIONS.map((option) => (
                     <TouchableOpacity
@@ -653,21 +653,21 @@ export function TaskCreationModal({
           {!isCompletedMode && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Подзадачи</Text>
+                <Text style={styles.sectionTitle}>Subtasks</Text>
                 
                 <View style={styles.addItemContainer}>
                   <TextInput
                     style={[styles.textInput, styles.addItemInput]}
                     value={newSubtask}
                     onChangeText={setNewSubtask}
-                    placeholder="Добавить подзадачу..."
+                    placeholder="Add subtask..."
                     placeholderTextColor="rgba(255,255,255,0.4)"
                   />
                   <TextInput
                     style={[styles.textInput, styles.timeInput]}
                     value={newSubtaskTime}
                     onChangeText={setNewSubtaskTime}
-                    placeholder="10м"
+                    placeholder="10m"
                     placeholderTextColor="rgba(255,255,255,0.4)"
                     keyboardType="numeric"
                   />
@@ -688,14 +688,14 @@ export function TaskCreationModal({
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Советы</Text>
+                <Text style={styles.sectionTitle}>Tips</Text>
                 
                 <View style={styles.addItemContainer}>
                   <TextInput
                     style={[styles.textInput, styles.addItemInput]}
                     value={newTip}
                     onChangeText={setNewTip}
-                    placeholder="Добавить совет..."
+                    placeholder="Add tip..."
                     placeholderTextColor="rgba(255,255,255,0.4)"
                   />
                   <TouchableOpacity style={styles.addButton} onPress={addTip}>
@@ -719,7 +719,7 @@ export function TaskCreationModal({
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
           <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelButtonText}>Отмена</Text>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -731,7 +731,7 @@ export function TaskCreationModal({
               <ActivityIndicator color="#000" size="small" />
             ) : (
               <Text style={styles.saveButtonText}>
-                {isCompletedMode ? 'Сохранить и оценить' : 'Сохранить'}
+                {isCompletedMode ? 'Save & Evaluate' : 'Save'}
               </Text>
             )}
           </TouchableOpacity>

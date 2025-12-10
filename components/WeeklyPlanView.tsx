@@ -14,13 +14,13 @@ interface WeeklyPlanViewProps {
 }
 
 const DAYS_OF_WEEK = [
-  { key: 'monday', label: 'Понедельник', short: 'ПН' },
-  { key: 'tuesday', label: 'Вторник', short: 'ВТ' },
-  { key: 'wednesday', label: 'Среда', short: 'СР' },
-  { key: 'thursday', label: 'Четверг', short: 'ЧТ' },
-  { key: 'friday', label: 'Пятница', short: 'ПТ' },
-  { key: 'saturday', label: 'Суббота', short: 'СБ' },
-  { key: 'sunday', label: 'Воскресенье', short: 'ВС' },
+  { key: 'monday', label: 'Monday', short: 'MON' },
+  { key: 'tuesday', label: 'Tuesday', short: 'TUE' },
+  { key: 'wednesday', label: 'Wednesday', short: 'WED' },
+  { key: 'thursday', label: 'Thursday', short: 'THU' },
+  { key: 'friday', label: 'Friday', short: 'FRI' },
+  { key: 'saturday', label: 'Saturday', short: 'SAT' },
+  { key: 'sunday', label: 'Sunday', short: 'SUN' },
 ];
 
 const getDifficultyColor = (difficulty: 'easy' | 'medium' | 'hard') => {
@@ -144,7 +144,7 @@ export function WeeklyPlanView({
               style={styles.viewDetailsButton}
               onPress={() => handleTaskPress(task)}
             >
-              <Text style={styles.viewDetailsText}>Подробнее</Text>
+              <Text style={styles.viewDetailsText}>Details</Text>
             </TouchableOpacity>
             
             <View style={styles.taskMeta}>
@@ -193,7 +193,7 @@ export function WeeklyPlanView({
         
         {task.tips && task.tips.length > 0 && isExpanded && (
           <View style={styles.tipsContainer}>
-            <Text style={styles.tipsTitle}>💡 Советы:</Text>
+            <Text style={styles.tipsTitle}>💡 Tips:</Text>
             {task.tips.map((tip, index) => (
               <Text key={index} style={styles.tipText}>• {tip}</Text>
             ))}
@@ -268,7 +268,7 @@ export function WeeklyPlanView({
             <View style={styles.dayStatItem}>
               <Target size={16} color="#FFFFFF" />
               <Text style={styles.dayStatText}>
-                {getCurrentDayTasks().filter(t => t.completed).length}/{getCurrentDayTasks().length} задач
+                {getCurrentDayTasks().filter(t => t.completed).length}/{getCurrentDayTasks().length} tasks
               </Text>
             </View>
             
@@ -285,7 +285,7 @@ export function WeeklyPlanView({
         {getCurrentDayTasks().length > 1 && (
           <View style={styles.tasksConnectionHint}>
             <Text style={styles.connectionHintText}>
-              🔗 Задачи взаимосвязаны и дополняют друг друга
+              🔗 Tasks are interconnected and complement each other
             </Text>
           </View>
         )}
@@ -297,7 +297,7 @@ export function WeeklyPlanView({
             onPress={() => onAddTask(selectedDay)}
           >
             <Plus size={20} color="#000000" />
-            <Text style={styles.addTaskButtonText}>Добавить задачу</Text>
+            <Text style={styles.addTaskButtonText}>Add Task</Text>
           </TouchableOpacity>
         )}
         
@@ -306,15 +306,15 @@ export function WeeklyPlanView({
           {!availableDays.includes(selectedDay) ? (
             <View style={styles.emptyState}>
               <Text style={styles.lockedDayIcon}>🔒</Text>
-              <Text style={styles.emptyTitle}>День недоступен</Text>
-              <Text style={styles.emptySubtitle}>Доступен только сегодняшний день</Text>
+              <Text style={styles.emptyTitle}>Day unavailable</Text>
+              <Text style={styles.emptySubtitle}>Only today is available</Text>
             </View>
           ) : getCurrentDayTasks().length > 0 ? (
             getCurrentDayTasks().map(renderTaskCard)
           ) : (
             <View style={styles.emptyState}>
               <Calendar size={48} color="rgba(255,255,255,0.5)" />
-              <Text style={styles.emptyTitle}>Нет задач на этот день</Text>
+              <Text style={styles.emptyTitle}>No tasks for this day</Text>
             </View>
           )}
         </View>

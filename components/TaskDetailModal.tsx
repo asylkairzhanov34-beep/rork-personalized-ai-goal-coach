@@ -29,19 +29,19 @@ const getPriorityIcon = (priority: 'high' | 'medium' | 'low') => {
 
 const getDifficultyLabel = (difficulty: 'easy' | 'medium' | 'hard') => {
   switch (difficulty) {
-    case 'easy': return 'Легко';
-    case 'medium': return 'Средне';
-    case 'hard': return 'Сложно';
-    default: return 'Средне';
+    case 'easy': return 'Easy';
+    case 'medium': return 'Medium';
+    case 'hard': return 'Hard';
+    default: return 'Medium';
   }
 };
 
 const getPriorityLabel = (priority: 'high' | 'medium' | 'low') => {
   switch (priority) {
-    case 'high': return 'Высокий';
-    case 'medium': return 'Средний';
-    case 'low': return 'Низкий';
-    default: return 'Средний';
+    case 'high': return 'High';
+    case 'medium': return 'Medium';
+    case 'low': return 'Low';
+    default: return 'Medium';
   }
 };
 
@@ -57,7 +57,7 @@ export function TaskDetailModal({ visible, task, onClose }: TaskDetailModalProps
     >
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Детали задачи</Text>
+          <Text style={styles.headerTitle}>Task Details</Text>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <X size={24} color="#FFFFFF" />
           </TouchableOpacity>
@@ -71,14 +71,14 @@ export function TaskDetailModal({ visible, task, onClose }: TaskDetailModalProps
                 {task.adaptedFromPrevious && (
                   <View style={styles.adaptedBadge}>
                     <Star size={16} color="#FFD600" />
-                    <Text style={styles.adaptedText}>Адаптировано</Text>
+                    <Text style={styles.adaptedText}>Adapted</Text>
                   </View>
                 )}
               </View>
               
               {task.completed && (
                 <View style={styles.completedBadge}>
-                  <Text style={styles.completedText}>✓ Выполнено</Text>
+                  <Text style={styles.completedText}>✓ Completed</Text>
                 </View>
               )}
             </View>
@@ -89,7 +89,7 @@ export function TaskDetailModal({ visible, task, onClose }: TaskDetailModalProps
                   {getPriorityIcon(task.priority)}
                 </View>
                 <View>
-                  <Text style={styles.metaLabel}>Приоритет</Text>
+                  <Text style={styles.metaLabel}>Priority</Text>
                   <Text style={styles.metaValue}>{getPriorityLabel(task.priority)}</Text>
                 </View>
               </View>
@@ -99,8 +99,8 @@ export function TaskDetailModal({ visible, task, onClose }: TaskDetailModalProps
                   <Clock size={20} color="#FFFFFF" />
                 </View>
                 <View>
-                  <Text style={styles.metaLabel}>Время</Text>
-                  <Text style={styles.metaValue}>{task.estimatedTime} мин</Text>
+                  <Text style={styles.metaLabel}>Time</Text>
+                  <Text style={styles.metaValue}>{task.estimatedTime} min</Text>
                 </View>
               </View>
 
@@ -117,7 +117,7 @@ export function TaskDetailModal({ visible, task, onClose }: TaskDetailModalProps
                   </Text>
                 </View>
                 <View>
-                  <Text style={styles.metaLabel}>Сложность</Text>
+                  <Text style={styles.metaLabel}>Difficulty</Text>
                   <Text style={styles.metaValue}>{getDifficultyLabel(task.difficulty)}</Text>
                 </View>
               </View>
@@ -125,14 +125,14 @@ export function TaskDetailModal({ visible, task, onClose }: TaskDetailModalProps
 
             {task.description && (
               <View style={styles.descriptionSection}>
-                <Text style={styles.sectionTitle}>Описание</Text>
+                <Text style={styles.sectionTitle}>Description</Text>
                 <Text style={styles.description}>{task.description}</Text>
               </View>
             )}
 
             {task.subtasks && task.subtasks.length > 0 && (
               <View style={styles.subtasksSection}>
-                <Text style={styles.sectionTitle}>Подзадачи ({task.subtasks.length})</Text>
+                <Text style={styles.sectionTitle}>Subtasks ({task.subtasks.length})</Text>
                 {task.subtasks.map((subtask) => (
                   <View key={subtask.id} style={styles.subtaskItem}>
                     <View style={[
@@ -148,7 +148,7 @@ export function TaskDetailModal({ visible, task, onClose }: TaskDetailModalProps
                       ]}>
                         {subtask.title}
                       </Text>
-                      <Text style={styles.subtaskTime}>{subtask.estimatedTime} мин</Text>
+                      <Text style={styles.subtaskTime}>{subtask.estimatedTime} min</Text>
                     </View>
                   </View>
                 ))}
@@ -157,7 +157,7 @@ export function TaskDetailModal({ visible, task, onClose }: TaskDetailModalProps
 
             {task.tips && task.tips.length > 0 && (
               <View style={styles.tipsSection}>
-                <Text style={styles.sectionTitle}>💡 Советы</Text>
+                <Text style={styles.sectionTitle}>💡 Tips</Text>
                 {task.tips.map((tip, index) => (
                   <View key={index} style={styles.tipItem}>
                     <Text style={styles.tipBullet}>•</Text>
@@ -169,9 +169,9 @@ export function TaskDetailModal({ visible, task, onClose }: TaskDetailModalProps
 
             {task.completedAt && (
               <View style={styles.completionSection}>
-                <Text style={styles.sectionTitle}>Выполнено</Text>
+                <Text style={styles.sectionTitle}>Completed</Text>
                 <Text style={styles.completionDate}>
-                  {new Date(task.completedAt).toLocaleString('ru-RU', {
+                  {new Date(task.completedAt).toLocaleString('en-US', {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric',

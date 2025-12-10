@@ -18,7 +18,7 @@ export function ManifestationStats() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Sparkles size={24} color={theme.colors.primary} />
-        <Text style={styles.title}>Статистика манифестации</Text>
+        <Text style={styles.title}>Manifestation Stats</Text>
       </View>
       
       <View style={styles.statsGrid}>
@@ -27,7 +27,7 @@ export function ManifestationStats() {
             <Calendar size={20} color={theme.colors.primary} />
           </View>
           <Text style={styles.statValue}>{stats.totalSessions}</Text>
-          <Text style={styles.statLabel}>Всего сессий</Text>
+          <Text style={styles.statLabel}>Total Sessions</Text>
         </View>
         
         <View style={styles.statItem}>
@@ -35,7 +35,7 @@ export function ManifestationStats() {
             <TrendingUp size={20} color={theme.colors.primary} />
           </View>
           <Text style={styles.statValue}>{stats.currentStreak}</Text>
-          <Text style={styles.statLabel}>Текущая серия</Text>
+          <Text style={styles.statLabel}>Current Streak</Text>
         </View>
         
         <View style={styles.statItem}>
@@ -43,7 +43,7 @@ export function ManifestationStats() {
             <Heart size={20} color={theme.colors.primary} />
           </View>
           <Text style={styles.statValue}>{totalMinutes}</Text>
-          <Text style={styles.statLabel}>Минут практики</Text>
+          <Text style={styles.statLabel}>Minutes of Practice</Text>
         </View>
         
         <View style={styles.statItem}>
@@ -53,14 +53,14 @@ export function ManifestationStats() {
           <Text style={styles.statValue}>
             {stats.averageMoodImprovement > 0 ? `+${stats.averageMoodImprovement.toFixed(1)}` : '0'}
           </Text>
-          <Text style={styles.statLabel}>Улучшение настроения</Text>
+          <Text style={styles.statLabel}>Mood Improvement</Text>
         </View>
       </View>
       
       {stats.bestStreak > 0 && (
         <View style={styles.achievement}>
           <Text style={styles.achievementText}>
-            🏆 Лучшая серия: {stats.bestStreak} дней
+            🏆 Best Streak: {stats.bestStreak} days
           </Text>
         </View>
       )}

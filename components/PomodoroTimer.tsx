@@ -12,9 +12,9 @@ import { useTimer } from '@/hooks/use-timer-store';
 const { width: screenWidth } = Dimensions.get('window');
 
 const SESSION_LABELS = {
-  focus: 'Фокус',
-  shortBreak: 'Перерыв',
-  longBreak: 'Длинный перерыв',
+  focus: 'Focus',
+  shortBreak: 'Break',
+  longBreak: 'Long Break',
 };
 
 const TIMER_SIZE = Math.min(screenWidth * 0.62, 220);
@@ -137,7 +137,7 @@ export function PomodoroTimer() {
   if (!timerStore) {
     return (
       <View style={styles.container}>
-        <Text style={styles.sessionLabel}>Загрузка...</Text>
+        <Text style={styles.sessionLabel}>Loading...</Text>
       </View>
     );
   }
@@ -180,7 +180,7 @@ export function PomodoroTimer() {
       <View style={styles.sessionInfo}>
         <Text style={styles.sessionLabel}>{SESSION_LABELS[mode]}</Text>
         <Text style={styles.sessionCounter}>
-          Сессия {todayFocusSessions + (isRunning && mode === 'focus' ? 1 : 0)} из дня
+          Session {todayFocusSessions + (isRunning && mode === 'focus' ? 1 : 0)} of the day
         </Text>
       </View>
 
@@ -206,9 +206,9 @@ export function PomodoroTimer() {
           <View style={styles.timerContent}>
             <Text style={styles.timerText}>{formatTime(currentTime)}</Text>
             <Text style={styles.timerStatus}>
-              {isRunning && !isPaused ? 'Идёт фокус' : 
-               isPaused ? 'На паузе' :
-               currentTime === 0 ? 'Завершено!' : 'Готов к старту'}
+              {isRunning && !isPaused ? 'Focus in progress' : 
+               isPaused ? 'Paused' :
+               currentTime === 0 ? 'Completed!' : 'Ready to start'}
             </Text>
           </View>
         </View>
@@ -249,7 +249,7 @@ export function PomodoroTimer() {
               
               <View style={styles.panelContent}>
                 <View style={styles.panelHeader}>
-                  <Text style={styles.panelTitle}>Выберите время</Text>
+                  <Text style={styles.panelTitle}>Select Time</Text>
                   <TouchableOpacity onPress={closeTimeSelector} style={styles.closeButton}>
                     <X size={20} color="#AFAFAF" />
                   </TouchableOpacity>
@@ -318,7 +318,7 @@ export function PomodoroTimer() {
                       ))}
                     </Picker>
                   )}
-                  <Text style={styles.pickerLabel}>минут</Text>
+                  <Text style={styles.pickerLabel}>minutes</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -338,7 +338,7 @@ export function PomodoroTimer() {
           >
             <Play size={20} color="#111214" fill="#111214" strokeWidth={2.5} />
             <Text style={styles.primaryButtonText}>
-              {mode === 'focus' ? 'Старт' : 'Начать отдых'}
+              {mode === 'focus' ? 'Start' : 'Start Break'}
             </Text>
           </Pressable>
         ) : (
@@ -387,7 +387,7 @@ export function PomodoroTimer() {
             <Target size={16} color={theme.colors.primary} />
             <Text style={styles.dreamTitle}>{currentGoal.title}</Text>
           </View>
-          <Text style={styles.dreamSubtitle}>Работаю над мечтой</Text>
+          <Text style={styles.dreamSubtitle}>Working on my dream</Text>
           <View style={styles.dreamProgress}>
             <View style={[styles.dreamProgressBar, { width: `${Math.min(progress * 100, 100)}%` }]} />
           </View>
@@ -396,13 +396,13 @@ export function PomodoroTimer() {
 
       {/* Quick Actions */}
       <View style={styles.quickActions}>
-        <Text style={styles.quickActionsTitle}>Быстрые действия</Text>
+        <Text style={styles.quickActionsTitle}>Quick Actions</Text>
         <TouchableOpacity 
           style={styles.quickActionButton}
           onPress={() => router.push('/breathing')}
         >
           <Wind size={20} color={theme.colors.primary} />
-          <Text style={styles.quickActionText}>Дыхательные техники</Text>
+          <Text style={styles.quickActionText}>Breathing Techniques</Text>
         </TouchableOpacity>
       </View>
 

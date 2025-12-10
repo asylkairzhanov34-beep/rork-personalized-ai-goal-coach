@@ -231,12 +231,12 @@ export function ManifestationSession({ onComplete }: ManifestationSessionProps) 
         <Sparkles size={48} color={theme.colors.primary} />
       </Animated.View>
       
-      <Text style={styles.title}>Guided Манифестация</Text>
+      <Text style={styles.title}>Guided Manifestation</Text>
       <Text style={styles.subtitle}>
-        3-минутная сессия визуализации успеха и благодарности
+        3-minute session of success visualization and gratitude
       </Text>
       
-      {renderMoodSelector(moodBefore, setMoodBefore, 'Как вы себя чувствуете сейчас?')}
+      {renderMoodSelector(moodBefore, setMoodBefore, 'How are you feeling right now?')}
       
       <TouchableOpacity
         style={styles.startButton}
@@ -244,7 +244,7 @@ export function ManifestationSession({ onComplete }: ManifestationSessionProps) 
         disabled={!moodBefore}
       >
         <Play size={24} color={theme.colors.background} />
-        <Text style={styles.startButtonText}>Начать сессию</Text>
+        <Text style={styles.startButtonText}>Start Session</Text>
       </TouchableOpacity>
     </View>
   );
@@ -266,7 +266,7 @@ export function ManifestationSession({ onComplete }: ManifestationSessionProps) 
           />
         </View>
         <Text style={styles.progressText}>
-          {currentStep === 'affirmations' ? 'Визуализация успеха' : 'Благодарности'}
+          {currentStep === 'affirmations' ? 'Success Visualization' : 'Gratitudes'}
         </Text>
       </View>
 
@@ -297,28 +297,28 @@ export function ManifestationSession({ onComplete }: ManifestationSessionProps) 
           style={styles.nextButton}
           onPress={nextPhrase}
         >
-          <Text style={styles.nextButtonText}>Далее</Text>
+          <Text style={styles.nextButtonText}>Next</Text>
         </TouchableOpacity>
       </View>
 
       <Text style={styles.instruction}>
-        Повторите фразу вслух или мысленно
+        Repeat the phrase aloud or mentally
       </Text>
     </View>
   );
 
   const renderReflectionScreen = () => (
     <View style={styles.centerContent}>
-      <Text style={styles.title}>Как вы себя чувствуете?</Text>
+      <Text style={styles.title}>How are you feeling?</Text>
       
-      {renderMoodSelector(moodAfter, setMoodAfter, 'Ваше настроение сейчас:')}
+      {renderMoodSelector(moodAfter, setMoodAfter, 'Your mood now:')}
       
       <TouchableOpacity
         style={styles.completeButton}
         onPress={completeSession}
         disabled={!moodAfter}
       >
-        <Text style={styles.completeButtonText}>Завершить сессию</Text>
+        <Text style={styles.completeButtonText}>Complete Session</Text>
       </TouchableOpacity>
     </View>
   );
@@ -329,15 +329,15 @@ export function ManifestationSession({ onComplete }: ManifestationSessionProps) 
         <Sparkles size={64} color={theme.colors.primary} />
       </Animated.View>
       
-      <Text style={styles.completeTitle}>Сессия завершена! ✨</Text>
+      <Text style={styles.completeTitle}>Session Complete! ✨</Text>
       <Text style={styles.completeSubtitle}>
-        Отличная работа! Ваша энергия направлена на достижение цели.
+        Great work! Your energy is directed towards achieving your goal.
       </Text>
       
       {moodBefore && moodAfter && (
         <View style={styles.moodImprovement}>
           <Text style={styles.moodImprovementText}>
-            Улучшение настроения: +{moodAfter - moodBefore}
+            Mood improvement: +{moodAfter - moodBefore}
           </Text>
         </View>
       )}
