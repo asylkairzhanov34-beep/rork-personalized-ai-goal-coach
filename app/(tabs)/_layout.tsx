@@ -1,26 +1,124 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Tabs } from 'expo-router';
-import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Platform, useWindowDimensions, Animated } from 'react-native';
 import { Home, Target, Timer, TrendingUp, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 function TabBarIcon({ icon: Icon, focused }: { icon: any; focused: boolean }) {
+  const scaleAnim = useRef(new Animated.Value(focused ? 1 : 0.85)).current;
+  const opacityAnim = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const bgOpacityAnim = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const iconOpacityAnim = useRef(new Animated.Value(focused ? 1 : 0.6)).current;
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (focused) {
+      Animated.sequence([
+        Animated.parallel([
+          Animated.spring(scaleAnim, {
+            toValue: 1.15,
+            friction: 5,
+            tension: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bgOpacityAnim, {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+          Animated.timing(iconOpacityAnim, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 4,
+          tension: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      Animated.sequence([
+        Animated.timing(bounceAnim, {
+          toValue: -4,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(bounceAnim, {
+          toValue: 0,
+          friction: 4,
+          tension: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 0.85,
+          friction: 6,
+          tension: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgOpacityAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(iconOpacityAnim, {
+          toValue: 0.6,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [focused]);
+
   return (
     <View style={styles.iconContainer}>
-      <View style={[
-        styles.iconWrapper,
-        focused && styles.activeIconWrapper
-      ]}>
-        <Icon 
-          size={26} 
-          color={focused ? '#FFD600' : 'rgba(255, 255, 255, 0.6)'}
-          strokeWidth={2}
+      <Animated.View 
+        style={[
+          styles.iconWrapper,
+          {
+            transform: [
+              { scale: scaleAnim },
+              { translateY: bounceAnim }
+            ],
+          }
+        ]}
+      >
+        <Animated.View 
+          style={[
+            styles.activeBackground,
+            { opacity: bgOpacityAnim }
+          ]} 
         />
-        {focused && (
-          <View style={styles.glowEffect} />
-        )}
-      </View>
+        <Animated.View style={{ opacity: iconOpacityAnim }}>
+          <Icon 
+            size={26} 
+            color={focused ? '#FFD600' : 'rgba(255, 255, 255, 0.6)'}
+            strokeWidth={2}
+          />
+        </Animated.View>
+        <Animated.View 
+          style={[
+            styles.glowEffect,
+            { opacity: opacityAnim }
+          ]} 
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -153,8 +251,12 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     position: 'relative',
   },
-  activeIconWrapper: {
-    backgroundColor: 'rgba(255, 214, 0, 0.1)',
+  activeBackground: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 214, 0, 0.12)',
   },
   glowEffect: {
     position: 'absolute',
