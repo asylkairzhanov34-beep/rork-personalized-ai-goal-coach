@@ -196,7 +196,7 @@ export default function SettingsScreen() {
   };
 
   const handleTermsOfService = () => {
-    Linking.openURL('https://goalcoach.app/terms');
+    Linking.openURL('https://www.notion.so/Terms-of-Use-2c54e106d5d080f1b7bdce1028935488');
   };
 
   const handleLogout = () => {
