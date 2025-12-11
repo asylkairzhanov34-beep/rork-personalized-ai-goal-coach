@@ -120,12 +120,22 @@ export const clearCorruptedStorage = async () => {
 };
 
 export const safeJsonParse = <T>(text: string | null | undefined, fallback: T): T => {
-  if (!text || text === 'undefined' || text === 'null' || text.trim() === '') {
+  if (!text || text === 'undefined' || text === 'null') {
+    return fallback;
+  }
+  
+  // Additional type check
+  if (typeof text !== 'string') {
+    console.warn('safeJsonParse received non-string:', typeof text);
     return fallback;
   }
   
   // Check for common corruption patterns before parsing
   const trimmed = text.trim();
+  
+  if (trimmed === '') {
+    return fallback;
+  }
   
   // Handle the specific "Unexpected character: o" error and other corruption patterns
   if (trimmed.startsWith('o') && !trimmed.startsWith('{') && !trimmed.startsWith('[') && !trimmed.startsWith('"')) {
@@ -152,11 +162,13 @@ export const safeJsonParse = <T>(text: string | null | undefined, fallback: T): 
   
   try {
     // Simple JSON parse with fallback
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(trimmed);
     return parsed !== undefined && parsed !== null ? parsed : fallback;
   } catch (error) {
-    console.warn('JSON parse failed, using fallback:', error);
-    console.warn('Problematic text (first 100 chars):', text.substring(0, 100));
+    // Handle specific syntax errors like "1:4:';' expected"
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('JSON parse failed:', errorMessage);
+    console.warn('Problematic text (first 100 chars):', trimmed.substring(0, 100));
     return fallback;
   }
 };
