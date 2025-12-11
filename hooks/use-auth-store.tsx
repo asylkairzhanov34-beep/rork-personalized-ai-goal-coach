@@ -45,6 +45,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     console.log('[Auth] Setting up auth state listener...');
     
     let isFirstCheck = true;
+    let sessionRestoreAttempted = false;
     
     const unsubscribe = subscribeToAuthState(async (firebaseUser) => {
       console.log('[Auth] Auth state changed:', firebaseUser ? firebaseUser.uid : 'null');
@@ -60,19 +61,41 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           isLoading: false,
           isAuthenticated: true,
         });
+        isFirstCheck = false;
       } else {
-        if (isFirstCheck) {
-          // On first check, give Firebase a moment to restore session from AsyncStorage
-          console.log('[Auth] First check - waiting for potential session restore...');
-          await new Promise(resolve => setTimeout(resolve, 500));
+        if (isFirstCheck && !sessionRestoreAttempted) {
+          sessionRestoreAttempted = true;
           
-          // Check if user was restored after delay
-          const currentUser = await import('@/lib/firebase').then(m => m.getCurrentUser());
-          if (currentUser) {
-            console.log('[Auth] Session restored after delay');
-            const user = firebaseUserToUser(currentUser);
+          // Check stored user first
+          const storedUser = await safeStorageGet<User | null>(AUTH_STORAGE_KEY, null);
+          console.log('[Auth] Checking stored user:', storedUser ? storedUser.id : 'null');
+          
+          if (storedUser) {
+            // Firebase might need more time to restore session
+            console.log('[Auth] Found stored user, waiting for Firebase session restore...');
+            
+            // Wait longer for Firebase to potentially restore
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Check again if Firebase restored the session
+            const currentUser = await import('@/lib/firebase').then(m => m.getCurrentUser());
+            if (currentUser) {
+              console.log('[Auth] Firebase session restored after wait');
+              const user = firebaseUserToUser(currentUser);
+              setAuthState({
+                user,
+                isLoading: false,
+                isAuthenticated: true,
+              });
+              isFirstCheck = false;
+              return;
+            }
+            
+            // Use stored user while Firebase might be having issues
+            // This keeps the user logged in based on local storage
+            console.log('[Auth] Using stored user for session persistence');
             setAuthState({
-              user,
+              user: storedUser,
               isLoading: false,
               isAuthenticated: true,
             });
@@ -81,22 +104,28 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           }
         }
         
-        const storedUser = await safeStorageGet<User | null>(AUTH_STORAGE_KEY, null);
-        
-        if (storedUser && isFirstCheck) {
-          console.log('[Auth] Found stored user but Firebase has no session - clearing cache');
+        // Only clear if this is not the first check or no stored user exists
+        if (!isFirstCheck) {
+          console.log('[Auth] No user - logging out');
+          await safeStorageSet(AUTH_STORAGE_KEY, null);
+          
+          setAuthState({
+            user: null,
+            isLoading: false,
+            isAuthenticated: false,
+          });
+        } else {
+          // First check with no stored user
+          console.log('[Auth] First check with no stored user - not authenticated');
+          setAuthState({
+            user: null,
+            isLoading: false,
+            isAuthenticated: false,
+          });
         }
         
-        await safeStorageSet(AUTH_STORAGE_KEY, null);
-        
-        setAuthState({
-          user: null,
-          isLoading: false,
-          isAuthenticated: false,
-        });
+        isFirstCheck = false;
       }
-      
-      isFirstCheck = false;
     });
 
     return () => {

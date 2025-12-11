@@ -1,5 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
+  initializeAuth,
   getAuth, 
   signInWithCredential, 
   OAuthProvider, 
@@ -7,8 +8,11 @@ import {
   onAuthStateChanged,
   Auth,
   User as FirebaseUser,
-  deleteUser
+  deleteUser,
+  browserLocalPersistence,
+  indexedDBLocalPersistence
 } from 'firebase/auth';
+import { Platform } from 'react-native';
 import { 
   getFirestore, 
   Firestore, 
@@ -49,9 +53,21 @@ export function initializeFirebase(): { app: FirebaseApp; auth: Auth; db: Firest
     console.log('[Firebase] Creating new app instance');
     app = initializeApp(firebaseConfig);
     
-    // Initialize auth - default persistence works for all platforms
-    console.log('[Firebase] Using default auth configuration');
-    auth = getAuth(app);
+    console.log('[Firebase] Initializing auth with persistence, platform:', Platform.OS);
+    try {
+      if (Platform.OS === 'web') {
+        auth = initializeAuth(app, {
+          persistence: [indexedDBLocalPersistence, browserLocalPersistence]
+        });
+      } else {
+        // For native platforms, use default auth which has persistence
+        auth = getAuth(app);
+      }
+      console.log('[Firebase] Auth initialized with persistence');
+    } catch (e) {
+      console.log('[Firebase] initializeAuth failed, falling back to getAuth:', e);
+      auth = getAuth(app);
+    }
   } else {
     console.log('[Firebase] Using existing app instance');
     app = getApps()[0];
