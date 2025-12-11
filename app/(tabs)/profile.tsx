@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { User, Settings, Bell, ChevronRight, Info, LogOut, MessageCircle, RotateCcw, Sparkles, Edit3, X, Wrench } from 'lucide-react-native';
+import { User, Settings, Bell, ChevronRight, Info, LogOut, MessageCircle, RotateCcw, Sparkles, Edit3, X, Wrench, Target } from 'lucide-react-native';
 import Constants from 'expo-constants';
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
@@ -211,6 +211,18 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          {currentGoal && (
+            <View style={styles.goalInfoCard}>
+              <View style={styles.goalInfoHeader}>
+                <Target size={20} color={theme.colors.primary} />
+                <Text style={styles.goalInfoTitle}>One Goal at a Time</Text>
+              </View>
+              <Text style={styles.goalInfoDescription}>
+                You can only have one active goal. This helps you stay focused and achieve better results. To create a new goal, reset the current one.
+              </Text>
+            </View>
+          )}
+
 
           <View style={styles.menu}>
             {menuItems.map((item, index) => {
@@ -368,6 +380,31 @@ const styles = StyleSheet.create({
   memberSince: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
+  },
+  goalInfoCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '20',
+    ...theme.shadows.medium,
+  },
+  goalInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  goalInfoTitle: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  goalInfoDescription: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    lineHeight: 20,
   },
 
   menu: {

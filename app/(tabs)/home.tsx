@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Plus, Target, Zap, Star, Wind, MessageCircle, CheckCircle2, Timer, Sparkles, Calendar } from 'lucide-react-native';
+import { Target, Zap, Star, Wind, MessageCircle, CheckCircle2, Timer, Sparkles, Calendar } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
 
@@ -191,13 +191,6 @@ export default function TodayScreen() {
             <View style={styles.quickActionsContainer}>
               <TouchableOpacity 
                 style={styles.quickActionCard}
-                onPress={() => router.push('/goal-creation')}
-              >
-                <Plus size={24} color={theme.colors.primary} />
-                <Text style={styles.quickActionLabel}>Add Task</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickActionCard}
                 onPress={() => router.push('/breathing')}
               >
                 <Wind size={24} color={theme.colors.primary} />
@@ -209,6 +202,13 @@ export default function TodayScreen() {
               >
                 <MessageCircle size={24} color={theme.colors.primary} />
                 <Text style={styles.quickActionLabel}>AI Assistant</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.quickActionCard}
+                onPress={() => router.push('/manifestation')}
+              >
+                <Sparkles size={24} color={theme.colors.primary} />
+                <Text style={styles.quickActionLabel}>Manifest</Text>
               </TouchableOpacity>
             </View>
           </View>
