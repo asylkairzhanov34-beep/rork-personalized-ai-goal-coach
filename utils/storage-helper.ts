@@ -78,6 +78,29 @@ export const clearCorruptedStorage = async () => {
             continue;
           }
           
+          // Check for code-like patterns that cause ';' expected errors
+          if (trimmed.includes('function') ||
+              trimmed.includes('=>') ||
+              trimmed.includes('var ') ||
+              trimmed.includes('let ') ||
+              trimmed.includes('const ') ||
+              trimmed.includes('class ') ||
+              trimmed.includes('import ') ||
+              trimmed.includes('export ') ||
+              trimmed.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*[=\(]/)
+          ) {
+            console.log(`Code-like pattern detected in key: ${key}, starts with: ${trimmed.substring(0, 30)}`);
+            corruptedKeys.push(key);
+            continue;
+          }
+          
+          // Check if first character is not a valid JSON start
+          if (!trimmed.match(/^[\[\{"\d\-tfn]/)) {
+            console.log(`Invalid JSON start character in key: ${key}, starts with: ${trimmed.substring(0, 10)}`);
+            corruptedKeys.push(key);
+            continue;
+          }
+          
           // Try to parse JSON to check if it's valid
           const parsed = JSON.parse(value);
           
@@ -137,6 +160,12 @@ export const safeJsonParse = <T>(text: string | null | undefined, fallback: T): 
     return fallback;
   }
   
+  // Check string length - extremely short strings (except valid JSON primitives) are likely corrupted
+  if (trimmed.length < 2 && !['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(trimmed)) {
+    console.warn('Detected too short JSON, likely corrupted');
+    return fallback;
+  }
+  
   // Handle the specific "Unexpected character: o" error and other corruption patterns
   if (trimmed.startsWith('o') && !trimmed.startsWith('{') && !trimmed.startsWith('[') && !trimmed.startsWith('"')) {
     console.warn('Detected corrupted JSON starting with "o", using fallback');
@@ -146,6 +175,21 @@ export const safeJsonParse = <T>(text: string | null | undefined, fallback: T): 
   // Check for other invalid JSON patterns
   if (trimmed === '[object Object]' || trimmed === 'undefined' || trimmed === 'null') {
     console.warn('Detected invalid JSON pattern, using fallback');
+    return fallback;
+  }
+  
+  // Check for corrupted data that looks like code/script (causes ';' expected errors)
+  if (trimmed.includes('function') ||
+      trimmed.includes('=>') ||
+      trimmed.includes('var ') ||
+      trimmed.includes('let ') ||
+      trimmed.includes('const ') ||
+      trimmed.includes('class ') ||
+      trimmed.includes('import ') ||
+      trimmed.includes('export ') ||
+      trimmed.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*[=\(]/) // Variable assignment or function call
+  ) {
+    console.warn('Detected code-like pattern in storage, using fallback');
     return fallback;
   }
   
@@ -193,6 +237,19 @@ export const safeStorageGet = async <T>(key: string, fallback: T): Promise<T> =>
         return fallback;
       }
       
+      // Check for code-like patterns that cause ';' expected errors
+      if (trimmed.includes('function') ||
+          trimmed.includes('=>') ||
+          trimmed.includes('var ') ||
+          trimmed.includes('let ') ||
+          trimmed.includes('const ') ||
+          trimmed.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*[=\(]/)
+      ) {
+        console.warn(`Corrupted storage detected for key ${key} (code-like pattern), removing and using fallback`);
+        await AsyncStorage.removeItem(key);
+        return fallback;
+      }
+      
       // Check for other corruption patterns
       if (trimmed.includes('bject Object') || 
           trimmed.includes('nction') || 
@@ -214,7 +271,8 @@ export const safeStorageGet = async <T>(key: string, fallback: T): Promise<T> =>
     if (error instanceof Error && 
         (error.message.includes('JSON Parse error') || 
          error.message.includes('Unexpected character') ||
-         error.message.includes('parse error'))) {
+         error.message.includes('parse error') ||
+         error.message.includes("';' expected"))) {
       try {
         await AsyncStorage.removeItem(key);
         console.warn(`Removed corrupted storage key: ${key}`);
