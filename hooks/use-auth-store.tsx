@@ -44,12 +44,16 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     console.log('[Auth] Setting up auth state listener...');
     
+    let isFirstCheck = true;
+    
     const unsubscribe = subscribeToAuthState(async (firebaseUser) => {
       console.log('[Auth] Auth state changed:', firebaseUser ? firebaseUser.uid : 'null');
+      console.log('[Auth] Is first check:', isFirstCheck);
       
       if (firebaseUser) {
         const user = firebaseUserToUser(firebaseUser);
         await safeStorageSet(AUTH_STORAGE_KEY, user);
+        console.log('[Auth] User saved to storage, session will persist');
         
         setAuthState({
           user,
@@ -57,12 +61,33 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           isAuthenticated: true,
         });
       } else {
+        if (isFirstCheck) {
+          // On first check, give Firebase a moment to restore session from AsyncStorage
+          console.log('[Auth] First check - waiting for potential session restore...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Check if user was restored after delay
+          const currentUser = await import('@/lib/firebase').then(m => m.getCurrentUser());
+          if (currentUser) {
+            console.log('[Auth] Session restored after delay');
+            const user = firebaseUserToUser(currentUser);
+            setAuthState({
+              user,
+              isLoading: false,
+              isAuthenticated: true,
+            });
+            isFirstCheck = false;
+            return;
+          }
+        }
+        
         const storedUser = await safeStorageGet<User | null>(AUTH_STORAGE_KEY, null);
         
-        if (storedUser) {
-          console.log('[Auth] Found stored user, but Firebase session expired');
-          await safeStorageSet(AUTH_STORAGE_KEY, null);
+        if (storedUser && isFirstCheck) {
+          console.log('[Auth] Found stored user but Firebase has no session - clearing cache');
         }
+        
+        await safeStorageSet(AUTH_STORAGE_KEY, null);
         
         setAuthState({
           user: null,
@@ -70,6 +95,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           isAuthenticated: false,
         });
       }
+      
+      isFirstCheck = false;
     });
 
     return () => {

@@ -1,6 +1,7 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getAuth, 
+  initializeAuth,
   signInWithCredential, 
   OAuthProvider, 
   signOut as firebaseSignOut,
@@ -9,6 +10,9 @@ import {
   User as FirebaseUser,
   deleteUser
 } from 'firebase/auth';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { 
   getFirestore, 
   Firestore, 
@@ -48,12 +52,37 @@ export function initializeFirebase(): { app: FirebaseApp; auth: Auth; db: Firest
   if (getApps().length === 0) {
     console.log('[Firebase] Creating new app instance');
     app = initializeApp(firebaseConfig);
+    
+    // Initialize auth with persistence for React Native
+    if (Platform.OS !== 'web') {
+      console.log('[Firebase] Using AsyncStorage persistence for native');
+      try {
+        // Dynamic import to avoid bundling issues
+        const ReactNativeAsyncStorage = require('@react-native-async-storage/async-storage').default;
+        // Use initializeAuth with custom persistence
+        const { getReactNativePersistence: getRNPersistence } = require('firebase/auth');
+        auth = initializeAuth(app, {
+          persistence: getRNPersistence(ReactNativeAsyncStorage)
+        });
+        console.log('[Firebase] AsyncStorage persistence configured');
+      } catch (e) {
+        console.log('[Firebase] Falling back to default persistence:', e);
+        auth = getAuth(app);
+      }
+    } else {
+      console.log('[Firebase] Using default persistence for web');
+      auth = getAuth(app);
+    }
   } else {
     console.log('[Firebase] Using existing app instance');
     app = getApps()[0];
+    try {
+      auth = getAuth(app);
+    } catch (e) {
+      console.log('[Firebase] Error getting auth:', e);
+      auth = getAuth(app);
+    }
   }
-  
-  auth = getAuth(app);
   db = getFirestore(app);
   console.log('[Firebase] Initialized successfully (Auth + Firestore)');
   
