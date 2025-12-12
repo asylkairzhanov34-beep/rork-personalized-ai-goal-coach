@@ -192,7 +192,7 @@ export default function SettingsScreen() {
   };
 
   const handlePrivacyPolicy = () => {
-    Linking.openURL('https://www.notion.so/PRIVACY-POLICY-AND-COOKIES-2b44e106d5d0807aaff8e5765d4b8539');
+    Linking.openURL('https://www.notion.so/PRIVACY-POLICY-AND-COOKIES-2b44e106d5d0807aaff8e5765d4b8539?source=copy_link');
   };
 
   const handleTermsOfService = () => {
@@ -493,11 +493,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: theme.colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    ...theme.shadows.medium,
   },
   settingItem: {
     flexDirection: 'row',

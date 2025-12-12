@@ -188,7 +188,8 @@ export type PurchaseResult = {
 export type TrialState = ReturnType<typeof buildTrialState>;
 
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const [isInitialized, setIsInitialized] = useState(false);
   const [status, setStatus] = useState<SubscriptionStatus>('loading');
   const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
@@ -328,29 +329,21 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       return false;
     }
 
-    try {
-      const parsed = JSON.parse(stored) as {
-        packageId: string;
-        expiryDate: string;
-      };
+    const parsed = JSON.parse(stored) as {
+      packageId: string;
+      expiryDate: string;
+    };
 
-      if (parsed.expiryDate && new Date(parsed.expiryDate) > new Date()) {
-        setStatus('premium');
-        setCustomerInfo(buildCustomerInfoFromMock(parsed.packageId));
-        return true;
-      }
-
-      await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
-      setStatus(trialStateRef.current.isActive ? 'trial' : 'free');
-      setCustomerInfo(null);
-      return false;
-    } catch (error) {
-      console.error('[SubscriptionProvider] Failed to parse mock status:', error);
-      await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
-      setStatus(trialStateRef.current.isActive ? 'trial' : 'free');
-      setCustomerInfo(null);
-      return false;
+    if (parsed.expiryDate && new Date(parsed.expiryDate) > new Date()) {
+      setStatus('premium');
+      setCustomerInfo(buildCustomerInfoFromMock(parsed.packageId));
+      return true;
     }
+
+    await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
+    setStatus(trialStateRef.current.isActive ? 'trial' : 'free');
+    setCustomerInfo(null);
+    return false;
   }, []);
 
   const loadOfferingsFromRevenueCat = useCallback(async () => {

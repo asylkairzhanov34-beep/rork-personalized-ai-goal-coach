@@ -171,8 +171,23 @@ export default function ProgressScreen() {
                     <Text style={styles.mainStatLabel}>This Week</Text>
                     <Text style={styles.mainStatValue}>
                       {(() => {
-                        const weekStats = store?.getProgressForPeriod ? store.getProgressForPeriod('week') : { completed: 0, total: 0 };
-                        return weekStats.total > 0 ? `${weekStats.completed}/${weekStats.total}` : '0';
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const dayOfWeek = today.getDay();
+                        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                        const weekStart = new Date(today);
+                        weekStart.setDate(today.getDate() - daysToMonday);
+                        const weekEnd = new Date(weekStart);
+                        weekEnd.setDate(weekStart.getDate() + 6);
+                        weekEnd.setHours(23, 59, 59, 999);
+                        
+                        const weekTasks = dailyTasks.filter(t => {
+                          const taskDate = new Date(t.date);
+                          return t.goalId === currentGoal?.id && taskDate >= weekStart && taskDate <= weekEnd;
+                        });
+                        const completed = weekTasks.filter(t => t.completed).length;
+                        const total = weekTasks.length;
+                        return total > 0 ? `${completed}/${total}` : '0';
                       })()}
                     </Text>
                   </View>
@@ -184,8 +199,20 @@ export default function ProgressScreen() {
                     <Text style={styles.mainStatLabel}>This Month</Text>
                     <Text style={styles.mainStatValue}>
                       {(() => {
-                        const monthStats = store?.getProgressForPeriod ? store.getProgressForPeriod('month') : { completed: 0, total: 0 };
-                        return monthStats.total > 0 ? `${monthStats.completed}/${monthStats.total}` : '0';
+                        const today = new Date();
+                        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                        monthStart.setHours(0, 0, 0, 0);
+                        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                        monthEnd.setHours(23, 59, 59, 999);
+                        
+                        const monthTasks = dailyTasks.filter(t => {
+                          const taskDate = new Date(t.date);
+                          taskDate.setHours(0, 0, 0, 0);
+                          return t.goalId === currentGoal?.id && taskDate >= monthStart && taskDate <= monthEnd;
+                        });
+                        const completed = monthTasks.filter(t => t.completed).length;
+                        const total = monthTasks.length;
+                        return total > 0 ? `${completed}/${total}` : '0';
                       })()}
                     </Text>
                   </View>
