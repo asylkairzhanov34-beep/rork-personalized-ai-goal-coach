@@ -332,7 +332,15 @@ Respond in a friendly manner in English, ask one question at a time. Be concise 
       }
       
       jsonString = jsonString.substring(startIndex, lastIndex + 1);
-      console.log('Extracted JSON:', jsonString);
+      
+      // Remove single-line comments (// ...)
+      jsonString = jsonString.replace(/\/\/[^\n]*\n/g, '\n');
+      // Remove multi-line comments (/* ... */)
+      jsonString = jsonString.replace(/\/\*[\s\S]*?\*\//g, '');
+      // Remove trailing commas before closing brackets
+      jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
+      
+      console.log('Cleaned JSON:', jsonString.substring(0, 500));
       
       const planData = JSON.parse(jsonString);
       console.log('Parsed plan data:', planData);
@@ -400,7 +408,11 @@ Respond in a friendly manner in English, ask one question at a time. Be concise 
       }
     } catch (error) {
       console.error('Error generating plan:', error);
-      console.error('Failed to create goal plan');
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+      }
+      alert('Failed to create goal plan. Please try again.');
+      throw error;
     } finally {
       setIsGenerating(false);
     }
