@@ -10,12 +10,14 @@ import { ProgressRing } from '@/components/ProgressRing';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { useAuth } from '@/hooks/use-auth-store';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
+import { useManifestationStore } from '@/hooks/use-manifestation-store';
 
 
 export default function TodayScreen() {
   const store = useGoalStore();
   const { user } = useAuth();
   const { profile: setupProfile } = useFirstTimeSetup();
+  const manifestationStore = useManifestationStore();
   const [refreshing, setRefreshing] = useState(false);
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(() => 
     Math.floor(Math.random() * getQuotes().length)
@@ -31,8 +33,8 @@ export default function TodayScreen() {
   const todayProgress = store?.getProgressForPeriod ? store.getProgressForPeriod('day') : { completed: 0, total: 0, percentage: 0 };
   const progress = todayProgress.percentage;
   const todayFocusMinutes = 0; // TODO: implement timer integration
-  const manifestationStats = { currentStreak: 0 }; // TODO: implement manifestation integration
-  const todayManifestationSessions: any[] = [];
+  const manifestationStats = manifestationStore?.getStats() || { currentStreak: 0 };
+  const todayManifestationSessions = manifestationStore?.getTodaySessions() || [];
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
