@@ -201,18 +201,15 @@ export default function ProgressScreen() {
                       {(() => {
                         const today = new Date();
                         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-                        monthStart.setHours(0, 0, 0, 0);
                         const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
                         monthEnd.setHours(23, 59, 59, 999);
                         
                         const monthTasks = dailyTasks.filter(t => {
                           const taskDate = new Date(t.date);
-                          taskDate.setHours(0, 0, 0, 0);
                           return t.goalId === currentGoal?.id && taskDate >= monthStart && taskDate <= monthEnd;
                         });
                         const completed = monthTasks.filter(t => t.completed).length;
-                        const total = monthTasks.length;
-                        return total > 0 ? `${completed}/${total}` : '0';
+                        return `${completed}/30`;
                       })()}
                     </Text>
                   </View>

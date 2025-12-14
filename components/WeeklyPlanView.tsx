@@ -298,6 +298,15 @@ export function WeeklyPlanView({
           </View>
         </View>
         
+        {/* Индикатор взаимосвязи задач */}
+        {getCurrentDayTasks().length > 1 && (
+          <View style={styles.tasksConnectionHint}>
+            <Text style={styles.connectionHintText}>
+              🔗 Tasks are interconnected and complement each other
+            </Text>
+          </View>
+        )}
+        
         {/* Add Task Button - только для доступных дней */}
         {availableDays.includes(selectedDay) && (
           <TouchableOpacity 
@@ -627,7 +636,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
-
+  tasksConnectionHint: {
+    backgroundColor: 'rgba(255,214,0,0.1)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,214,0,0.2)',
+  },
+  connectionHintText: {
+    fontSize: 13,
+    color: '#FFD600',
+    textAlign: 'center',
+  },
   dayButtonDisabled: {
     opacity: 0.4,
   },

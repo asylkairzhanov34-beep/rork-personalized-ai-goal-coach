@@ -78,29 +78,6 @@ export const clearCorruptedStorage = async () => {
             continue;
           }
           
-          // Check for code-like patterns that cause ';' expected errors
-          if (trimmed.includes('function') ||
-              trimmed.includes('=>') ||
-              trimmed.includes('var ') ||
-              trimmed.includes('let ') ||
-              trimmed.includes('const ') ||
-              trimmed.includes('class ') ||
-              trimmed.includes('import ') ||
-              trimmed.includes('export ') ||
-              trimmed.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*[=\(]/)
-          ) {
-            console.log(`Code-like pattern detected in key: ${key}, starts with: ${trimmed.substring(0, 30)}`);
-            corruptedKeys.push(key);
-            continue;
-          }
-          
-          // Check if first character is not a valid JSON start
-          if (!trimmed.match(/^[\[\{"\d\-tfn]/)) {
-            console.log(`Invalid JSON start character in key: ${key}, starts with: ${trimmed.substring(0, 10)}`);
-            corruptedKeys.push(key);
-            continue;
-          }
-          
           // Try to parse JSON to check if it's valid
           const parsed = JSON.parse(value);
           
@@ -143,28 +120,12 @@ export const clearCorruptedStorage = async () => {
 };
 
 export const safeJsonParse = <T>(text: string | null | undefined, fallback: T): T => {
-  if (!text || text === 'undefined' || text === 'null') {
-    return fallback;
-  }
-  
-  // Additional type check
-  if (typeof text !== 'string') {
-    console.warn('safeJsonParse received non-string:', typeof text);
+  if (!text || text === 'undefined' || text === 'null' || text.trim() === '') {
     return fallback;
   }
   
   // Check for common corruption patterns before parsing
   const trimmed = text.trim();
-  
-  if (trimmed === '') {
-    return fallback;
-  }
-  
-  // Check string length - extremely short strings (except valid JSON primitives) are likely corrupted
-  if (trimmed.length < 2 && !['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(trimmed)) {
-    console.warn('Detected too short JSON, likely corrupted');
-    return fallback;
-  }
   
   // Handle the specific "Unexpected character: o" error and other corruption patterns
   if (trimmed.startsWith('o') && !trimmed.startsWith('{') && !trimmed.startsWith('[') && !trimmed.startsWith('"')) {
@@ -175,21 +136,6 @@ export const safeJsonParse = <T>(text: string | null | undefined, fallback: T): 
   // Check for other invalid JSON patterns
   if (trimmed === '[object Object]' || trimmed === 'undefined' || trimmed === 'null') {
     console.warn('Detected invalid JSON pattern, using fallback');
-    return fallback;
-  }
-  
-  // Check for corrupted data that looks like code/script (causes ';' expected errors)
-  if (trimmed.includes('function') ||
-      trimmed.includes('=>') ||
-      trimmed.includes('var ') ||
-      trimmed.includes('let ') ||
-      trimmed.includes('const ') ||
-      trimmed.includes('class ') ||
-      trimmed.includes('import ') ||
-      trimmed.includes('export ') ||
-      trimmed.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*[=\(]/) // Variable assignment or function call
-  ) {
-    console.warn('Detected code-like pattern in storage, using fallback');
     return fallback;
   }
   
@@ -206,13 +152,11 @@ export const safeJsonParse = <T>(text: string | null | undefined, fallback: T): 
   
   try {
     // Simple JSON parse with fallback
-    const parsed = JSON.parse(trimmed);
+    const parsed = JSON.parse(text);
     return parsed !== undefined && parsed !== null ? parsed : fallback;
   } catch (error) {
-    // Handle specific syntax errors like "1:4:';' expected"
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('JSON parse failed:', errorMessage);
-    console.warn('Problematic text (first 100 chars):', trimmed.substring(0, 100));
+    console.warn('JSON parse failed, using fallback:', error);
+    console.warn('Problematic text (first 100 chars):', text.substring(0, 100));
     return fallback;
   }
 };
@@ -233,19 +177,6 @@ export const safeStorageGet = async <T>(key: string, fallback: T): Promise<T> =>
       // Check for various corruption patterns
       if (trimmed.startsWith('o') && !trimmed.startsWith('{') && !trimmed.startsWith('[') && !trimmed.startsWith('"')) {
         console.warn(`Corrupted storage detected for key ${key} (starts with 'o'), removing and using fallback`);
-        await AsyncStorage.removeItem(key);
-        return fallback;
-      }
-      
-      // Check for code-like patterns that cause ';' expected errors
-      if (trimmed.includes('function') ||
-          trimmed.includes('=>') ||
-          trimmed.includes('var ') ||
-          trimmed.includes('let ') ||
-          trimmed.includes('const ') ||
-          trimmed.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*[=\(]/)
-      ) {
-        console.warn(`Corrupted storage detected for key ${key} (code-like pattern), removing and using fallback`);
         await AsyncStorage.removeItem(key);
         return fallback;
       }
@@ -271,8 +202,7 @@ export const safeStorageGet = async <T>(key: string, fallback: T): Promise<T> =>
     if (error instanceof Error && 
         (error.message.includes('JSON Parse error') || 
          error.message.includes('Unexpected character') ||
-         error.message.includes('parse error') ||
-         error.message.includes("';' expected"))) {
+         error.message.includes('parse error'))) {
       try {
         await AsyncStorage.removeItem(key);
         console.warn(`Removed corrupted storage key: ${key}`);
