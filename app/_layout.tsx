@@ -4,7 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, Component, ReactNode, useState } from "react";
 import { StyleSheet, Text, View, LogBox } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { clearAllStorageIfCorrupted } from '@/utils/storage-helper';
+import { clearCorruptedStorage } from '@/utils/storage-helper';
 import { GoalProvider } from '@/hooks/use-goal-store';
 import { AuthProvider } from '@/hooks/use-auth-store';
 import { TimerProvider } from '@/hooks/use-timer-store';
@@ -243,7 +243,7 @@ export default function RootLayout() {
     const prepareApp = async () => {
       try {
         console.log('[RootLayout] Starting hydration');
-        await clearAllStorageIfCorrupted();
+        await clearCorruptedStorage();
         console.log('[RootLayout] Storage check complete');
       } catch (error) {
         console.error('[RootLayout] Preparation error:', error);
