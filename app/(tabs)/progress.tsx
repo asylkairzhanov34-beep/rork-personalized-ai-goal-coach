@@ -54,15 +54,16 @@ export default function ProgressScreen() {
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     monthEnd.setHours(23, 59, 59, 999);
 
-    if (!currentGoal?.id) return { completed: 0, target: 50 };
+    const target = 30;
+    if (!currentGoal?.id) return { completed: 0, target };
 
     const monthTasks = dailyTasks.filter((t) => {
       const taskDate = new Date(t.date);
       return t.goalId === currentGoal.id && taskDate >= monthStart && taskDate <= monthEnd;
     });
 
-    const completed = monthTasks.filter((t) => t.completed).length;
-    return { completed, target: 50 };
+    const completedRaw = monthTasks.filter((t) => t.completed).length;
+    return { completed: Math.min(target, completedRaw), target };
   }, [currentGoal?.id, dailyTasks]);
 
   if (!store || !store.isReady || !profile) {
@@ -203,23 +204,8 @@ export default function ProgressScreen() {
                     <Text style={styles.mainStatLabel}>This Week</Text>
                     <Text style={styles.mainStatValue}>
                       {(() => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const dayOfWeek = today.getDay();
-                        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                        const weekStart = new Date(today);
-                        weekStart.setDate(today.getDate() - daysToMonday);
-                        const weekEnd = new Date(weekStart);
-                        weekEnd.setDate(weekStart.getDate() + 6);
-                        weekEnd.setHours(23, 59, 59, 999);
-                        
-                        const weekTasks = dailyTasks.filter(t => {
-                          const taskDate = new Date(t.date);
-                          return t.goalId === currentGoal?.id && taskDate >= weekStart && taskDate <= weekEnd;
-                        });
-                        const completed = weekTasks.filter(t => t.completed).length;
-                        const total = weekTasks.length;
-                        return total > 0 ? `${completed}/${total}` : '0';
+                        const p = store?.getProgressForPeriod ? store.getProgressForPeriod('week') : { completed: 0, total: 7 };
+                        return p.total > 0 ? `${p.completed}/${p.total}` : '0';
                       })()}
                     </Text>
                   </View>
@@ -230,7 +216,10 @@ export default function ProgressScreen() {
                     <Trophy size={20} color={theme.colors.warning} />
                     <Text style={styles.mainStatLabel}>This Month</Text>
                     <Text style={styles.mainStatValue}>
-                      {`${monthStats.completed}/${monthStats.target}`}
+                      {(() => {
+                        const p = store?.getProgressForPeriod ? store.getProgressForPeriod('month') : { completed: monthStats.completed, total: monthStats.target };
+                        return `${p.completed}/${p.total}`;
+                      })()}
                     </Text>
                   </View>
                 </View>
