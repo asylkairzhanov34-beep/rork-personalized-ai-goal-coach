@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TrendingUp, Award, Target, Zap, Calendar, Clock, Trophy } from 'lucide-react-native';
+import { TrendingUp, Award, Target, Zap, Calendar, Clock, Trophy, Flame, CheckCircle2, Crown, Sparkles } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
 import { ProgressRing } from '@/components/ProgressRing';
 import { ActivityCalendar } from '@/components/ActivityCalendar';
 import { useGoalStore } from '@/hooks/use-goal-store';
+import type { DailyTask } from '@/types/goal';
 
+
+const EMPTY_TASKS: DailyTask[] = [];
 
 type TimePeriod = 'day' | 'week' | 'month';
 
@@ -15,12 +18,54 @@ export default function ProgressScreen() {
   const store = useGoalStore();
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('day');
   const [animatedValue] = useState(new Animated.Value(0));
-  
-  // Правильный расчет задач для текущей цели
-  const goalTasks = store?.currentGoal ? store.dailyTasks.filter(task => task.goalId === store.currentGoal?.id) : [];
-  const completedTasks = goalTasks.filter(task => task.completed).length;
-  
-  if (!store || !store.isReady) {
+
+  const profile = store?.profile;
+  const currentGoal = store?.currentGoal;
+  const dailyTasks = store?.dailyTasks ?? EMPTY_TASKS;
+
+  const goalTasks = useMemo(() => {
+    if (!currentGoal?.id) return [];
+    return dailyTasks.filter((task) => task.goalId === currentGoal.id);
+  }, [currentGoal?.id, dailyTasks]);
+
+  const completedTasks = useMemo(() => {
+    return goalTasks.filter((task) => task.completed).length;
+  }, [goalTasks]);
+
+  const todayStats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!currentGoal?.id) return { completed: 0, total: 0 };
+
+    const todayTasks = dailyTasks.filter((t) => {
+      const taskDate = new Date(t.date);
+      taskDate.setHours(0, 0, 0, 0);
+      return t.goalId === currentGoal.id && taskDate.getTime() === today.getTime();
+    });
+
+    const completed = todayTasks.filter((t) => t.completed).length;
+    return { completed, total: todayTasks.length };
+  }, [currentGoal?.id, dailyTasks]);
+
+  const monthStats = useMemo(() => {
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+
+    if (!currentGoal?.id) return { completed: 0, target: 50 };
+
+    const monthTasks = dailyTasks.filter((t) => {
+      const taskDate = new Date(t.date);
+      return t.goalId === currentGoal.id && taskDate >= monthStart && taskDate <= monthEnd;
+    });
+
+    const completed = monthTasks.filter((t) => t.completed).length;
+    return { completed, target: 50 };
+  }, [currentGoal?.id, dailyTasks]);
+
+  if (!store || !store.isReady || !profile) {
     return (
       <GradientBackground>
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -31,8 +76,6 @@ export default function ProgressScreen() {
       </GradientBackground>
     );
   }
-  
-  const { profile, currentGoal, dailyTasks } = store;
 
   // Используем новую функцию из store для получения статистики
   const periodStats = store?.getProgressForPeriod ? store.getProgressForPeriod(selectedPeriod) : { completed: 0, total: 0, percentage: 0 };
@@ -151,18 +194,7 @@ export default function ProgressScreen() {
                     <Calendar size={20} color={theme.colors.primary} />
                     <Text style={styles.mainStatLabel}>Today</Text>
                     <Text style={styles.mainStatValue}>
-                      {(() => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const todayTasks = dailyTasks.filter(t => {
-                          const taskDate = new Date(t.date);
-                          taskDate.setHours(0, 0, 0, 0);
-                          return t.goalId === currentGoal?.id && taskDate.getTime() === today.getTime();
-                        });
-                        const completed = todayTasks.filter(t => t.completed).length;
-                        const total = todayTasks.length;
-                        return total > 0 ? `${completed}/${total}` : '0';
-                      })()}
+                      {todayStats.total > 0 ? `${todayStats.completed}/${todayStats.total}` : '0'}
                     </Text>
                   </View>
                   <View style={styles.mainStatDivider} />
@@ -198,19 +230,7 @@ export default function ProgressScreen() {
                     <Trophy size={20} color={theme.colors.warning} />
                     <Text style={styles.mainStatLabel}>This Month</Text>
                     <Text style={styles.mainStatValue}>
-                      {(() => {
-                        const today = new Date();
-                        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-                        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                        monthEnd.setHours(23, 59, 59, 999);
-                        
-                        const monthTasks = dailyTasks.filter(t => {
-                          const taskDate = new Date(t.date);
-                          return t.goalId === currentGoal?.id && taskDate >= monthStart && taskDate <= monthEnd;
-                        });
-                        const completed = monthTasks.filter(t => t.completed).length;
-                        return `${completed}/30`;
-                      })()}
+                      {`${monthStats.completed}/${monthStats.target}`}
                     </Text>
                   </View>
                 </View>
@@ -238,38 +258,14 @@ export default function ProgressScreen() {
                 />
               </View>
               
-              {/* Блок достижений */}
-              <View style={styles.achievementsCard}>
-                <Text style={styles.achievementsTitle}>Achievements</Text>
-                <View style={styles.achievementsGrid}>
-                  <View style={[
-                    styles.achievementBadge,
-                    dailyTasks.filter(t => 
-                      t.goalId === currentGoal?.id &&
-                      new Date(t.date).toDateString() === new Date().toDateString() && t.completed
-                    ).length >= 5 && styles.achievementBadgeActive
-                  ]}>
-                    <Text style={styles.achievementEmoji}>✅</Text>
-                    <Text style={styles.achievementText}>5 tasks per day</Text>
-                  </View>
-                  
-                  <View style={[
-                    styles.achievementBadge,
-                    profile.currentStreak >= 7 && styles.achievementBadgeActive
-                  ]}>
-                    <Text style={styles.achievementEmoji}>🔥</Text>
-                    <Text style={styles.achievementText}>Week without misses</Text>
-                  </View>
-                  
-                  <View style={[
-                    styles.achievementBadge,
-                    completedTasks >= 50 && styles.achievementBadgeActive
-                  ]}>
-                    <Text style={styles.achievementEmoji}>🏅</Text>
-                    <Text style={styles.achievementText}>50 tasks per month</Text>
-                  </View>
-                </View>
-              </View>
+              <AchievementsSection
+                currentStreak={profile.currentStreak}
+                todayCompleted={todayStats.completed}
+                todayTotal={todayStats.total}
+                monthCompleted={monthStats.completed}
+                monthTarget={monthStats.target}
+                totalCompletedTasks={completedTasks}
+              />
             </>
           ) : (
             <View style={styles.emptyContainer}>
@@ -287,6 +283,172 @@ export default function ProgressScreen() {
 }
 
 
+type AchievementDefinition = {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ size?: number; color?: string }>;
+  accent: string;
+  getProgress: (stats: {
+    todayCompleted: number;
+    todayTotal: number;
+    currentStreak: number;
+    monthCompleted: number;
+    monthTarget: number;
+    totalCompletedTasks: number;
+  }) => { current: number; target: number };
+};
+
+type AchievementsSectionProps = {
+  currentStreak: number;
+  todayCompleted: number;
+  todayTotal: number;
+  monthCompleted: number;
+  monthTarget: number;
+  totalCompletedTasks: number;
+};
+
+const AchievementsSection = memo(function AchievementsSection({
+  currentStreak,
+  todayCompleted,
+  todayTotal,
+  monthCompleted,
+  monthTarget,
+  totalCompletedTasks,
+}: AchievementsSectionProps) {
+  const achievements = useMemo<AchievementDefinition[]>(() => {
+    return [
+      {
+        id: 'daily-5',
+        title: 'Daily Finisher',
+        description: 'Complete 5 tasks in a day',
+        icon: CheckCircle2,
+        accent: theme.colors.success,
+        getProgress: (s) => ({ current: s.todayCompleted, target: 5 }),
+      },
+      {
+        id: 'daily-perfect',
+        title: 'No Loose Ends',
+        description: 'Finish 100% of your tasks today',
+        icon: Target,
+        accent: theme.colors.primary,
+        getProgress: (s) => ({ current: s.todayTotal > 0 ? s.todayCompleted : 0, target: s.todayTotal > 0 ? s.todayTotal : 1 }),
+      },
+      {
+        id: 'streak-7',
+        title: 'Streak Starter',
+        description: 'Reach a 7‑day streak',
+        icon: Flame,
+        accent: theme.colors.warning,
+        getProgress: (s) => ({ current: s.currentStreak, target: 7 }),
+      },
+      {
+        id: 'month-50',
+        title: 'Momentum Month',
+        description: 'Complete 50 tasks this month',
+        icon: Trophy,
+        accent: theme.colors.primaryDark,
+        getProgress: (s) => ({ current: s.monthCompleted, target: s.monthTarget }),
+      },
+      {
+        id: 'total-250',
+        title: 'Crafted Discipline',
+        description: 'Complete 250 tasks overall',
+        icon: Sparkles,
+        accent: '#E8C060',
+        getProgress: (s) => ({ current: s.totalCompletedTasks, target: 250 }),
+      },
+      {
+        id: 'streak-30',
+        title: 'Unbreakable',
+        description: 'Hold a 30‑day streak',
+        icon: Crown,
+        accent: theme.colors.primary,
+        getProgress: (s) => ({ current: s.currentStreak, target: 30 }),
+      },
+    ];
+  }, []);
+
+  return (
+    <View style={styles.achievementsCard} testID="rewards-card">
+      <Text style={styles.achievementsTitle} testID="rewards-title">
+        Rewards
+      </Text>
+
+      <View style={styles.achievementsList} testID="rewards-list">
+        {achievements.map((a) => {
+          const progress = a.getProgress({
+            todayCompleted,
+            todayTotal,
+            currentStreak,
+            monthCompleted,
+            monthTarget,
+            totalCompletedTasks,
+          });
+
+          const target = Math.max(1, progress.target);
+          const current = Math.max(0, Math.min(progress.current, target));
+          const pct = Math.round((current / target) * 100);
+          const unlocked = progress.current >= progress.target;
+
+          return (
+            <View
+              key={a.id}
+              style={[styles.achievementRow, unlocked ? styles.achievementRowUnlocked : styles.achievementRowLocked]}
+              testID={`reward-${a.id}`}
+            >
+              <View
+                style={[
+                  styles.achievementIconWrap,
+                  {
+                    borderColor: a.accent + '45',
+                    backgroundColor: a.accent + (unlocked ? '18' : '10'),
+                  },
+                ]}
+              >
+                <a.icon size={18} color={a.accent} />
+              </View>
+
+              <View style={styles.achievementBody}>
+                <View style={styles.achievementTopRow}>
+                  <Text style={styles.achievementTitleText} numberOfLines={1}>
+                    {a.title}
+                  </Text>
+
+                  <View
+                    style={[
+                      styles.achievementPill,
+                      {
+                        borderColor: a.accent + '35',
+                        backgroundColor: a.accent + (unlocked ? '14' : '0D'),
+                      },
+                    ]}
+                  >
+                    <Text style={styles.achievementPillText}>{unlocked ? 'Unlocked' : `${pct}%`}</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.achievementDesc} numberOfLines={2}>
+                  {a.description}
+                </Text>
+
+                <View style={styles.achievementProgressRow}>
+                  <View style={styles.achievementTrack}>
+                    <View style={[styles.achievementFill, { width: `${Math.min(100, pct)}%`, backgroundColor: a.accent }]} />
+                  </View>
+
+                  <Text style={styles.achievementNumbers}>
+                    {progress.current}/{progress.target}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -460,38 +622,93 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text,
-    marginBottom: 16,
+    marginBottom: 14,
+    letterSpacing: 0.2,
   },
-  achievementsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  achievementsList: {
     gap: 12,
   },
-  achievementBadge: {
-    flex: 1,
-    minWidth: '30%',
-    backgroundColor: theme.colors.background,
+  achievementRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 14,
     borderRadius: theme.borderRadius.lg,
-    padding: 16,
-    alignItems: 'center',
-    opacity: 0.5,
     borderWidth: 1,
+  },
+  achievementRowLocked: {
+    backgroundColor: theme.colors.backgroundSecondary,
     borderColor: theme.colors.border,
+    opacity: 0.88,
   },
-  achievementBadgeActive: {
+  achievementRowUnlocked: {
+    backgroundColor: theme.colors.surfaceGlass,
+    borderColor: theme.colors.glassBorder,
     opacity: 1,
-    backgroundColor: theme.colors.primary + '10',
-    borderColor: theme.colors.primary + '30',
   },
-  achievementEmoji: {
-    fontSize: 24,
-    marginBottom: 8,
+  achievementIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
-  achievementText: {
+  achievementBody: {
+    flex: 1,
+  },
+  achievementTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  achievementTitleText: {
+    flex: 1,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  achievementPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+  },
+  achievementPillText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  achievementDesc: {
+    marginTop: 4,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    lineHeight: 18,
+  },
+  achievementProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
+  achievementTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: theme.colors.surfaceElevated,
+    overflow: 'hidden',
+  },
+  achievementFill: {
+    height: 6,
+    borderRadius: 999,
+  },
+  achievementNumbers: {
     fontSize: theme.fontSize.xs,
     color: theme.colors.textSecondary,
-    textAlign: 'center',
     fontWeight: theme.fontWeight.medium,
+    minWidth: 62,
+    textAlign: 'right',
   },
   emptyContainer: {
     flex: 1,
