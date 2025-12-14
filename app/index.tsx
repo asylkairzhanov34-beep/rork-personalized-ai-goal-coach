@@ -135,7 +135,8 @@ export default function Index() {
     console.log('[Index] Redirecting to first-time-setup:', {
       hasProfile: !!profile,
       hasNickname: !!profile?.nickname,
-      isCompleted: profile?.isCompleted
+      isCompleted: profile?.isCompleted,
+      fullProfile: profile
     });
     return <Redirect href="/first-time-setup" />;
   }

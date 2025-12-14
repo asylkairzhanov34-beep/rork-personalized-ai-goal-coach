@@ -325,21 +325,21 @@ export function useNotifications() {
     const { hour, minute } = getNotificationTimeForProductivity(productivityTime);
     
     const timeLabels: Record<string, string> = {
-      morning: 'утро',
-      afternoon: 'день',
-      evening: 'вечер',
+      morning: 'morning',
+      afternoon: 'afternoon',
+      evening: 'evening',
     };
     
     const timeLabel = productivityTime ? timeLabels[productivityTime] || '' : '';
-    const goalText = goalTitle ? `«${goalTitle}»` : 'свою цель';
+    const goalText = goalTitle ? `"${goalTitle}"` : 'your goal';
     
-    console.log(`[Notifications] Scheduling goal reminder at ${hour}:${minute} for ${productivityTime}`);
+    console.log(`[Notifications] Scheduling single goal reminder at ${hour}:${minute} for ${productivityTime}`);
     
     await cancelAllNotifications();
     
-    return await scheduleNotification({
-      title: '🎯 Время для цели!',
-      body: `Пора поработать над ${goalText}. Твой пик продуктивности — ${timeLabel}!`,
+    const id = await scheduleNotification({
+      title: '🎯 Time for your goal!',
+      body: `Work on ${goalText}. Your peak productivity time is ${timeLabel}!`,
       data: { type: 'goal_reminder', productivityTime },
       trigger: {
         hour,
@@ -347,6 +347,9 @@ export function useNotifications() {
         repeats: true,
       },
     });
+    
+    console.log(`[Notifications] Single notification scheduled with ID:`, id);
+    return id;
   };
 
   const scheduleProductivityReminder = async (

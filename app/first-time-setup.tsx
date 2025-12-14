@@ -54,21 +54,26 @@ export default function FirstTimeSetupScreen() {
   };
 
   const handleWelcomeComplete = async () => {
-    await completeSetup();
+    console.log('[FirstTimeSetup] Starting completion process');
     
     const productivityTime = selectedProductivityTime || profile?.productivityTime;
+    
     if (productivityTime && productivityTime !== 'unknown') {
-      console.log('[FirstTimeSetup] Setting up notifications for productivity time:', productivityTime);
+      console.log('[FirstTimeSetup] Setting up single notification for productivity time:', productivityTime);
       
       const permissionGranted = await requestPermissions();
       
       if (permissionGranted) {
         await scheduleGoalReminder(productivityTime);
-        console.log('[FirstTimeSetup] Goal reminder scheduled successfully');
+        console.log('[FirstTimeSetup] Single goal reminder scheduled');
       } else {
         console.log('[FirstTimeSetup] Notification permission not granted');
       }
     }
+    
+    console.log('[FirstTimeSetup] Completing setup');
+    await completeSetup();
+    console.log('[FirstTimeSetup] Setup completed, navigating to home');
     
     router.replace('/(tabs)/home');
   };
