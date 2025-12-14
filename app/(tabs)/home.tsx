@@ -136,11 +136,7 @@ export default function TodayScreen() {
               <Text style={styles.statValue}>{Math.round(progress)}%</Text>
               <Text style={styles.statLabel}>Today Progress</Text>
             </View>
-            <View style={styles.statCard}>
-              <Sparkles size={20} color={theme.colors.primary} />
-              <Text style={styles.statValue}>{manifestationStats?.currentStreak || 0}</Text>
-              <Text style={styles.statLabel}>Manifestation Days</Text>
-            </View>
+
           </ScrollView>
 
 
