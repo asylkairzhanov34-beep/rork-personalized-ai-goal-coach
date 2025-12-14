@@ -86,6 +86,8 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
   }, []);
 
   const loadProfile = useCallback(async () => {
+    setState(prev => ({ ...prev, isLoading: true }));
+    
     try {
       console.log('[FirstTimeSetupProvider] Loading profile...');
 
