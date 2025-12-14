@@ -1,7 +1,7 @@
 import React, { memo, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TrendingUp, Award, Target, Zap, Calendar, Clock, Trophy, Flame, CheckCircle2, Crown, Sparkles } from 'lucide-react-native';
+import { TrendingUp, Award, Target, Zap, Trophy, Flame, CheckCircle2, Crown, Sparkles } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
 import { ProgressRing } from '@/components/ProgressRing';
@@ -185,43 +185,6 @@ export default function ProgressScreen() {
                   <Text style={styles.progressSubtext}>
                     {getEmptyMessage() || 'Keep going at your pace'}
                   </Text>
-                </View>
-              </View>
-              
-              {/* Основная карточка статистики */}
-              <View style={styles.mainStatsCard}>
-                <View style={styles.mainStatRow}>
-                  <View style={styles.mainStatItem}>
-                    <Calendar size={20} color={theme.colors.primary} />
-                    <Text style={styles.mainStatLabel}>Today</Text>
-                    <Text style={styles.mainStatValue}>
-                      {todayStats.total > 0 ? `${todayStats.completed}/${todayStats.total}` : '0'}
-                    </Text>
-                  </View>
-                  <View style={styles.mainStatDivider} />
-                  <View style={styles.mainStatItem}>
-                    <Clock size={20} color={theme.colors.success} />
-                    <Text style={styles.mainStatLabel}>This Week</Text>
-                    <Text style={styles.mainStatValue}>
-                      {(() => {
-                        const p = store?.getProgressForPeriod ? store.getProgressForPeriod('week') : { completed: 0, total: 7 };
-                        return p.total > 0 ? `${p.completed}/${p.total}` : '0';
-                      })()}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.mainStatDividerHorizontal} />
-                <View style={styles.mainStatRow}>
-                  <View style={styles.mainStatItem}>
-                    <Trophy size={20} color={theme.colors.warning} />
-                    <Text style={styles.mainStatLabel}>This Month</Text>
-                    <Text style={styles.mainStatValue}>
-                      {(() => {
-                        const p = store?.getProgressForPeriod ? store.getProgressForPeriod('month') : { completed: monthStats.completed, total: monthStats.target };
-                        return `${p.completed}/${p.total}`;
-                      })()}
-                    </Text>
-                  </View>
                 </View>
               </View>
 
@@ -757,48 +720,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  mainStatsCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.xl,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  mainStatRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  mainStatItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  mainStatDivider: {
-    width: 1,
-    backgroundColor: theme.colors.border,
-    marginHorizontal: 12,
-  },
-  mainStatDividerHorizontal: {
-    height: 1,
-    backgroundColor: theme.colors.border,
-    marginVertical: 12,
-  },
-  mainStatLabel: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textSecondary,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  mainStatValue: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.primary,
-    marginTop: 4,
-  },
+
   progressStats: {
     marginTop: 20,
     alignItems: 'center',
