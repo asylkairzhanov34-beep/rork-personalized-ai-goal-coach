@@ -452,57 +452,97 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
 
   const getProgressForPeriod = (period: 'day' | 'week' | 'month') => {
     if (!currentGoal) return { completed: 0, total: 0, percentage: 0 };
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    let filteredTasks = dailyTasks.filter(task => task.goalId === currentGoal.id);
-    
+
+    const goalTasks = dailyTasks.filter((task) => task.goalId === currentGoal.id);
+
     if (period === 'day') {
-      filteredTasks = filteredTasks.filter(task => {
+      const todayTasks = goalTasks.filter((task) => {
         const taskDate = new Date(task.date);
         taskDate.setHours(0, 0, 0, 0);
         return taskDate.getTime() === today.getTime();
       });
-    } else if (period === 'week') {
-      const weekStart = new Date(today);
+
+      const completed = todayTasks.filter((t) => t.completed).length;
+      const total = todayTasks.length;
+      const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      console.log('[GoalStore] Progress for day:', {
+        period,
+        today: today.toDateString(),
+        completed,
+        total,
+        percentage,
+        taskCount: todayTasks.length,
+      });
+
+      return { completed, total, percentage };
+    }
+
+    if (period === 'week') {
       const dayOfWeek = today.getDay();
       const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const weekStart = new Date(today);
       weekStart.setDate(today.getDate() - daysToMonday);
-      
+      weekStart.setHours(0, 0, 0, 0);
+
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
-      
-      filteredTasks = filteredTasks.filter(task => {
+
+      const weekTasks = goalTasks.filter((task) => {
         const taskDate = new Date(task.date);
         return taskDate >= weekStart && taskDate <= weekEnd;
       });
-    } else if (period === 'month') {
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      monthEnd.setHours(23, 59, 59, 999);
-      
-      filteredTasks = filteredTasks.filter(task => {
-        const taskDate = new Date(task.date);
-        return taskDate >= monthStart && taskDate <= monthEnd;
+
+      const periodTarget = 7;
+      const completedRaw = weekTasks.filter((t) => t.completed).length;
+      const completed = Math.min(periodTarget, completedRaw);
+      const total = periodTarget;
+      const percentage = Math.round((completed / total) * 100);
+
+      console.log('[GoalStore] Progress for week:', {
+        period,
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        completedRaw,
+        completed,
+        total,
+        percentage,
+        taskCountInRange: weekTasks.length,
       });
+
+      return { completed, total, percentage };
     }
-    
-    const completed = filteredTasks.filter(t => t.completed).length;
-    const total = filteredTasks.length;
-    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-    
-    console.log(`Progress for ${period}:`, {
+
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+
+    const monthTasks = goalTasks.filter((task) => {
+      const taskDate = new Date(task.date);
+      return taskDate >= monthStart && taskDate <= monthEnd;
+    });
+
+    const periodTarget = 30;
+    const completedRaw = monthTasks.filter((t) => t.completed).length;
+    const completed = Math.min(periodTarget, completedRaw);
+    const total = periodTarget;
+    const percentage = Math.round((completed / total) * 100);
+
+    console.log('[GoalStore] Progress for month:', {
       period,
-      today: today.toDateString(),
+      monthStart: monthStart.toISOString(),
+      monthEnd: monthEnd.toISOString(),
+      completedRaw,
       completed,
       total,
       percentage,
-      filteredTasksCount: filteredTasks.length,
-      taskDates: filteredTasks.map(t => ({ id: t.id, date: t.date, completed: t.completed }))
+      taskCountInRange: monthTasks.length,
     });
-    
+
     return { completed, total, percentage };
   };
 
