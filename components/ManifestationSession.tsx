@@ -311,7 +311,7 @@ export function ManifestationSession({ onComplete }: ManifestationSessionProps) 
     <View style={styles.centerContent}>
       <Text style={styles.title}>How are you feeling?</Text>
       
-      {renderMoodSelector(moodAfter, setMoodAfter, 'Your mood now:')}
+      {renderMoodSelector(moodAfter, setMoodAfter, 'How do you feel now?')}
       
       <TouchableOpacity
         style={styles.completeButton}
@@ -331,13 +331,13 @@ export function ManifestationSession({ onComplete }: ManifestationSessionProps) 
       
       <Text style={styles.completeTitle}>Session Complete! ✨</Text>
       <Text style={styles.completeSubtitle}>
-        Great work! Your energy is directed towards achieving your goal.
+        Great work! Your energy is directed towards your goal.
       </Text>
       
       {moodBefore && moodAfter && (
         <View style={styles.moodImprovement}>
           <Text style={styles.moodImprovementText}>
-            Mood improvement: +{moodAfter - moodBefore}
+            Mood: +{moodAfter - moodBefore}
           </Text>
         </View>
       )}

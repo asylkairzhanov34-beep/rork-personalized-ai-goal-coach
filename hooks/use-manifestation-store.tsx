@@ -96,31 +96,31 @@ export const [ManifestationProvider, useManifestationStore] = createContextHook(
 
   const generateAffirmations = (goalTitle: string, goalDescription: string): string[] => {
     const baseAffirmations = [
-      'Я уже достиг своей мечты и живу в гармонии с собой',
-      'Каждый день я становлюсь лучшей версией себя',
-      'Моя энергия и фокус направлены на позитивные изменения',
-      'Я чувствую радость от каждого шага на моем пути',
-      'Мои действия естественно ведут меня к успеху и счастью',
+      'I have already achieved my dream and live in harmony with myself',
+      'Every day I become the best version of myself',
+      'My energy and focus are directed towards positive changes',
+      'I feel joy from every step on my path',
+      'My actions naturally lead me to success and happiness',
     ];
     
-    // Персонализированные аффирмации на основе цели
-    if (goalTitle.toLowerCase().includes('вес') || goalTitle.toLowerCase().includes('похуд')) {
+    // Personalized affirmations based on goal
+    if (goalTitle.toLowerCase().includes('weight') || goalTitle.toLowerCase().includes('lose') || goalTitle.toLowerCase().includes('fit')) {
       baseAffirmations.push(
-        'Я чувствую лёгкость в теле и двигаюсь с энергией каждый день',
-        'Мои здоровые привычки приносят радость и результаты',
-        'Моё тело благодарно за заботу и отвечает позитивными изменениями'
+        'I feel lightness in my body and move with energy every day',
+        'My healthy habits bring joy and results',
+        'My body is grateful for the care and responds with positive changes'
       );
-    } else if (goalTitle.toLowerCase().includes('карьер') || goalTitle.toLowerCase().includes('работ')) {
+    } else if (goalTitle.toLowerCase().includes('career') || goalTitle.toLowerCase().includes('work') || goalTitle.toLowerCase().includes('job')) {
       baseAffirmations.push(
-        'Я привлекаю возможности, которые соответствуют моим целям',
-        'Мои навыки и таланты признаются и ценятся',
-        'Я уверенно двигаюсь к профессиональному успеху'
+        'I attract opportunities that align with my goals',
+        'My skills and talents are recognized and valued',
+        'I confidently move towards professional success'
       );
-    } else if (goalTitle.toLowerCase().includes('отношен') || goalTitle.toLowerCase().includes('любов')) {
+    } else if (goalTitle.toLowerCase().includes('relationship') || goalTitle.toLowerCase().includes('love')) {
       baseAffirmations.push(
-        'Я притягиваю здоровые и гармоничные отношения',
-        'Моя любовь к себе отражается в отношениях с другими',
-        'Я открыт для глубоких и значимых связей'
+        'I attract healthy and harmonious relationships',
+        'My love for myself is reflected in relationships with others',
+        'I am open to deep and meaningful connections'
       );
     }
     
@@ -129,11 +129,11 @@ export const [ManifestationProvider, useManifestationStore] = createContextHook(
 
   const generateGratitudes = (goalTitle: string): string[] => {
     return [
-      'Я благодарен за возможность расти и развиваться каждый день',
-      'Спасибо за поддержку тела и разума в этом путешествии',
-      'Я ценю каждый шаг, который приближает меня к мечте',
-      'Благодарю за силу и мотивацию продолжать движение',
-      'Спасибо за все уроки и рост на моем жизненном пути',
+      'I am grateful for the opportunity to grow and develop every day',
+      'Thank you for the support of body and mind on this journey',
+      'I appreciate every step that brings me closer to my dream',
+      'I am grateful for the strength and motivation to keep moving forward',
+      'Thank you for all the lessons and growth on my life path',
     ];
   };
 

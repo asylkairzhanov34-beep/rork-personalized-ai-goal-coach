@@ -18,7 +18,7 @@ export function ManifestationStats() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Sparkles size={24} color={theme.colors.primary} />
-        <Text style={styles.title}>Manifestation Stats</Text>
+        <Text style={styles.title}>Manifestation Statistics</Text>
       </View>
       
       <View style={styles.statsGrid}>
@@ -27,7 +27,7 @@ export function ManifestationStats() {
             <Calendar size={20} color={theme.colors.primary} />
           </View>
           <Text style={styles.statValue}>{stats.totalSessions}</Text>
-          <Text style={styles.statLabel}>Total Sessions</Text>
+          <Text style={styles.statLabel}>Sessions</Text>
         </View>
         
         <View style={styles.statItem}>
@@ -35,7 +35,7 @@ export function ManifestationStats() {
             <TrendingUp size={20} color={theme.colors.primary} />
           </View>
           <Text style={styles.statValue}>{stats.currentStreak}</Text>
-          <Text style={styles.statLabel}>Current Streak</Text>
+          <Text style={styles.statLabel}>Day Streak</Text>
         </View>
         
         <View style={styles.statItem}>
@@ -43,7 +43,7 @@ export function ManifestationStats() {
             <Heart size={20} color={theme.colors.primary} />
           </View>
           <Text style={styles.statValue}>{totalMinutes}</Text>
-          <Text style={styles.statLabel}>Minutes of Practice</Text>
+          <Text style={styles.statLabel}>Minutes</Text>
         </View>
         
         <View style={styles.statItem}>
@@ -60,7 +60,7 @@ export function ManifestationStats() {
       {stats.bestStreak > 0 && (
         <View style={styles.achievement}>
           <Text style={styles.achievementText}>
-            🏆 Best Streak: {stats.bestStreak} days
+            🏆 Best Streak: {stats.bestStreak} {stats.bestStreak === 1 ? 'day' : 'days'}
           </Text>
         </View>
       )}
