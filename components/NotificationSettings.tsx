@@ -37,13 +37,13 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       const granted = await requestPermissions();
       if (granted) {
         Alert.alert(
-          'Notifications enabled',
-          'You will now receive helpful reminders!'
+          'Уведомления включены',
+          'Теперь вы будете получать полезные напоминания!'
         );
       } else {
         Alert.alert(
-          'Permission not granted',
-          'To receive notifications, enable them in device settings.'
+          'Разрешение не получено',
+          'Чтобы получать уведомления, включ��те их в настройках устройства.'
         );
       }
     }
@@ -61,16 +61,16 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       switch (key) {
         case 'dailyReminders':
           await scheduleDailyReminder(9, 0);
-          Alert.alert('Configured', 'Daily reminders enabled for 9:00 AM');
+          Alert.alert('Настроено', 'Ежедневные напоминания включены на 9:00');
           break;
         case 'taskReminders':
-          Alert.alert('Configured', 'Task reminders will arrive 30 minutes before');
+          Alert.alert('Настроено', 'Напоминания о задачах придут за 30 минут до начала');
           break;
         case 'pomodoroNotifications':
-          Alert.alert('Configured', 'Pomodoro notifications enabled');
+          Alert.alert('Настроено', 'Уведомления помодоро включены');
           break;
         case 'goalReminders':
-          Alert.alert('Configured', 'Goal reminders enabled');
+          Alert.alert('Настроено', 'Напоминания о целях включены');
           break;
       }
     }
@@ -82,19 +82,19 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
       return;
     }
 
-    await scheduleTaskReminder('Test notification', 0.1); // 6 seconds
-    Alert.alert('Test sent', 'Notification will arrive in a few seconds');
+    await scheduleTaskReminder('Тестовое уведомление', 0.1); // 6 seconds
+    Alert.alert('Тест отправлен', 'Уведомление придёт через несколько секунд');
   };
 
   const clearAllNotifications = async () => {
     await cancelAllNotifications();
-    Alert.alert('Done', 'All scheduled notifications cancelled');
+    Alert.alert('Готово', 'Все запланированные уведомления отменены');
   };
 
   const getPermissionStatusText = () => {
-    if (permission.granted) return 'Enabled';
-    if (permission.canAskAgain) return 'Not configured';
-    return 'Blocked';
+    if (permission.granted) return 'Включены';
+    if (permission.canAskAgain) return 'Не настроены';
+    return 'Заблокированы';
   };
 
   const getPermissionStatusColor = () => {
@@ -107,18 +107,18 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Bell size={24} color={theme.colors.primary} />
-        <Text style={styles.title}>Notification Settings</Text>
+        <Text style={styles.title}>Настройки уведомлений</Text>
       </View>
 
       {/* Статус разрешений */}
       <View style={styles.permissionCard}>
         <View style={styles.permissionHeader}>
           <Settings size={20} color={theme.colors.text} />
-          <Text style={styles.permissionTitle}>Permission Status</Text>
+          <Text style={styles.permissionTitle}>Статус разрешений</Text>
         </View>
         <View style={styles.permissionStatus}>
           <Text style={styles.permissionText}>
-            Notifications: {' '}
+            Уведомления: {' '}
             <Text style={[styles.statusText, { color: getPermissionStatusColor() }]}>
               {getPermissionStatusText()}
             </Text>
@@ -128,7 +128,7 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
               style={styles.enableButton}
               onPress={handlePermissionRequest}
             >
-              <Text style={styles.enableButtonText}>Enable</Text>
+              <Text style={styles.enableButtonText}>Включить</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -136,15 +136,15 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
       {/* Настройки уведомлений */}
       <View style={styles.settingsCard}>
-        <Text style={styles.sectionTitle}>Notification Types</Text>
+        <Text style={styles.sectionTitle}>Типы уведомлений</Text>
 
         <View style={styles.settingItem}>
           <View style={styles.settingInfo}>
             <Calendar size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
-              <Text style={styles.settingTitle}>Daily Reminders</Text>
+              <Text style={styles.settingTitle}>Ежедневные напоминания</Text>
               <Text style={styles.settingDescription}>
-                Reminder to plan your day (9:00 AM)
+                Напоминание о планировании дня (9:00)
               </Text>
             </View>
           </View>
@@ -160,9 +160,9 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           <View style={styles.settingInfo}>
             <Clock size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
-              <Text style={styles.settingTitle}>Task Reminders</Text>
+              <Text style={styles.settingTitle}>Напоминания о задачах</Text>
               <Text style={styles.settingDescription}>
-                30 minutes before scheduled time
+                За 30 минут до запланированного времени
               </Text>
             </View>
           </View>
@@ -178,9 +178,9 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           <View style={styles.settingInfo}>
             <Target size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
-              <Text style={styles.settingTitle}>Pomodoro Notifications</Text>
+              <Text style={styles.settingTitle}>Уведомления помодоро</Text>
               <Text style={styles.settingDescription}>
-                Start and end of work sessions
+                Начало и конец рабочих сессий
               </Text>
             </View>
           </View>
@@ -196,9 +196,9 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
           <View style={styles.settingInfo}>
             <Target size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
-              <Text style={styles.settingTitle}>Goal Reminders</Text>
+              <Text style={styles.settingTitle}>Напоминания о целях</Text>
               <Text style={styles.settingDescription}>
-                Motivational messages about progress
+                Мотивационные сообщения о прогрессе
               </Text>
             </View>
           </View>
@@ -213,11 +213,11 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
       {/* Действия */}
       <View style={styles.actionsCard}>
-        <Text style={styles.sectionTitle}>Actions</Text>
+        <Text style={styles.sectionTitle}>Действия</Text>
         
         <TouchableOpacity style={styles.actionButton} onPress={testNotification}>
           <Bell size={18} color={theme.colors.primary} />
-          <Text style={styles.actionButtonText}>Test Notification</Text>
+          <Text style={styles.actionButtonText}>Тестовое уведомление</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -226,14 +226,14 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
         >
           <Settings size={18} color={theme.colors.error} />
           <Text style={[styles.actionButtonText, styles.dangerText]}>
-            Cancel All Notifications
+            Отменить все уведомления
           </Text>
         </TouchableOpacity>
       </View>
 
       {onClose && (
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>Close</Text>
+          <Text style={styles.closeButtonText}>Закрыть</Text>
         </TouchableOpacity>
       )}
     </ScrollView>
