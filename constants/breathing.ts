@@ -4,34 +4,34 @@ export const BREATHING_TECHNIQUES: BreathingTechnique[] = [
   {
     id: 'box-breathing',
     name: 'Box Breathing',
-    description: 'Квадратное дыхание для снижения стресса и улучшения фокуса',
-    benefits: 'Снижает стресс, улучшает фокус — идеально перед задачей',
+    description: 'Square breathing for stress reduction and improved focus',
+    benefits: 'Reduces stress, improves focus — perfect before a task',
     icon: '⬜',
     color: '#4F46E5',
     totalCycles: 5,
     phases: [
       {
-        name: 'Вдох',
+        name: 'Inhale',
         duration: 4,
-        instruction: 'Вдохни через нос',
+        instruction: 'Breathe in through your nose',
         type: 'inhale'
       },
       {
-        name: 'Задержка',
+        name: 'Hold',
         duration: 4,
-        instruction: 'Задержи дыхание',
+        instruction: 'Hold your breath',
         type: 'hold'
       },
       {
-        name: 'Выдох',
+        name: 'Exhale',
         duration: 4,
-        instruction: 'Выдохни через рот',
+        instruction: 'Breathe out through your mouth',
         type: 'exhale'
       },
       {
-        name: 'Пауза',
+        name: 'Pause',
         duration: 4,
-        instruction: 'Задержи дыхание',
+        instruction: 'Hold your breath',
         type: 'pause'
       }
     ]
@@ -39,109 +39,109 @@ export const BREATHING_TECHNIQUES: BreathingTechnique[] = [
   {
     id: '4-7-8-breathing',
     name: '4-7-8 Breathing',
-    description: 'Дыхание 4-7-8 для быстрого успокоения',
-    benefits: 'Быстро успокаивает нервную систему, помогает с тревогой и бессонницей',
+    description: '4-7-8 breathing for quick relaxation',
+    benefits: 'Quickly calms the nervous system, helps with anxiety and insomnia',
     icon: '🌙',
     color: '#7C3AED',
     totalCycles: 4,
     phases: [
       {
-        name: 'Вдох',
+        name: 'Inhale',
         duration: 4,
-        instruction: 'Вдохни через нос',
+        instruction: 'Breathe in through your nose',
         type: 'inhale'
       },
       {
-        name: 'Задержка',
+        name: 'Hold',
         duration: 7,
-        instruction: 'Задержи дыхание',
+        instruction: 'Hold your breath',
         type: 'hold'
       },
       {
-        name: 'Выдох',
+        name: 'Exhale',
         duration: 8,
-        instruction: 'Выдохни через рот с шипением',
+        instruction: 'Breathe out through your mouth with a whoosh',
         type: 'exhale'
       }
     ]
   },
   {
     id: 'diaphragmatic-breathing',
-    name: 'Диафрагмальное дыхание',
-    description: 'Глубокое дыхание животом для улучшения оксигенации',
-    benefits: 'Улучшает оксигенацию, снижает напряжение — для продуктивности',
+    name: 'Diaphragmatic Breathing',
+    description: 'Deep belly breathing for better oxygenation',
+    benefits: 'Improves oxygenation, reduces tension — for productivity',
     icon: '🫁',
     color: '#059669',
     totalCycles: 10,
     phases: [
       {
-        name: 'Вдох',
+        name: 'Inhale',
         duration: 6,
-        instruction: 'Глубоко вдохни животом через нос',
+        instruction: 'Breathe deeply into your belly through your nose',
         type: 'inhale'
       },
       {
-        name: 'Выдох',
+        name: 'Exhale',
         duration: 6,
-        instruction: 'Медленно выдохни через рот',
+        instruction: 'Slowly breathe out through your mouth',
         type: 'exhale'
       }
     ]
   },
   {
     id: 'alternate-nostril',
-    name: 'Попеременное дыхание',
-    description: 'Дыхание через чередующиеся ноздри для баланса',
-    benefits: 'Балансирует мозг, повышает концентрацию — для фокуса на сложных задачах',
+    name: 'Alternate Nostril',
+    description: 'Breathing through alternating nostrils for balance',
+    benefits: 'Balances the brain, increases concentration — for focus on complex tasks',
     icon: '👃',
     color: '#DC2626',
     totalCycles: 8,
     phases: [
       {
-        name: 'Вдох левой',
+        name: 'Inhale Left',
         duration: 4,
-        instruction: 'Закрой правую ноздрю, вдохни левой',
+        instruction: 'Close right nostril, inhale through left',
         type: 'inhale'
       },
       {
-        name: 'Выдох правой',
+        name: 'Exhale Right',
         duration: 4,
-        instruction: 'Закрой левую ноздрю, выдохни правой',
+        instruction: 'Close left nostril, exhale through right',
         type: 'exhale'
       },
       {
-        name: 'Вдох правой',
+        name: 'Inhale Right',
         duration: 4,
-        instruction: 'Вдохни правой ноздрей',
+        instruction: 'Inhale through right nostril',
         type: 'inhale'
       },
       {
-        name: 'Выдох левой',
+        name: 'Exhale Left',
         duration: 4,
-        instruction: 'Закрой правую ноздрю, выдохни левой',
+        instruction: 'Close right nostril, exhale through left',
         type: 'exhale'
       }
     ]
   },
   {
     id: 'pursed-lip',
-    name: 'Дыхание сжатыми губами',
-    description: 'Медленное дыхание для снятия паники',
-    benefits: 'Замедляет дыхание, снимает панику — для быстрых перерывов',
+    name: 'Pursed Lip Breathing',
+    description: 'Slow breathing for panic relief',
+    benefits: 'Slows breathing, relieves panic — for quick breaks',
     icon: '💋',
     color: '#EA580C',
     totalCycles: 6,
     phases: [
       {
-        name: 'Вдох',
+        name: 'Inhale',
         duration: 2,
-        instruction: 'Вдохни через нос',
+        instruction: 'Breathe in through your nose',
         type: 'inhale'
       },
       {
-        name: 'Выдох',
+        name: 'Exhale',
         duration: 4,
-        instruction: 'Выдохни через сжатые губы (как дуешь на свечу)',
+        instruction: 'Breathe out through pursed lips (like blowing a candle)',
         type: 'exhale'
       }
     ]

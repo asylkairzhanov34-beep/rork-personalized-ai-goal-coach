@@ -14,7 +14,7 @@ export default function BreathingScreen() {
     <>
       <Stack.Screen 
         options={{ 
-          title: 'Дыхательные техники',
+          title: 'Breathing Techniques',
           headerStyle: {
             backgroundColor: theme.colors.background,
           },
@@ -52,17 +52,17 @@ export default function BreathingScreen() {
             <View style={styles.techniqueStats}>
               <View style={styles.stat}>
                 <Text style={styles.statValue}>{technique.totalCycles}</Text>
-                <Text style={styles.statLabel}>циклов</Text>
+                <Text style={styles.statLabel}>cycles</Text>
               </View>
               <View style={styles.stat}>
                 <Text style={styles.statValue}>{technique.phases.length}</Text>
-                <Text style={styles.statLabel}>фаз</Text>
+                <Text style={styles.statLabel}>phases</Text>
               </View>
               <View style={styles.stat}>
                 <Text style={styles.statValue}>
                   {Math.round(technique.phases.reduce((sum, phase) => sum + phase.duration, 0) * technique.totalCycles / 60)}
                 </Text>
-                <Text style={styles.statLabel}>мин</Text>
+                <Text style={styles.statLabel}>min</Text>
               </View>
             </View>
           </TouchableOpacity>

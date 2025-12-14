@@ -508,13 +508,29 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
 
   const resetGoal = async () => {
     if (!user?.id) return;
+    console.log('[GoalStore] Resetting goal for user:', user.id);
+    
     setCurrentGoal(null);
     setDailyTasks([]);
+    
+    // Clear local storage
     await AsyncStorage.removeItem(STORAGE_KEYS.GOALS);
     await AsyncStorage.removeItem(STORAGE_KEYS.TASKS);
+    
+    // Clear Firebase data
+    await saveUserGoals(user.id, []).catch((err: Error) => {
+      console.error('[GoalStore] Failed to clear goals from Firebase:', err);
+    });
+    await saveUserTasks(user.id, []).catch((err: Error) => {
+      console.error('[GoalStore] Failed to clear tasks from Firebase:', err);
+    });
+    
+    // Invalidate queries to refresh UI
     queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
     queryClient.invalidateQueries({ queryKey: ['tasks', user?.id] });
+    
     updateProfile({ currentGoalId: undefined });
+    console.log('[GoalStore] Goal reset complete');
   };
 
   const addPomodoroSession = (session: Omit<PomodoroSession, 'id'>) => {

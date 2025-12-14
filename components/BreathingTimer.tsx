@@ -113,7 +113,7 @@ export function BreathingTimer({ technique }: BreathingTimerProps) {
         <View style={styles.headerContent}>
           <Text style={styles.title}>{technique.name}</Text>
           <Text style={styles.subtitle}>
-            Цикл {currentCycle + 1} из {technique.totalCycles}
+            Cycle {currentCycle + 1} of {technique.totalCycles}
           </Text>
         </View>
       </View>
@@ -203,10 +203,10 @@ export function BreathingTimer({ technique }: BreathingTimerProps) {
                 {formatTime(phaseTimeLeft)}
               </Text>
               <Text style={styles.phaseText}>
-                {currentPhase?.name || 'Готов'}
+                {currentPhase?.name || 'Ready'}
               </Text>
               <Text style={styles.instructionText}>
-                {currentPhase?.instruction || 'Нажми старт'}
+                {currentPhase?.instruction || 'Press start'}
               </Text>
             </View>
           </View>
@@ -215,7 +215,7 @@ export function BreathingTimer({ technique }: BreathingTimerProps) {
 
       {/* Overall Progress */}
       <View style={styles.overallProgress}>
-        <Text style={styles.progressLabel}>Общий прогресс</Text>
+        <Text style={styles.progressLabel}>Overall Progress</Text>
         <View style={styles.progressBar}>
           <View style={[
             styles.progressFill,
@@ -247,21 +247,21 @@ export function BreathingTimer({ technique }: BreathingTimerProps) {
             <Pause size={24} color={theme.colors.background} />
           )}
           <Text style={styles.primaryButtonText}>
-            {!isActive ? 'Старт' : isPaused ? 'Продолжить' : 'Пауза'}
+            {!isActive ? 'Start' : isPaused ? 'Resume' : 'Pause'}
           </Text>
         </TouchableOpacity>
         
         {isActive && (
           <TouchableOpacity style={styles.secondaryButton} onPress={handleStop}>
             <Square size={20} color={theme.colors.textSecondary} />
-            <Text style={styles.secondaryButtonText}>Стоп</Text>
+            <Text style={styles.secondaryButtonText}>Stop</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {/* Technique Info */}
       <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>О технике</Text>
+        <Text style={styles.infoTitle}>About Technique</Text>
         <Text style={styles.infoDescription}>{technique.description}</Text>
         <Text style={styles.infoBenefits}>{technique.benefits}</Text>
       </View>
