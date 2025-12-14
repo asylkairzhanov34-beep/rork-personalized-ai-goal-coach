@@ -130,8 +130,7 @@ export default function PlanScreen() {
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <View>
-              <Text style={styles.title}>Free Plan</Text>
-              <Text style={styles.subtitle}>Work on your goal at your own pace</Text>
+              <Text style={styles.title}>Plan</Text>
             </View>
             <TouchableOpacity 
               style={styles.monthButton}
