@@ -16,17 +16,17 @@ import { useSubscription } from '@/hooks/use-subscription-store';
 import { Alert } from 'react-native';
 
 const FEATURES = [
-  'Ежедневный ИИ-коуч — ИИ анализирует ваш день и подбирает оптимальные шаги.',
-  'Полный недельный/месячный план — Видна картина прогресса и расписание.',
-  'Weekly AI Report — Точные инсайты и рекомендации.',
-  'Все персональные советы — Под задания подстроены под ваш профиль.',
-  'Умные задачи — ИИ генерирует задачи под цель.',
-  'История 7–90 дней — Аналитика и тренды.',
-  'Уровни и награды — Рост мотивации и достижения.',
-  'ИИ-чат помощник — Быстрые ответы и поддержка.',
-  'Приоритетная скорость — Функции работают быстрее.',
-  'Умный Pomodoro таймер с аналитикой — Детальная статистика фокуса.',
-  'Все будущие функции — Доступ ко всем обновлениям.',
+  'Daily AI Coach — AI analyzes your day and selects optimal steps.',
+  'Full Weekly/Monthly Plan — See your progress and schedule.',
+  'Weekly AI Report — Accurate insights and recommendations.',
+  'All Personalized Tips — Tasks tailored to your profile.',
+  'Smart Tasks — AI generates tasks for your goals.',
+  'History 7–90 Days — Analytics and trends.',
+  'Levels & Rewards — Boost motivation and achievements.',
+  'AI Chat Assistant — Quick answers and support.',
+  'Priority Speed — Features work faster.',
+  'Smart Pomodoro Timer with Analytics — Detailed focus statistics.',
+  'All Future Features — Access to all updates.',
 ];
 
 export type PaywallVariant = 'trial' | 'blocking' | 'feature';
@@ -86,24 +86,24 @@ export default function PaywallModal({
 
   const title = useMemo(() => {
     if (variant === 'blocking') {
-      return 'Пробный период завершён';
+      return 'Trial Period Ended';
     }
     if (variant === 'feature') {
-      return 'Premium функция';
+      return 'Premium Feature';
     }
-    return 'Попробуй GoalForge Premium — 1 день бесплатно';
+    return 'Try GoalForge Premium — 1 Day Free';
   }, [variant]);
 
   const subtitle = useMemo(() => {
     if (variant === 'blocking') {
-      return 'Оформи подписку, чтобы сохранить доступ к GoalForge и аналитике.';
+      return 'Subscribe to keep access to GoalForge and analytics.';
     }
     if (variant === 'feature') {
       return featureName
-        ? `${featureName} доступна только в GoalForge Premium.`
-        : 'Эта функция доступна только в GoalForge Premium.';
+        ? `${featureName} is only available in GoalForge Premium.`
+        : 'This feature is only available in GoalForge Premium.';
     }
-    return 'Разблокируй весь функционал, персональные отчёты и приоритетную скорость.';
+    return 'Unlock all features, personalized reports, and priority speed.';
   }, [featureName, variant]);
 
   const handlePrimary = async () => {
@@ -139,10 +139,10 @@ export default function PaywallModal({
   const handleRestore = async () => {
     const success = await restorePurchases();
     if (success) {
-      Alert.alert('Успешно', 'Подписка восстановлена');
+      Alert.alert('Success', 'Subscription restored');
       onRequestClose?.();
     } else {
-      Alert.alert('Ошибка', 'Активная подписка не найдена');
+      Alert.alert('Error', 'No active subscription found');
     }
   };
 
@@ -170,7 +170,7 @@ export default function PaywallModal({
               style={styles.closeButton}
               onPress={onRequestClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel="Закрыть"
+              accessibilityLabel="Close"
             >
               <X size={20} color="rgba(255,255,255,0.5)" />
             </TouchableOpacity>
@@ -216,14 +216,14 @@ export default function PaywallModal({
                 onPressIn={handleCTAIn}
                 onPressOut={handleCTAOut}
                 disabled={loading}
-                accessibilityLabel={primaryLabel ?? 'Разблокировать Premium'}
+                accessibilityLabel={primaryLabel ?? 'Get Premium'}
                 testID="paywall-primary-cta"
               >
                 {loading ? (
                   <ActivityIndicator color="#000" />
                 ) : (
                   <Text style={styles.ctaText}>
-                    {primaryLabel || (variant === 'trial' ? 'Начать бесплатный период' : 'Разблокировать Premium')}
+                    {primaryLabel || (variant === 'trial' ? 'Start Free Trial' : 'Get Premium')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -234,10 +234,10 @@ export default function PaywallModal({
                 onPress={handleSecondary}
                 style={styles.secondaryButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                accessibilityLabel={secondaryLabel ?? 'Не сейчас'}
+                accessibilityLabel={secondaryLabel ?? 'Not Now'}
                 testID="paywall-secondary-cta"
               >
-                <Text style={styles.secondaryText}>{secondaryLabel || 'Не сейчас'}</Text>
+                <Text style={styles.secondaryText}>{secondaryLabel || 'Not Now'}</Text>
               </TouchableOpacity>
             )}
 
@@ -246,7 +246,7 @@ export default function PaywallModal({
               style={styles.restoreButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Text style={styles.restoreText}>Восстановить покупки</Text>
+              <Text style={styles.restoreText}>Restore Purchases</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
