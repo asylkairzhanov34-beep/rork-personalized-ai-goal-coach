@@ -13,23 +13,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { COLORS as THEME_COLORS, theme } from '@/constants/theme';
 
-const TAB_COLORS = {
-  bgStart: THEME_COLORS.background,
+const COLORS = {
+  bgStart: '#000000',
   bgEnd: '#001F3F',
-  gold: THEME_COLORS.primary,
+  gold: '#FFD700',
   inactive: 'rgba(255, 255, 255, 0.55)',
-  border: THEME_COLORS.glassBorder,
+  border: 'rgba(255, 255, 255, 0.10)',
   ripple: 'rgba(255, 215, 0, 0.28)',
-  glass: THEME_COLORS.glass,
-} as const;
-
-const TAB_SIZES = {
-  height: 72,
-  maxWidth: 430,
-  iconHost: 52,
-  radius: theme.borderRadius.full,
 } as const;
 
 type TabButtonLayout = {
@@ -247,12 +238,11 @@ export function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarP
       testID="telegramTabBar"
     >
       <LinearGradient
-        colors={[TAB_COLORS.bgStart, TAB_COLORS.bgEnd]}
+        colors={[COLORS.bgStart, COLORS.bgEnd]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={styles.bar}
       >
-        <View style={styles.glassOverlay} pointerEvents="none" />
         <View style={styles.row}>
           {state.routes.map((route, index) => {
             const { options } = descriptors[route.key];
@@ -279,7 +269,7 @@ export function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarP
 
             const iconNode = options.tabBarIcon?.({
               focused: isFocused,
-              color: isFocused ? TAB_COLORS.gold : TAB_COLORS.inactive,
+              color: isFocused ? COLORS.gold : COLORS.inactive,
               size: 26,
             });
 
@@ -295,7 +285,7 @@ export function AnimatedTabBar({ state, descriptors, navigation }: BottomTabBarP
                     <View style={styles.iconActive} pointerEvents="none">
                       {React.isValidElement(iconNode)
                         ? React.cloneElement(iconNode, {
-                            color: TAB_COLORS.gold,
+                            color: COLORS.gold,
                           } as Record<string, unknown>)
                         : iconNode}
                     </View>
@@ -318,18 +308,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 16,
-    alignItems: 'center',
+    paddingHorizontal: 14,
   },
   bar: {
-    width: '100%',
-    maxWidth: TAB_SIZES.maxWidth,
-    borderRadius: TAB_SIZES.radius,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: TAB_COLORS.border,
+    borderColor: COLORS.border,
     overflow: 'hidden',
-    height: TAB_SIZES.height,
-    justifyContent: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -345,16 +330,12 @@ const styles = StyleSheet.create({
       },
     }) as any,
   },
-  glassOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.035)',
-  },
   row: {
-    height: TAB_SIZES.height,
+    height: 76,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
   tabButton: {
     flex: 1,
@@ -367,27 +348,24 @@ const styles = StyleSheet.create({
   },
   ripple: {
     position: 'absolute',
-    backgroundColor: TAB_COLORS.ripple,
+    backgroundColor: COLORS.ripple,
   },
   iconHost: {
-    width: TAB_SIZES.iconHost,
-    height: TAB_SIZES.iconHost,
-    borderRadius: TAB_SIZES.iconHost / 2,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: TAB_COLORS.glass,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
   },
   glow: {
     position: 'absolute',
-    width: TAB_SIZES.iconHost,
-    height: TAB_SIZES.iconHost,
-    borderRadius: TAB_SIZES.iconHost / 2,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: 'rgba(255, 215, 0, 0.10)',
     ...Platform.select({
       ios: {
-        shadowColor: TAB_COLORS.gold,
+        shadowColor: COLORS.gold,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.55,
         shadowRadius: 4,
