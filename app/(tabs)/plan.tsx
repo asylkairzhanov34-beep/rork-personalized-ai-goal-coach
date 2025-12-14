@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   title: {
-    fontSize: 24,
+    fontSize: 36,
     fontWeight: 'bold' as const,
     color: '#FFFFFF',
   },
