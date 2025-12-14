@@ -138,7 +138,7 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
     async (updates: Partial<FirstTimeProfile>) => {
       setState((prev) => {
         const merged = {
-          ...prev.profile,
+          ...(prev.profile ?? {}),
           ...updates,
         } as FirstTimeProfile;
 
@@ -146,6 +146,14 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
           const fallback = prev.profile?.birthdate ?? new Date(2000, 0, 1);
           console.warn('[FirstTimeSetupProvider] Invalid birthdate in updateProfile, using fallback');
           merged.birthdate = fallback;
+        }
+
+        if (typeof merged.nickname !== 'string') {
+          merged.nickname = prev.profile?.nickname ?? '';
+        }
+
+        if (typeof merged.isCompleted !== 'boolean') {
+          merged.isCompleted = prev.profile?.isCompleted ?? false;
         }
 
         safeStorageSet(FIRST_TIME_SETUP_KEY, serializeProfile(merged));
@@ -170,8 +178,13 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
 
   const completeSetup = useCallback(async () => {
     setState((prev) => {
+      if (!prev.profile) {
+        console.warn('[FirstTimeSetupProvider] completeSetup called with no profile - ignoring');
+        return prev;
+      }
+
       const completed: FirstTimeProfile = {
-        ...prev.profile!,
+        ...prev.profile,
         isCompleted: true,
       };
 
@@ -194,7 +207,7 @@ export const [FirstTimeSetupProvider, useFirstTimeSetup] = createContextHook(() 
         profile: completed,
       };
     });
-  }, [FIRST_TIME_SETUP_KEY, serializeProfile, user?.id]);
+  }, [FIRST_TIME_SETUP_KEY, serializeProfile, user?.id, user?.email]);
 
   const setStep = useCallback((step: number) => {
     setState((prev) => ({ ...prev, currentStep: step }));

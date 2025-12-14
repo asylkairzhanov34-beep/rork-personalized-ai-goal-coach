@@ -23,10 +23,25 @@ export default function FirstTimeSetupScreen() {
 
   const [localStep, setLocalStep] = useState<number>(initialStep);
   const [selectedProductivityTime, setSelectedProductivityTime] = useState<'morning' | 'afternoon' | 'evening' | undefined>();
+  const [didAutoComplete, setDidAutoComplete] = useState<boolean>(false);
 
   useEffect(() => {
     setLocalStep(initialStep);
   }, [initialStep]);
+
+  useEffect(() => {
+    if (didAutoComplete) {
+      return;
+    }
+
+    if (localStep === 3 && !!profile?.nickname && !!profile?.birthdate && !profile?.isCompleted) {
+      console.log('[FirstTimeSetupRoute] Auto-completing setup on welcome screen');
+      setDidAutoComplete(true);
+      completeSetup().catch((e) => {
+        console.error('[FirstTimeSetupRoute] Auto-complete failed:', e);
+      });
+    }
+  }, [completeSetup, didAutoComplete, localStep, profile?.birthdate, profile?.isCompleted, profile?.nickname]);
 
   if (authLoading || setupLoading) {
     return null;
