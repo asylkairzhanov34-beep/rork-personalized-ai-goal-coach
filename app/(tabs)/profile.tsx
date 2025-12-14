@@ -16,7 +16,7 @@ import { useSubscription } from '@/hooks/use-subscription-store';
 
 export default function ProfileScreen() {
   const store = useGoalStore();
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const { profile: setupProfile, updateProfile: updateSetupProfile } = useFirstTimeSetup();
   const { isPremium } = useSubscription();
   const [isEditingNickname, setIsEditingNickname] = useState(false);
@@ -126,13 +126,33 @@ export default function ProfileScreen() {
           style: 'destructive', 
           onPress: async () => {
             try {
-              // Call backend deletion if implemented
-              // await trpcClient.auth.deleteAccount.mutate();
-              await logout();
+              console.log('[Profile] Starting account deletion...');
+              
+              // Reset goal data first
+              if (resetGoal) {
+                try {
+                  await resetGoal();
+                  console.log('[Profile] Goal data reset');
+                } catch (e) {
+                  console.log('[Profile] No goal to reset or error:', e);
+                }
+              }
+              
+              // Delete Firebase account
+              const deleted = await deleteAccount();
+              console.log('[Profile] Account deletion result:', deleted);
+              
+              if (!deleted) {
+                // If Firebase deletion failed, still logout
+                await logout();
+              }
+              
               router.replace('/auth');
-              Alert.alert('Account Deleted');
+              Alert.alert('Success', 'Account deleted');
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete account');
+              console.error('[Profile] Delete account error:', error);
+              const errorMessage = error instanceof Error ? error.message : 'Failed to delete account';
+              Alert.alert('Error', errorMessage);
             }
           }
         }
