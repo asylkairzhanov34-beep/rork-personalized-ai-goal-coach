@@ -192,7 +192,7 @@ export default function SettingsScreen() {
   };
 
   const handlePrivacyPolicy = () => {
-    Linking.openURL('https://www.notion.so/PRIVACY-POLICY-AND-COOKIES-2b44e106d5d0807aaff8e5765d4b8539?source=copy_link');
+    Linking.openURL('https://goalcoach.app/privacy');
   };
 
   const handleTermsOfService = () => {

@@ -48,20 +48,12 @@ export function initializeFirebase(): { app: FirebaseApp; auth: Auth; db: Firest
   if (getApps().length === 0) {
     console.log('[Firebase] Creating new app instance');
     app = initializeApp(firebaseConfig);
-    
-    // Initialize auth - default persistence works for all platforms
-    console.log('[Firebase] Using default auth configuration');
-    auth = getAuth(app);
   } else {
     console.log('[Firebase] Using existing app instance');
     app = getApps()[0];
-    try {
-      auth = getAuth(app);
-    } catch (e) {
-      console.log('[Firebase] Error getting auth:', e);
-      auth = getAuth(app);
-    }
   }
+  
+  auth = getAuth(app);
   db = getFirestore(app);
   console.log('[Firebase] Initialized successfully (Auth + Firestore)');
   
