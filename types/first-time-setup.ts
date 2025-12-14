@@ -7,6 +7,10 @@ export interface FirstTimeProfile {
   isCompleted: boolean;
 }
 
+export type FirstTimeProfileSerialized = Omit<FirstTimeProfile, 'birthdate'> & {
+  birthdate: string;
+};
+
 export interface FirstTimeSetupState {
   profile: FirstTimeProfile | null;
   currentStep: number;
