@@ -15,9 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 const COLORS = {
-  // Match the app “block” surfaces (neutral premium gray, not blue)
-  bgStart: '#0A0A0A',
-  bgEnd: '#1A1A1A',
+  bgStart: '#000000',
+  bgEnd: '#001F3F',
   gold: '#FFD700',
   inactive: 'rgba(255, 255, 255, 0.55)',
   border: 'rgba(255, 255, 255, 0.10)',
