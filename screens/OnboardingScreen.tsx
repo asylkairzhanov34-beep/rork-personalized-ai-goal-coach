@@ -112,9 +112,9 @@ export function OnboardingScreen() {
                   <View style={styles.iconContainer}>
                     <Sparkles size={64} color={theme.colors.primary} />
                   </View>
-                  <Text style={styles.title}>What's your name?</Text>
+                  <Text style={styles.title}>What’s your name?</Text>
                   <Text style={styles.description}>
-                    Let's personalize your experience
+                    Let’s personalize your experience
                   </Text>
                   <TextInput
                     style={styles.input}

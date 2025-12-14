@@ -24,30 +24,32 @@ const getStorageKeys = (userId: string) => ({
   POMODORO_SESSIONS: `pomodoro_sessions_${userId}`,
 });
 
+const DEFAULT_PROFILE: UserProfile = {
+  name: '',
+  onboardingCompleted: false,
+  totalGoalsCompleted: 0,
+  currentStreak: 0,
+  bestStreak: 0,
+  joinedAt: new Date().toISOString(),
+  preferences: {
+    motivationalQuotes: true,
+  },
+};
+
 export const [GoalProvider, useGoalStore] = createContextHook(() => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [currentGoal, setCurrentGoal] = useState<Goal | null>(null);
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>([]);
   const [pomodoroSessions, setPomodoroSessions] = useState<PomodoroSession[]>([]);
-  const [profile, setProfile] = useState<UserProfile>({
-    name: '',
-    onboardingCompleted: false,
-    totalGoalsCompleted: 0,
-    currentStreak: 0,
-    bestStreak: 0,
-    joinedAt: new Date().toISOString(),
-    preferences: {
-      motivationalQuotes: true,
-    },
-  });
+  const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
 
   const STORAGE_KEYS = getStorageKeys(user?.id || 'default');
 
   const profileQuery = useQuery({
-    queryKey: ['profile', user?.id],
+    queryKey: ['profile', user?.id, STORAGE_KEYS.PROFILE],
     queryFn: async () => {
-      if (!user?.id) return profile;
+      if (!user?.id) return DEFAULT_PROFILE;
       
       console.log('[GoalStore] Loading profile for user:', user.id);
       const firebaseProfile = await getUserFullProfile(user.id);
@@ -59,7 +61,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       }
       
       console.log('[GoalStore] No Firebase profile, checking local storage');
-      return await safeStorageGet(STORAGE_KEYS.PROFILE, profile);
+      return await safeStorageGet(STORAGE_KEYS.PROFILE, DEFAULT_PROFILE);
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -67,7 +69,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   });
 
   const goalsQuery = useQuery({
-    queryKey: ['goals', user?.id],
+    queryKey: ['goals', user?.id, STORAGE_KEYS.GOALS],
     queryFn: async () => {
       if (!user?.id) return [];
       
@@ -89,7 +91,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   });
 
   const tasksQuery = useQuery({
-    queryKey: ['tasks', user?.id],
+    queryKey: ['tasks', user?.id, STORAGE_KEYS.TASKS],
     queryFn: async () => {
       if (!user?.id) return [];
       
@@ -111,7 +113,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   });
 
   const pomodoroQuery = useQuery({
-    queryKey: ['pomodoro', user?.id],
+    queryKey: ['pomodoro', user?.id, STORAGE_KEYS.POMODORO_SESSIONS],
     queryFn: async () => {
       if (!user?.id) return [];
       

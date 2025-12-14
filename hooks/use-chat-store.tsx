@@ -3,12 +3,12 @@ import { useRorkAgent, createRorkTool } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { ChatMessage } from '@/types/chat';
-import { useMemo, useEffect, useCallback } from 'react';
+import { useMemo, useEffect, useCallback, useState } from 'react';
 
 export const [ChatProvider, useChat] = createContextHook(() => {
   const goalStore = useGoalStore();
 
-  const { messages, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
+  const { messages, error, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
       addTask: createRorkTool({
         description: 'Добавить новую задачу в план пользователя. Используй когда пользователь просит добавить задачу или создать что-то в плане.',
@@ -127,8 +127,19 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     },
   });
 
+  const [isSending, setIsSending] = useState<boolean>(false);
+
   const sendMessage = useCallback(async (text: string) => {
-    await rorkSendMessage(text);
+    setIsSending(true);
+    try {
+      console.log('[ChatStore] Sending message to agent:', text);
+      await rorkSendMessage(text);
+    } catch (e) {
+      console.error('[ChatStore] sendMessage failed:', e);
+      throw e;
+    } finally {
+      setIsSending(false);
+    }
   }, [rorkSendMessage]);
 
   const clearChat = useCallback(() => {
@@ -175,19 +186,21 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     }
   }, [uiMessages.length, goalStore.isReady]);
 
+  const errorText = useMemo(() => {
+    if (!error) return null;
+    const message = typeof error === 'string' ? error : (error as any)?.message;
+    return message ? String(message) : 'Unknown chat error';
+  }, [error]);
+
   return useMemo(() => ({
     messages: uiMessages,
-    isLoading: false, // useRorkAgent doesn't return loading state for whole chat easily, or I missed it. Ah, I removed it from destructuring.
-    // Wait, useRorkAgent DOES return isLoading? The previous error said `isLoading` does not exist.
-    // The docs example: `const { messages, error, sendMessage, addToolResult, setMessages } = useRorkAgent({...})`
-    // It does NOT show isLoading. So I should track it myself or assume it's fast?
-    // Usually SDKs provide `isLoading` or `status`.
-    // I'll assume `status` might be there or I can wrap `sendMessage` to track loading.
+    isLoading: isSending,
+    error: errorText,
     sendMessage,
     clearChat,
     userContext: {
         profile: goalStore.profile,
         currentGoal: goalStore.currentGoal,
     }
-  }), [uiMessages, sendMessage, clearChat, goalStore.profile, goalStore.currentGoal]);
+  }), [uiMessages, isSending, errorText, sendMessage, clearChat, goalStore.profile, goalStore.currentGoal]);
 });

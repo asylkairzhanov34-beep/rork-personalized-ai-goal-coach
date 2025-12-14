@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Target, Zap, Star, Wind, MessageCircle, CheckCircle2, Timer, Sparkles, Calendar } from 'lucide-react-native';
+import { Target, Zap, Star, Wind, MessageCircle, CheckCircle2, Timer, Sparkles, Calendar, Plus } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { GradientBackground } from '@/components/GradientBackground';
 
@@ -188,27 +188,60 @@ export default function TodayScreen() {
 
           <View style={styles.quickActionsSection}>
             <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.quickActionsContainer}>
-              <TouchableOpacity 
+            <View style={styles.quickActionsGrid}>
+              <TouchableOpacity
                 style={styles.quickActionCard}
                 onPress={() => router.push('/breathing')}
+                testID="quick-action-breathing"
               >
                 <Wind size={24} color={theme.colors.primary} />
                 <Text style={styles.quickActionLabel}>Breathing</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.quickActionCard}
                 onPress={() => router.push('/chat')}
+                testID="quick-action-chat"
               >
                 <MessageCircle size={24} color={theme.colors.primary} />
                 <Text style={styles.quickActionLabel}>AI Assistant</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.quickActionCard}
                 onPress={() => router.push('/manifestation')}
+                testID="quick-action-manifestation"
               >
                 <Sparkles size={24} color={theme.colors.primary} />
                 <Text style={styles.quickActionLabel}>Manifest</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.quickActionCard, !!currentGoal && styles.quickActionCardDisabled]}
+                disabled={!!currentGoal}
+                onPress={() => {
+                  if (currentGoal) {
+                    Alert.alert(
+                      'Goal already active',
+                      'To create a new goal, reset the current goal first.',
+                      [{ text: 'OK' }]
+                    );
+                    return;
+                  }
+                  router.push('/goal-creation');
+                }}
+                testID="quick-action-add-goal"
+              >
+                <View style={styles.addGoalIconWrap}>
+                  <Target size={24} color={theme.colors.primary} />
+                  <View style={styles.addGoalPlusBadge}>
+                    <Plus size={12} color={theme.colors.background} />
+                  </View>
+                </View>
+                <Text style={styles.quickActionLabel}>Add Goal</Text>
+                {!!currentGoal && (
+                  <Text style={styles.quickActionHint}>Current goal active</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -348,26 +381,56 @@ const styles = StyleSheet.create({
   quickActionsSection: {
     marginBottom: theme.spacing.xl,
   },
-  quickActionsContainer: {
+  quickActionsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
+    rowGap: theme.spacing.md,
   },
   quickActionCard: {
-    flex: 1,
+    width: '48%',
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: theme.colors.border,
-    marginHorizontal: theme.spacing.xs,
     ...theme.shadows.medium,
+  },
+  quickActionCardDisabled: {
+    opacity: 0.55,
   },
   quickActionLabel: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text,
     marginTop: theme.spacing.sm,
     textAlign: 'center',
+  },
+  quickActionHint: {
+    marginTop: 4,
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  addGoalIconWrap: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addGoalPlusBadge: {
+    position: 'absolute',
+    right: -6,
+    top: -6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.surface,
   },
   section: {
     marginBottom: theme.spacing.xl,

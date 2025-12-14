@@ -93,7 +93,7 @@ export default function Step3Biorhythm({ onNext, onSkip, initialTime }: Step3Bio
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         <View style={styles.header}>
           <Text style={styles.title}>When is your peak energy?</Text>
-          <Text style={styles.subtitle}>We'll customize notifications for your rhythm</Text>
+          <Text style={styles.subtitle}>We’ll customize notifications for your rhythm</Text>
         </View>
 
         <View style={styles.timesContainer}>

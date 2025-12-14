@@ -90,7 +90,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, showAvatar }) =>
 
 
 const ChatScreen: React.FC = () => {
-  const { messages, sendMessage, clearChat, isLoading } = useChat();
+  const { messages, sendMessage, clearChat, isLoading, error } = useChat();
   const params = useLocalSearchParams<{ initialMessage?: string }>();
   const router = useRouter();
   const [inputText, setInputText] = useState<string>(params.initialMessage || '');
@@ -120,17 +120,18 @@ const ChatScreen: React.FC = () => {
 
   const handleSend = async () => {
     if (inputText.trim()) {
-      // Check if AI chat is available
       if (!featureAccess.aiChatAssistant) {
         setShowPaywall(true);
         return;
       }
-      
+
       const text = inputText.trim();
       setInputText('');
       setIsSending(true);
       try {
         await sendMessage(text);
+      } catch (e) {
+        console.error('[ChatScreen] sendMessage failed:', e);
       } finally {
         setIsSending(false);
       }
@@ -249,6 +250,11 @@ const ChatScreen: React.FC = () => {
       </SafeAreaView>
 
       <View style={styles.chatContainer}>
+        {!!error && (
+          <View style={styles.errorBanner} testID="chat-error-banner">
+            <Text style={styles.errorBannerText}>{error}</Text>
+          </View>
+        )}
         <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
@@ -264,9 +270,9 @@ const ChatScreen: React.FC = () => {
               <View style={styles.emptyIcon}>
                 <Bot size={48} color={theme.colors.primary} />
               </View>
-              <Text style={styles.emptyTitle}>Hi! I'm GoalForge</Text>
+              <Text style={styles.emptyTitle}>Hi! I’m GoalForge</Text>
               <Text style={styles.emptyText}>
-                I'll help analyze your progress and give you advice.{"\n"}
+                I’ll help analyze your progress and give you advice.{"\n"}
                 Ask me about productivity or your goals analysis.
               </Text>
               
@@ -427,6 +433,23 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
+  },
+  errorBanner: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 59, 48, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.25)',
+  },
+  errorBannerText: {
+    color: 'rgba(255, 59, 48, 0.95)',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
