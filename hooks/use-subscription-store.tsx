@@ -544,7 +544,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, [status, trialState.isActive]);
 
   const getFeatureAccess = useCallback(() => {
-    const hasAccess = canAccessPremiumFeatures();
+    const hasPremiumOrTrial = canAccessPremiumFeatures();
+    const hasPremiumOnly = status === 'premium';
+
     return {
       addTasks: true,
       oneDayPlan: true,
@@ -552,21 +554,25 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       basicGamification: true,
       oneDayHistory: true,
       basicThemes: true,
-      aiAdviceLimit: hasAccess ? Infinity : 3,
-      smartTasksLimit: hasAccess ? Infinity : 1,
-      dailyAICoach: hasAccess,
-      weeklyMonthlyPlan: hasAccess,
-      weeklyAIReport: hasAccess,
-      unlimitedAIAdvice: hasAccess,
-      unlimitedSmartTasks: hasAccess,
-      extendedHistory: hasAccess,
-      levelsAndRewards: hasAccess,
-      aiChatAssistant: hasAccess,
-      prioritySpeed: hasAccess,
-      smartPomodoroAnalytics: hasAccess,
-      allFutureFeatures: hasAccess,
+
+      // AI ассистент — только после покупки Premium
+      aiAdviceLimit: hasPremiumOnly ? Infinity : 0,
+      aiChatAssistant: hasPremiumOnly,
+      dailyAICoach: hasPremiumOnly,
+      weeklyAIReport: hasPremiumOnly,
+      unlimitedAIAdvice: hasPremiumOnly,
+
+      // Остальные Premium/Trial функции
+      smartTasksLimit: hasPremiumOrTrial ? Infinity : 1,
+      weeklyMonthlyPlan: hasPremiumOrTrial,
+      unlimitedSmartTasks: hasPremiumOrTrial,
+      extendedHistory: hasPremiumOrTrial,
+      levelsAndRewards: hasPremiumOrTrial,
+      prioritySpeed: hasPremiumOrTrial,
+      smartPomodoroAnalytics: hasPremiumOrTrial,
+      allFutureFeatures: hasPremiumOrTrial,
     };
-  }, [canAccessPremiumFeatures]);
+  }, [canAccessPremiumFeatures, status]);
 
   const markPaywallSeen = useCallback(async () => {
     setHasSeenPaywall(true);
