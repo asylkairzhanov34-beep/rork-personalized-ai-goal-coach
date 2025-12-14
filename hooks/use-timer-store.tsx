@@ -146,6 +146,12 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
       return null;
     }
 
+    // Don't schedule notification for very short timers
+    if (seconds < 5) {
+      console.log('[TimerStore] Timer too short, skipping notification');
+      return null;
+    }
+
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
       console.log('[TimerStore] Cancelled previous notifications');
@@ -154,13 +160,11 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
         try {
           await Notifications.setNotificationChannelAsync('timer', {
             name: 'Timer',
-            importance: Notifications.AndroidImportance.MAX,
+            importance: Notifications.AndroidImportance.HIGH,
             vibrationPattern: [0, 250, 250, 250],
             sound: 'default',
             enableLights: true,
             enableVibrate: true,
-            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-            bypassDnd: true,
           });
         } catch {
           console.log('[TimerStore] Channel already exists');
@@ -172,14 +176,12 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
           title,
           body,
           sound: 'default',
-          priority: 'max',
-          badge: 1,
           ...(Platform.OS === 'android' && {
             channelId: 'timer',
           }),
         },
         trigger: {
-          seconds: Math.max(1, seconds),
+          seconds: seconds,
         },
       });
 
@@ -319,6 +321,7 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
 
   const backgroundDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInBackground = useRef<boolean>(false);
+  const backgroundEntryTime = useRef<number>(0);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -327,45 +330,50 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
       const previousAppState = appState.current;
       console.log('[TimerStore] AppState:', previousAppState, '->', nextAppState);
       
-      // Only schedule notification when app goes to actual background (not just inactive)
       if (nextAppState === 'background' && !isInBackground.current) {
-        // Clear any pending delay timer
         if (backgroundDelayTimer.current) {
           clearTimeout(backgroundDelayTimer.current);
           backgroundDelayTimer.current = null;
         }
         
         isInBackground.current = true;
+        backgroundEntryTime.current = Date.now();
         console.log('[TimerStore] Going to background');
         console.log('[TimerStore] Timer state - running:', state.isRunning, 'paused:', state.isPaused, 'time:', state.currentTime);
         
         if (state.isRunning && !state.isPaused && state.currentTime > 0) {
-          console.log('[TimerStore] Timer is active, saving state and scheduling notification');
+          console.log('[TimerStore] Timer is active, saving state');
           await saveBackgroundState(state);
           
-          const modeText = state.mode === 'focus' ? 'Фокус' : state.mode === 'shortBreak' ? 'Короткий перерыв' : 'Длинный перерыв';
-          const notifId = await scheduleBackgroundNotification(
-            `${modeText} завершен! 🎯`,
-            state.mode === 'focus' 
-              ? 'Отличная работа! Время для перерыва.'
-              : 'Перерыв окончен. Готовы продолжить?',
-            state.currentTime
-          );
-          
-          if (notifId) {
-            backgroundNotificationId.current = notifId;
+          // Only schedule notification if timer will complete in more than 5 seconds
+          // This prevents notifications from showing when user briefly exits the app
+          if (state.currentTime > 5) {
+            const modeText = state.mode === 'focus' ? 'Focus' : state.mode === 'shortBreak' ? 'Short Break' : 'Long Break';
+            const notifId = await scheduleBackgroundNotification(
+              `${modeText} Complete! 🎯`,
+              state.mode === 'focus' 
+                ? 'Great work! Time for a break.'
+                : 'Break is over. Ready to continue?',
+              state.currentTime
+            );
+            
+            if (notifId) {
+              backgroundNotificationId.current = notifId;
+            }
+          } else {
+            console.log('[TimerStore] Timer too short, skipping notification');
           }
         } else {
           console.log('[TimerStore] Timer not active, no notification scheduled');
         }
       } else if (nextAppState === 'inactive' && previousAppState === 'active') {
-        // Ignore inactive state (notification center, control center, etc.)
         console.log('[TimerStore] App became inactive (ignoring - waiting for background)');
       } else if (nextAppState === 'active' && isInBackground.current) {
+        const timeInBackground = Date.now() - backgroundEntryTime.current;
         isInBackground.current = false;
-        console.log('[TimerStore] Returning to foreground from background');
-        console.log('[TimerStore] Cancelling background notifications');
+        console.log('[TimerStore] Returning to foreground from background after', timeInBackground, 'ms');
         
+        // Always cancel background notifications when returning
         await cancelBackgroundNotification();
         
         const bgState = await getBackgroundState();
@@ -392,7 +400,6 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
           console.log('[TimerStore] No active background timer to restore');
         }
       } else if (nextAppState === 'active' && previousAppState === 'inactive') {
-        // Returning from inactive (notification center) - just cancel any pending timers
         console.log('[TimerStore] Returning from inactive state (no restoration needed)');
         if (backgroundDelayTimer.current) {
           clearTimeout(backgroundDelayTimer.current);
