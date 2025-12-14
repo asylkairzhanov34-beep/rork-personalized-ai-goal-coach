@@ -533,9 +533,16 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       return taskDate >= monthStart && taskDate <= monthEnd;
     });
 
+    const completedMonthTasks = monthTasks.filter((t) => t.completed);
+    const uniqueDaysWithCompletedTasks = new Set(
+      completedMonthTasks.map((t) => {
+        const d = new Date(t.date);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      })
+    ).size;
+
     const periodTarget = 30;
-    const completedRaw = monthTasks.filter((t) => t.completed).length;
-    const completed = Math.min(periodTarget, completedRaw);
+    const completed = Math.min(periodTarget, uniqueDaysWithCompletedTasks);
     const total = periodTarget;
     const percentage = Math.round((completed / total) * 100);
 
@@ -543,7 +550,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       period,
       monthStart: monthStart.toISOString(),
       monthEnd: monthEnd.toISOString(),
-      completedRaw,
+      uniqueDaysWithCompletedTasks,
       completed,
       total,
       percentage,
