@@ -1,11 +1,28 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Clock, Plus, Check, X } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  CalendarDays,
+  Check,
+  Clock,
+  Plus,
+  Sparkles,
+  X,
+} from 'lucide-react-native';
+import PremiumGate from '@/components/PremiumGate';
+import { theme } from '@/constants/theme';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { DailyTask } from '@/types/goal';
-import PremiumGate from '@/components/PremiumGate';
 
 interface MonthDay {
   date: Date;
@@ -23,46 +40,72 @@ interface DayTasksModalProps {
   onAddTask: (task: Omit<DailyTask, 'id' | 'goalId' | 'completed' | 'completedAt'>) => void;
 }
 
-const MONTHS = [
-  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-];
+function formatMonthTitle(date: Date) {
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(date);
+}
 
+function formatDayLabel(date: Date) {
+  const label = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(date);
+  return label;
+}
 
+function formatModalTitle(date: Date) {
+  const label = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' }).format(date);
+  return `Tasks for ${label}`;
+}
+
+function priorityLabel(priority: DailyTask['priority']) {
+  if (priority === 'high') return 'High';
+  if (priority === 'medium') return 'Medium';
+  return 'Low';
+}
+
+function getProgressColor(tasks: DailyTask[]) {
+  if (tasks.length === 0) return theme.colors.textMuted;
+
+  const completedTasks = tasks.filter((t) => t.completed).length;
+  const completionRate = completedTasks / tasks.length;
+
+  if (completionRate === 1) return theme.colors.success;
+  if (completionRate > 0) return theme.colors.primary;
+  return theme.colors.error;
+}
 
 function DayTasksModal({ visible, day, onClose, onToggleTask, onAddTask }: DayTasksModalProps) {
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState<string>('');
+  const [newTaskDescription, setNewTaskDescription] = useState<string>('');
+  const [showAddForm, setShowAddForm] = useState<boolean>(false);
 
-  const handleAddTask = () => {
+  const handleAddTask = useCallback(() => {
     if (!newTaskTitle.trim() || !day) return;
-    
+
     const newTask: Omit<DailyTask, 'id' | 'goalId' | 'completed' | 'completedAt'> = {
       day: day.dayNumber,
       date: day.date.toISOString(),
       title: newTaskTitle.trim(),
       description: newTaskDescription.trim(),
-      duration: '30 мин',
+      duration: '30 min',
       priority: 'medium',
       tips: [],
       difficulty: 'medium',
       estimatedTime: 30,
     };
-    
+
     onAddTask(newTask);
     setNewTaskTitle('');
     setNewTaskDescription('');
     setShowAddForm(false);
-  };
+  }, [day, newTaskDescription, newTaskTitle, onAddTask]);
 
-  const formatDate = (date: Date) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      day: 'numeric', 
-      month: 'long' 
-    };
-    return `Задачи на ${date.toLocaleDateString('ru-RU', options)}`;
-  };
+  const headerSubtitle = useMemo(() => {
+    if (!day) return '';
+    if (day.tasks.length === 0) return 'No tasks yet';
+    return `${day.tasks.filter((t) => t.completed).length}/${day.tasks.length} completed`;
+  }, [day]);
 
   if (!day) return null;
 
@@ -73,15 +116,22 @@ function DayTasksModal({ visible, day, onClose, onToggleTask, onAddTask }: DayTa
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={modalStyles.container}>
+      <View style={modalStyles.container} testID="monthOverview.dayModal">
         <View style={modalStyles.header}>
-          <TouchableOpacity onPress={onClose} style={modalStyles.closeButton}>
-            <X size={24} color="#FFFFFF" />
+          <TouchableOpacity
+            onPress={onClose}
+            style={modalStyles.closeButton}
+            testID="monthOverview.dayModal.close"
+          >
+            <X size={22} color={theme.colors.text} />
           </TouchableOpacity>
+
           <View style={modalStyles.headerContent}>
-            <Text style={modalStyles.title}>{formatDate(day.date)}</Text>
-            <Text style={modalStyles.subtitle}>
-              {day.tasks.length === 0 ? 'Нет задач' : `${day.tasks.length} ${day.tasks.length === 1 ? 'задача' : day.tasks.length < 5 ? 'задачи' : 'задач'}`}
+            <Text style={modalStyles.title} testID="monthOverview.dayModal.title">
+              {formatModalTitle(day.date)}
+            </Text>
+            <Text style={modalStyles.subtitle} testID="monthOverview.dayModal.subtitle">
+              {headerSubtitle}
             </Text>
           </View>
         </View>
@@ -92,37 +142,42 @@ function DayTasksModal({ visible, day, onClose, onToggleTask, onAddTask }: DayTa
               key={task.id}
               style={modalStyles.taskItem}
               onPress={() => onToggleTask(task.id)}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
+              testID={`monthOverview.task.${task.id}`}
             >
               <View style={modalStyles.taskContent}>
-                <View style={[
-                  modalStyles.checkbox,
-                  task.completed && modalStyles.checkboxCompleted
-                ]}>
-                  {task.completed && <Check size={16} color="#000000" />}
+                <View
+                  style={[modalStyles.checkbox, task.completed && modalStyles.checkboxCompleted]}
+                >
+                  {task.completed && <Check size={14} color={theme.colors.surfaceDark} />}
                 </View>
-                
+
                 <View style={modalStyles.taskInfo}>
-                  <Text style={[
-                    modalStyles.taskTitle,
-                    task.completed && modalStyles.taskTitleCompleted
-                  ]}>
+                  <Text
+                    style={[modalStyles.taskTitle, task.completed && modalStyles.taskTitleCompleted]}
+                  >
                     {task.title}
                   </Text>
-                  {task.description && (
-                    <Text style={modalStyles.taskDescription}>
-                      {task.description}
-                    </Text>
+
+                  {!!task.description && (
+                    <Text style={modalStyles.taskDescription}>{task.description}</Text>
                   )}
+
                   <View style={modalStyles.taskMeta}>
-                    <Text style={modalStyles.taskDuration}>{task.duration}</Text>
-                    <View style={[
-                      modalStyles.priorityBadge,
-                      modalStyles[`priority${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}` as keyof typeof modalStyles]
-                    ]}>
-                      <Text style={modalStyles.priorityText}>
-                        {task.priority === 'high' ? 'Высокий' : task.priority === 'medium' ? 'Средний' : 'Низкий'}
-                      </Text>
+                    <View style={modalStyles.metaPill}>
+                      <Clock size={12} color={theme.colors.textSecondary} />
+                      <Text style={modalStyles.metaText}>{task.duration}</Text>
+                    </View>
+
+                    <View
+                      style={[
+                        modalStyles.priorityBadge,
+                        modalStyles[
+                          `priority${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}` as keyof typeof modalStyles
+                        ],
+                      ]}
+                    >
+                      <Text style={modalStyles.priorityText}>{priorityLabel(task.priority)}</Text>
                     </View>
                   </View>
                 </View>
@@ -130,25 +185,40 @@ function DayTasksModal({ visible, day, onClose, onToggleTask, onAddTask }: DayTa
             </TouchableOpacity>
           ))}
 
+          {day.tasks.length === 0 && !showAddForm && (
+            <View style={modalStyles.emptyState} testID="monthOverview.dayModal.empty">
+              <View style={modalStyles.emptyIcon}>
+                <Sparkles size={18} color={theme.colors.primary} />
+              </View>
+              <Text style={modalStyles.emptyTitle}>Plan a lighter day</Text>
+              <Text style={modalStyles.emptyText}>
+                Add one small task and build momentum.
+              </Text>
+            </View>
+          )}
+
           {showAddForm && (
-            <View style={modalStyles.addForm}>
+            <View style={modalStyles.addForm} testID="monthOverview.dayModal.addForm">
               <TextInput
                 style={modalStyles.input}
-                placeholder="Название задачи"
-                placeholderTextColor="rgba(255,255,255,0.5)"
+                placeholder="Task title"
+                placeholderTextColor="rgba(255,255,255,0.45)"
                 value={newTaskTitle}
                 onChangeText={setNewTaskTitle}
                 autoFocus
+                testID="monthOverview.dayModal.input.title"
               />
               <TextInput
                 style={[modalStyles.input, modalStyles.textArea]}
-                placeholder="Описание (необязательно)"
-                placeholderTextColor="rgba(255,255,255,0.5)"
+                placeholder="Description (optional)"
+                placeholderTextColor="rgba(255,255,255,0.45)"
                 value={newTaskDescription}
                 onChangeText={setNewTaskDescription}
                 multiline
                 numberOfLines={3}
+                testID="monthOverview.dayModal.input.description"
               />
+
               <View style={modalStyles.formButtons}>
                 <TouchableOpacity
                   style={modalStyles.cancelButton}
@@ -157,18 +227,21 @@ function DayTasksModal({ visible, day, onClose, onToggleTask, onAddTask }: DayTa
                     setNewTaskTitle('');
                     setNewTaskDescription('');
                   }}
+                  testID="monthOverview.dayModal.cancel"
                 >
-                  <Text style={modalStyles.cancelButtonText}>Отмена</Text>
+                  <Text style={modalStyles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
                   style={[
                     modalStyles.saveButton,
-                    !newTaskTitle.trim() && modalStyles.saveButtonDisabled
+                    !newTaskTitle.trim() && modalStyles.saveButtonDisabled,
                   ]}
                   onPress={handleAddTask}
                   disabled={!newTaskTitle.trim()}
+                  testID="monthOverview.dayModal.add"
                 >
-                  <Text style={modalStyles.saveButtonText}>Добавить</Text>
+                  <Text style={modalStyles.saveButtonText}>Add task</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -179,9 +252,10 @@ function DayTasksModal({ visible, day, onClose, onToggleTask, onAddTask }: DayTa
           <TouchableOpacity
             style={modalStyles.addButton}
             onPress={() => setShowAddForm(true)}
+            testID="monthOverview.dayModal.showAdd"
           >
-            <Plus size={20} color="#000000" />
-            <Text style={modalStyles.addButtonText}>Добавить задачу</Text>
+            <Plus size={18} color={theme.colors.surfaceDark} />
+            <Text style={modalStyles.addButtonText}>Add a task</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -195,134 +269,8 @@ export default function MonthOverviewScreen() {
   const router = useRouter();
 
   const [selectedDay, setSelectedDay] = useState<MonthDay | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
 
-  // Генерируем 30 дней вперёд от сегодняшнего дня
-  const monthDays = useMemo(() => {
-    const today = new Date();
-    const days: MonthDay[] = [];
-    
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      const dateStr = date.toDateString();
-      
-      // Получаем реальные задачи для этого дня
-      const tasksForDay = store?.dailyTasks?.filter(task => 
-        new Date(task.date).toDateString() === dateStr
-      ) || [];
-      
-      days.push({
-        date,
-        dayNumber: date.getDate(),
-        tasks: tasksForDay,
-        isToday: i === 0,
-        isPast: false, // Все дни в будущем или сегодня
-      });
-    }
-    
-    return days;
-  }, [store?.dailyTasks]);
-
-  const getProgressColor = (tasks: DailyTask[]) => {
-    if (tasks.length === 0) return '#5A5A5A'; // Тёмно-серый - нет задач
-    
-    const completedTasks = tasks.filter(task => task.completed).length;
-    const completionRate = completedTasks / tasks.length;
-    
-    if (completionRate === 1) return '#4CAF50'; // Зелёный - все выполнены
-    if (completionRate > 0) return '#FFD600'; // Жёлтый - есть невыполненные
-    return '#FF3B30'; // Красный - просроченные/ничего не выполнено
-  };
-
-  const handleDayPress = (day: MonthDay) => {
-    setSelectedDay(day);
-    setModalVisible(true);
-  };
-
-  const handleToggleTask = (taskId: string) => {
-    store?.toggleTaskCompletion(taskId);
-  };
-
-  const handleAddTask = (taskData: Omit<DailyTask, 'id' | 'goalId' | 'completed' | 'completedAt'>) => {
-    store?.addTask(taskData);
-  };
-
-
-
-  const renderDaysList = () => {
-    return (
-      <View style={styles.daysListContainer}>
-        {monthDays.map((day, index) => {
-          const progressColor = getProgressColor(day.tasks);
-          const completedTasks = day.tasks.filter(task => task.completed).length;
-          const totalTasks = day.tasks.length;
-          
-          const formatDayDate = (date: Date) => {
-            const options: Intl.DateTimeFormatOptions = { 
-              weekday: 'long',
-              day: 'numeric', 
-              month: 'long' 
-            };
-            return date.toLocaleDateString('ru-RU', options);
-          };
-          
-          return (
-            <TouchableOpacity 
-              key={day.date.toISOString()}
-              style={[
-                styles.dayListItem,
-                day.isToday && styles.todayListItem
-              ]}
-              activeOpacity={0.7}
-              onPress={() => handleDayPress(day)}
-            >
-              <View style={styles.dayListContent}>
-                <View style={styles.dayListLeft}>
-                  <View style={[
-                    styles.dayIndicator,
-                    { backgroundColor: progressColor }
-                  ]} />
-                  <View style={styles.dayInfo}>
-                    <Text style={[
-                      styles.dayListDate,
-                      day.isToday && styles.todayListDate
-                    ]}>
-                      {formatDayDate(day.date)}
-                    </Text>
-                    <Text style={styles.dayListTasks}>
-                      {totalTasks === 0 ? 'Нет задач' : `${completedTasks}/${totalTasks} выполнено`}
-                    </Text>
-                  </View>
-                </View>
-                
-                <View style={styles.dayListRight}>
-                  {totalTasks > 0 && (
-                    <View style={styles.progressBar}>
-                      <View 
-                        style={[
-                          styles.progressFill,
-                          { 
-                            width: `${(completedTasks / totalTasks) * 100}%`,
-                            backgroundColor: progressColor
-                          }
-                        ]} 
-                      />
-                    </View>
-                  )}
-                  <Text style={styles.dayListNumber}>{day.dayNumber}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    );
-  };
-
-  const currentMonth = MONTHS[new Date().getMonth()];
-  const currentYear = new Date().getFullYear();
-  const premiumDescription = 'Получите полный обзор ваших задач на месяц вперёд';
   const safeAreaSpacing = useMemo(
     () => ({
       paddingTop: insets.top,
@@ -331,81 +279,256 @@ export default function MonthOverviewScreen() {
     [insets.bottom, insets.top]
   );
 
+  const monthWindowStart = useMemo(() => new Date(), []);
+
+  const monthDays = useMemo(() => {
+    const today = new Date();
+    const days: MonthDay[] = [];
+
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dateStr = date.toDateString();
+
+      const tasksForDay =
+        store?.dailyTasks?.filter((task) => new Date(task.date).toDateString() === dateStr) || [];
+
+      days.push({
+        date,
+        dayNumber: date.getDate(),
+        tasks: tasksForDay,
+        isToday: i === 0,
+        isPast: false,
+      });
+    }
+
+    return days;
+  }, [store?.dailyTasks]);
+
+  const monthStats = useMemo(() => {
+    const tasks = monthDays.flatMap((d) => d.tasks);
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter((t) => t.completed).length;
+    const completionRate = totalTasks === 0 ? 0 : completedTasks / totalTasks;
+
+    const daysWithTasks = monthDays.filter((d) => d.tasks.length > 0).length;
+    const daysFullyDone = monthDays.filter(
+      (d) => d.tasks.length > 0 && d.tasks.every((t) => t.completed)
+    ).length;
+
+    return {
+      totalTasks,
+      completedTasks,
+      completionRate,
+      daysWithTasks,
+      daysFullyDone,
+    };
+  }, [monthDays]);
+
+  const handleDayPress = useCallback((day: MonthDay) => {
+    setSelectedDay(day);
+    setModalVisible(true);
+  }, []);
+
+  const handleToggleTask = useCallback(
+    (taskId: string) => {
+      store?.toggleTaskCompletion(taskId);
+    },
+    [store]
+  );
+
+  const handleAddTask = useCallback(
+    (taskData: Omit<DailyTask, 'id' | 'goalId' | 'completed' | 'completedAt'>) => {
+      store?.addTask(taskData);
+    },
+    [store]
+  );
+
+  const onBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/(tabs)/plan');
+  }, [router]);
+
+  const premiumDescription = 'See your next 30 days at a glance — and stay consistent.';
+
   if (!store || !store.isReady) {
     return (
-      <View style={styles.container}>
+      <View style={styles.container} testID="monthOverview.loading">
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Загрузка...</Text>
+          <Text style={styles.loadingText}>Loading…</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <PremiumGate 
-      feature="Месячный обзор"
+    <PremiumGate
+      feature="Month Overview"
       fallback={
-        <View style={styles.gatedPlaceholder}>
-          <Text style={styles.gatedTitle}>Только для GoalForge Premium</Text>
+        <View style={styles.gatedPlaceholder} testID="monthOverview.gated">
+          <Text style={styles.gatedTitle}>GoalForge Premium only</Text>
           <Text style={styles.gatedMessage}>{premiumDescription}</Text>
         </View>
       }
     >
-      <View style={[styles.container, safeAreaSpacing]}>
+      <View style={[styles.container, safeAreaSpacing]} testID="monthOverview.screen">
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/(tabs)/plan');
-              }
-            }}
+            onPress={onBack}
+            testID="monthOverview.back"
           >
-            <ArrowLeft size={24} color="#FFFFFF" />
+            <ArrowLeft size={22} color={theme.colors.text} />
           </TouchableOpacity>
-          
+
           <View style={styles.headerContent}>
-            <Text style={styles.title}>Обзор месяца</Text>
-            <Text style={styles.subtitle}>{currentMonth} {currentYear}</Text>
+            <Text style={styles.title} testID="monthOverview.title">
+              Month overview
+            </Text>
+            <Text style={styles.subtitle} testID="monthOverview.subtitle">
+              {formatMonthTitle(monthWindowStart)}
+            </Text>
+          </View>
+
+          <View style={styles.headerPill} testID="monthOverview.headerPill">
+            <CalendarDays size={16} color={theme.colors.primary} />
+            <Text style={styles.headerPillText}>30 days</Text>
           </View>
         </View>
-        
-        <ScrollView 
+
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          testID="monthOverview.scroll"
         >
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#4CAF50' }]} />
-              <Text style={styles.legendText}>Все выполнено</Text>
+          <View style={styles.hero} testID="monthOverview.hero">
+            <View style={styles.heroTopRow}>
+              <View style={styles.heroChip}>
+                <Text style={styles.heroChipText}>Progress</Text>
+              </View>
+              <Text style={styles.heroRate}>
+                {Math.round(monthStats.completionRate * 100)}%
+              </Text>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#FFD600' }]} />
-              <Text style={styles.legendText}>Есть невыполненные</Text>
+
+            <View style={styles.heroBar}>
+              <View
+                style={[
+                  styles.heroBarFill,
+                  {
+                    width: `${Math.min(100, Math.max(0, monthStats.completionRate * 100))}%`,
+                  },
+                ]}
+              />
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#5A5A5A' }]} />
-              <Text style={styles.legendText}>Нет задач</Text>
+
+            <View style={styles.heroStatsRow}>
+              <View style={styles.heroStat}>
+                <Text style={styles.heroStatValue}>{monthStats.completedTasks}</Text>
+                <Text style={styles.heroStatLabel}>Done</Text>
+              </View>
+              <View style={styles.heroDivider} />
+              <View style={styles.heroStat}>
+                <Text style={styles.heroStatValue}>{monthStats.totalTasks}</Text>
+                <Text style={styles.heroStatLabel}>Total tasks</Text>
+              </View>
+              <View style={styles.heroDivider} />
+              <View style={styles.heroStat}>
+                <Text style={styles.heroStatValue}>{monthStats.daysFullyDone}</Text>
+                <Text style={styles.heroStatLabel}>Perfect days</Text>
+              </View>
             </View>
           </View>
-          
-          {renderDaysList()}
-          
-          <TouchableOpacity 
+
+          <View style={styles.legend} testID="monthOverview.legend">
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: theme.colors.success }]} />
+              <Text style={styles.legendText}>All done</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: theme.colors.primary }]} />
+              <Text style={styles.legendText}>In progress</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: theme.colors.textMuted }]} />
+              <Text style={styles.legendText}>No tasks</Text>
+            </View>
+          </View>
+
+          <View style={styles.daysListContainer} testID="monthOverview.list">
+            {monthDays.map((day) => {
+              const progressColor = getProgressColor(day.tasks);
+              const completedTasks = day.tasks.filter((task) => task.completed).length;
+              const totalTasks = day.tasks.length;
+
+              const progressPct = totalTasks === 0 ? 0 : (completedTasks / totalTasks) * 100;
+
+              return (
+                <TouchableOpacity
+                  key={day.date.toISOString()}
+                  style={[styles.dayListItem, day.isToday && styles.todayListItem]}
+                  activeOpacity={0.78}
+                  onPress={() => handleDayPress(day)}
+                  testID={`monthOverview.day.${day.date.toISOString()}`}
+                >
+                  <View style={styles.dayListContent}>
+                    <View style={styles.dayListLeft}>
+                      <View style={[styles.dayIndicator, { backgroundColor: progressColor }]} />
+
+                      <View style={styles.dayInfo}>
+                        <View style={styles.dayTitleRow}>
+                          <Text
+                            style={[styles.dayListDate, day.isToday && styles.todayListDate]}
+                            numberOfLines={1}
+                          >
+                            {formatDayLabel(day.date)}
+                          </Text>
+                          {day.isToday && (
+                            <View style={styles.todayBadge}>
+                              <Text style={styles.todayBadgeText}>Today</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <Text style={styles.dayListTasks}>
+                          {totalTasks === 0
+                            ? 'No tasks'
+                            : `${completedTasks}/${totalTasks} completed`}
+                        </Text>
+
+                        {totalTasks > 0 && (
+                          <View style={styles.progressTrack}>
+                            <View
+                              style={[
+                                styles.progressFill,
+                                { width: `${progressPct}%`, backgroundColor: progressColor },
+                              ]}
+                            />
+                          </View>
+                        )}
+                      </View>
+                    </View>
+
+                    <View style={styles.dayListRight}>
+                      <Text style={styles.dayListNumber}>{day.dayNumber}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity
             style={styles.backToWeekButton}
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/(tabs)/plan');
-              }
-            }}
+            onPress={onBack}
+            testID="monthOverview.backToPlan"
           >
-            <Clock size={20} color="#000000" />
-            <Text style={styles.backToWeekText}>Назад к неделе</Text>
+            <Clock size={18} color={theme.colors.surfaceDark} />
+            <Text style={styles.backToWeekText}>Back to plan</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -427,73 +550,169 @@ export default function MonthOverviewScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   backButton: {
-    padding: 8,
-    marginRight: 16,
+    padding: 10,
+    marginLeft: -10,
+    marginRight: 10,
   },
   headerContent: {
     flex: 1,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold' as const,
-    color: '#FFFFFF',
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+    letterSpacing: 0.2,
   },
   subtitle: {
-    fontSize: 16,
-    fontWeight: '500' as const,
-    color: '#A0A0A0',
     marginTop: 4,
+    fontSize: 13,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+    textTransform: 'capitalize',
+  },
+  headerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: theme.colors.surfaceGlass,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  headerPillText: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: theme.fontWeight.semibold,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 24,
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
+  },
+  hero: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: theme.spacing.lg,
+    ...theme.shadows.medium,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heroChip: {
+    backgroundColor: theme.colors.surfaceGlass,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  heroChipText: {
+    fontSize: 12,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  heroRate: {
+    fontSize: 28,
+    fontWeight: theme.fontWeight.extrabold,
+    color: theme.colors.text,
+    letterSpacing: -0.5,
+  },
+  heroBar: {
+    marginTop: theme.spacing.md,
+    height: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  heroBarFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: theme.colors.primary,
+  },
+  heroStatsRow: {
+    marginTop: theme.spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heroStat: {
+    flex: 1,
+  },
+  heroStatValue: {
+    fontSize: 18,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+  },
+  heroStatLabel: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+  },
+  heroDivider: {
+    width: 1,
+    height: 34,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginHorizontal: theme.spacing.md,
   },
   legend: {
+    marginTop: theme.spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingHorizontal: 8,
+    backgroundColor: theme.colors.surfaceGlass,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: theme.borderRadius.md,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   legendText: {
     fontSize: 12,
-    color: '#FFFFFF',
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
   },
   daysListContainer: {
-    marginBottom: 24,
+    marginTop: theme.spacing.lg,
   },
   dayListItem: {
-    backgroundColor: '#121212',
-    borderRadius: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    ...theme.shadows.small,
   },
   todayListItem: {
-    borderColor: '#FFD600',
-    backgroundColor: 'rgba(255, 214, 0, 0.05)',
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: 'rgba(255, 215, 0, 0.05)',
   },
   dayListContent: {
     flexDirection: 'row',
@@ -505,83 +724,105 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    minWidth: 0,
   },
   dayIndicator: {
     width: 4,
-    height: 48,
-    borderRadius: 2,
-    marginRight: 16,
+    height: 54,
+    borderRadius: 3,
+    marginRight: 14,
   },
   dayInfo: {
     flex: 1,
+    minWidth: 0,
+  },
+  dayTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   dayListDate: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-    marginBottom: 4,
+    flex: 1,
+    fontSize: 15,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
     textTransform: 'capitalize',
   },
   todayListDate: {
-    color: '#FFD600',
+    color: theme.colors.primary,
+  },
+  todayBadge: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  todayBadgeText: {
+    color: theme.colors.surfaceDark,
+    fontSize: 11,
+    fontWeight: theme.fontWeight.bold,
   },
   dayListTasks: {
-    fontSize: 14,
-    color: '#A0A0A0',
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
   },
-  dayListRight: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  progressBar: {
-    width: 60,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 2,
+  progressTrack: {
+    marginTop: 10,
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 999,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 999,
+  },
+  dayListRight: {
+    alignItems: 'flex-end',
+    marginLeft: 14,
   },
   dayListNumber: {
     fontSize: 18,
-    fontWeight: 'bold' as const,
-    color: '#FFFFFF',
-    minWidth: 24,
+    fontWeight: theme.fontWeight.extrabold,
+    color: theme.colors.text,
+    minWidth: 26,
     textAlign: 'center',
   },
   backToWeekButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFD600',
-    height: 56,
-    borderRadius: 12,
-    gap: 8,
-    marginTop: 24,
+    backgroundColor: theme.colors.primary,
+    height: 54,
+    borderRadius: theme.borderRadius.sm,
+    gap: 10,
+    marginTop: theme.spacing.lg,
+    ...theme.shadows.gold,
   },
   backToWeekText: {
-    fontSize: 16,
-    fontWeight: 'bold' as const,
-    color: '#000000',
+    fontSize: 15,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.surfaceDark,
   },
   gatedPlaceholder: {
     flex: 1,
-    backgroundColor: '#050505',
+    backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
+    padding: theme.spacing.xl,
   },
   gatedTitle: {
     fontSize: 20,
-    fontWeight: 'bold' as const,
-    color: '#FFFFFF',
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   gatedMessage: {
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: theme.fontWeight.medium,
     color: 'rgba(255,255,255,0.75)',
     textAlign: 'center',
     lineHeight: 22,
@@ -592,53 +833,57 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
   },
 });
 
 const modalStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   closeButton: {
-    padding: 8,
-    marginRight: 16,
+    padding: 10,
+    marginLeft: -10,
+    marginRight: 10,
   },
   headerContent: {
     flex: 1,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold' as const,
-    color: '#FFFFFF',
-    textTransform: 'capitalize',
+    fontSize: 18,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
   },
   subtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 2,
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: theme.fontWeight.medium,
+    color: 'rgba(255,255,255,0.65)',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
   },
   taskItem: {
-    backgroundColor: '#121212',
-    borderRadius: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
     padding: 16,
     marginVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    ...theme.shadows.small,
   },
   taskContent: {
     flexDirection: 'row',
@@ -650,82 +895,127 @@ const modalStyles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
   },
   checkboxCompleted: {
-    backgroundColor: '#FFD600',
-    borderColor: '#FFD600',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   taskInfo: {
     flex: 1,
   },
   taskTitle: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
   },
   taskTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(255,255,255,0.55)',
   },
   taskDescription: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
-    marginBottom: 8,
-    lineHeight: 20,
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: theme.fontWeight.medium,
+    color: 'rgba(255,255,255,0.72)',
+    lineHeight: 19,
   },
   taskMeta: {
+    marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
-  taskDuration: {
+  metaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  metaText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
   },
   priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   priorityHigh: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    backgroundColor: 'rgba(255, 69, 0, 0.18)',
   },
   priorityMedium: {
-    backgroundColor: 'rgba(255, 214, 0, 0.2)',
+    backgroundColor: 'rgba(255, 215, 0, 0.16)',
   },
   priorityLow: {
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    backgroundColor: 'rgba(76, 175, 80, 0.16)',
   },
   priorityText: {
-    fontSize: 10,
-    fontWeight: '500' as const,
-    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  emptyState: {
+    marginTop: theme.spacing.lg,
+    backgroundColor: theme.colors.surfaceGlass,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+  },
+  emptyIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 215, 0, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+  },
+  emptyText: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: theme.fontWeight.medium,
+    color: 'rgba(255,255,255,0.72)',
+    lineHeight: 19,
   },
   addForm: {
-    backgroundColor: '#121212',
-    borderRadius: 16,
+    marginTop: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
     padding: 16,
-    marginVertical: 12,
     borderWidth: 1,
-    borderColor: '#FFD600',
+    borderColor: theme.colors.glassBorder,
   },
   input: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: theme.borderRadius.sm,
     padding: 12,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   textArea: {
-    height: 80,
+    height: 86,
     textAlignVertical: 'top',
   },
   formButtons: {
@@ -734,49 +1024,52 @@ const modalStyles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: theme.borderRadius.sm,
     padding: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   cancelButtonText: {
     fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#FFD600',
-    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.sm,
     padding: 12,
     alignItems: 'center',
   },
   saveButtonDisabled: {
-    backgroundColor: 'rgba(255, 214, 0, 0.3)',
+    backgroundColor: 'rgba(255, 215, 0, 0.25)',
   },
   saveButtonText: {
     fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#000000',
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.surfaceDark,
   },
   footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    borderTopColor: 'rgba(255,255,255,0.08)',
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFD600',
-    height: 48,
-    borderRadius: 12,
-    gap: 8,
+    backgroundColor: theme.colors.primary,
+    height: 50,
+    borderRadius: theme.borderRadius.sm,
+    gap: 10,
+    ...theme.shadows.gold,
   },
   addButtonText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#000000',
+    fontSize: 15,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.surfaceDark,
   },
 });
