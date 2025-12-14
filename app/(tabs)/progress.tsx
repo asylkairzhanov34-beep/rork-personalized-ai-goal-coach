@@ -181,11 +181,6 @@ export default function ProgressScreen() {
                   <Text style={styles.progressValue}>
                     {periodStats.completed} {periodStats.completed === 1 ? 'task' : 'tasks'} completed
                   </Text>
-                  {periodStats.total > 0 && (
-                    <Text style={styles.progressOutOf}>
-                      out of {periodStats.total} {periodStats.total === 1 ? 'task' : 'tasks'}
-                    </Text>
-                  )}
                   <Text style={styles.progressSubtext}>
                     {getEmptyMessage() || 'Keep going at your pace'}
                   </Text>
@@ -828,11 +823,6 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text,
     marginTop: 8,
-  },
-  progressOutOf: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textLight,
-    marginTop: 2,
   },
   progressSubtext: {
     fontSize: theme.fontSize.sm,
