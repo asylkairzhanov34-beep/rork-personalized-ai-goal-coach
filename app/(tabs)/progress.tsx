@@ -283,21 +283,308 @@ export default function ProgressScreen() {
 }
 
 
+type AchievementProgress = {
+  current: number;
+  target: number;
+  eligible?: boolean;
+};
+
+type AchievementStats = {
+  todayCompleted: number;
+  todayTotal: number;
+  currentStreak: number;
+  monthCompleted: number;
+  totalCompletedTasks: number;
+};
+
 type AchievementDefinition = {
   id: string;
   title: string;
   description: string;
   icon: React.ComponentType<{ size?: number; color?: string }>;
   accent: string;
-  getProgress: (stats: {
-    todayCompleted: number;
-    todayTotal: number;
-    currentStreak: number;
-    monthCompleted: number;
-    monthTarget: number;
-    totalCompletedTasks: number;
-  }) => { current: number; target: number };
+  getProgress: (stats: AchievementStats) => AchievementProgress;
 };
+
+type AchievementTier = {
+  id: string;
+  label: string;
+  achievements: AchievementDefinition[];
+};
+
+function computeUnlocked(achievement: AchievementDefinition, stats: AchievementStats) {
+  const p = achievement.getProgress(stats);
+  const eligible = p.eligible ?? true;
+  return eligible && p.current >= p.target;
+}
+
+function getAchievementTiers(): AchievementTier[] {
+  const gold = theme.colors.primary;
+  const emerald = theme.colors.success;
+  const ember = theme.colors.warning;
+  const royal = theme.colors.primaryDark;
+
+  return [
+    {
+      id: 'tier-1',
+      label: 'Level 1',
+      achievements: [
+        {
+          id: 'daily-5',
+          title: 'Daily Finisher',
+          description: 'Complete 5 tasks in a day',
+          icon: CheckCircle2,
+          accent: emerald,
+          getProgress: (s) => ({ current: s.todayCompleted, target: 5 }),
+        },
+        {
+          id: 'daily-perfect',
+          title: 'No Loose Ends',
+          description: 'Finish 100% of your tasks today',
+          icon: Target,
+          accent: gold,
+          getProgress: (s) => ({
+            current: s.todayTotal > 0 ? s.todayCompleted : 0,
+            target: s.todayTotal > 0 ? s.todayTotal : 1,
+            eligible: s.todayTotal > 0,
+          }),
+        },
+        {
+          id: 'streak-7',
+          title: 'Streak Starter',
+          description: 'Reach a 7‑day streak',
+          icon: Flame,
+          accent: ember,
+          getProgress: (s) => ({ current: s.currentStreak, target: 7 }),
+        },
+        {
+          id: 'month-50',
+          title: 'Momentum Month',
+          description: 'Complete 50 tasks this month',
+          icon: Trophy,
+          accent: royal,
+          getProgress: (s) => ({ current: s.monthCompleted, target: 50 }),
+        },
+        {
+          id: 'total-250',
+          title: 'Crafted Discipline',
+          description: 'Complete 250 tasks overall',
+          icon: Sparkles,
+          accent: '#E8C060',
+          getProgress: (s) => ({ current: s.totalCompletedTasks, target: 250 }),
+        },
+        {
+          id: 'streak-30',
+          title: 'Unbreakable',
+          description: 'Hold a 30‑day streak',
+          icon: Crown,
+          accent: gold,
+          getProgress: (s) => ({ current: s.currentStreak, target: 30 }),
+        },
+      ],
+    },
+    {
+      id: 'tier-2',
+      label: 'Level 2',
+      achievements: [
+        {
+          id: 'daily-8',
+          title: 'Power Day',
+          description: 'Complete 8 tasks in a day',
+          icon: Zap,
+          accent: emerald,
+          getProgress: (s) => ({ current: s.todayCompleted, target: 8 }),
+        },
+        {
+          id: 'daily-perfect-5',
+          title: 'Perfect Execution',
+          description: 'Complete 100% of today’s tasks (min 5)',
+          icon: Target,
+          accent: gold,
+          getProgress: (s) => {
+            const min = 5;
+            const eligible = s.todayTotal >= min;
+            const target = eligible ? s.todayTotal : min;
+            const current = eligible ? s.todayCompleted : Math.min(s.todayCompleted, min);
+            return { current, target, eligible };
+          },
+        },
+        {
+          id: 'streak-14',
+          title: 'Two‑Week Flow',
+          description: 'Reach a 14‑day streak',
+          icon: Flame,
+          accent: ember,
+          getProgress: (s) => ({ current: s.currentStreak, target: 14 }),
+        },
+        {
+          id: 'month-100',
+          title: 'Heavy Month',
+          description: 'Complete 100 tasks this month',
+          icon: Trophy,
+          accent: royal,
+          getProgress: (s) => ({ current: s.monthCompleted, target: 100 }),
+        },
+        {
+          id: 'total-500',
+          title: 'Built to Last',
+          description: 'Complete 500 tasks overall',
+          icon: Sparkles,
+          accent: '#E8C060',
+          getProgress: (s) => ({ current: s.totalCompletedTasks, target: 500 }),
+        },
+        {
+          id: 'streak-60',
+          title: 'Iron Will',
+          description: 'Hold a 60‑day streak',
+          icon: Crown,
+          accent: gold,
+          getProgress: (s) => ({ current: s.currentStreak, target: 60 }),
+        },
+      ],
+    },
+    {
+      id: 'tier-3',
+      label: 'Level 3',
+      achievements: [
+        {
+          id: 'daily-12',
+          title: 'Relentless',
+          description: 'Complete 12 tasks in a day',
+          icon: Zap,
+          accent: emerald,
+          getProgress: (s) => ({ current: s.todayCompleted, target: 12 }),
+        },
+        {
+          id: 'daily-perfect-8',
+          title: 'Clinical Precision',
+          description: 'Complete 100% of today’s tasks (min 8)',
+          icon: Target,
+          accent: gold,
+          getProgress: (s) => {
+            const min = 8;
+            const eligible = s.todayTotal >= min;
+            const target = eligible ? s.todayTotal : min;
+            const current = eligible ? s.todayCompleted : Math.min(s.todayCompleted, min);
+            return { current, target, eligible };
+          },
+        },
+        {
+          id: 'streak-90',
+          title: 'Seasoned',
+          description: 'Reach a 90‑day streak',
+          icon: Flame,
+          accent: ember,
+          getProgress: (s) => ({ current: s.currentStreak, target: 90 }),
+        },
+        {
+          id: 'month-200',
+          title: 'Master Month',
+          description: 'Complete 200 tasks this month',
+          icon: Trophy,
+          accent: royal,
+          getProgress: (s) => ({ current: s.monthCompleted, target: 200 }),
+        },
+        {
+          id: 'total-1000',
+          title: 'Legacy',
+          description: 'Complete 1000 tasks overall',
+          icon: Sparkles,
+          accent: '#E8C060',
+          getProgress: (s) => ({ current: s.totalCompletedTasks, target: 1000 }),
+        },
+        {
+          id: 'streak-180',
+          title: 'Titan',
+          description: 'Hold a 180‑day streak',
+          icon: Crown,
+          accent: gold,
+          getProgress: (s) => ({ current: s.currentStreak, target: 180 }),
+        },
+      ],
+    },
+  ];
+}
+
+function selectTier(stats: AchievementStats): AchievementTier {
+  const tiers = getAchievementTiers();
+
+  for (let i = 0; i < tiers.length; i++) {
+    const tier = tiers[i];
+    const allUnlocked = tier.achievements.every((a) => computeUnlocked(a, stats));
+    if (!allUnlocked) return tier;
+  }
+
+  const currentLevel = tiers.length + 1;
+
+  const dynamicMultiplier = 1 + Math.max(0, Math.floor(stats.totalCompletedTasks / 1000));
+  const monthTarget = 200 + dynamicMultiplier * 100;
+  const totalTarget = 1000 + dynamicMultiplier * 500;
+  const dailyTarget = 12 + dynamicMultiplier * 2;
+  const streakTarget = 180 + dynamicMultiplier * 30;
+
+  return {
+    id: `tier-dynamic-${dynamicMultiplier}`,
+    label: `Level ${currentLevel}+`,
+    achievements: [
+      {
+        id: `daily-${dailyTarget}`,
+        title: 'Relentless+',
+        description: `Complete ${dailyTarget} tasks in a day`,
+        icon: Zap,
+        accent: theme.colors.success,
+        getProgress: (s) => ({ current: s.todayCompleted, target: dailyTarget }),
+      },
+      {
+        id: `streak-${streakTarget}`,
+        title: 'Titan+',
+        description: `Hold a ${streakTarget}‑day streak`,
+        icon: Crown,
+        accent: theme.colors.primary,
+        getProgress: (s) => ({ current: s.currentStreak, target: streakTarget }),
+      },
+      {
+        id: `month-${monthTarget}`,
+        title: 'Master Month+',
+        description: `Complete ${monthTarget} tasks this month`,
+        icon: Trophy,
+        accent: theme.colors.primaryDark,
+        getProgress: (s) => ({ current: s.monthCompleted, target: monthTarget }),
+      },
+      {
+        id: `total-${totalTarget}`,
+        title: 'Legacy+',
+        description: `Complete ${totalTarget} tasks overall`,
+        icon: Sparkles,
+        accent: '#E8C060',
+        getProgress: (s) => ({ current: s.totalCompletedTasks, target: totalTarget }),
+      },
+    ],
+  };
+}
+
+function getAchievementProgressLabel(achievement: AchievementDefinition, stats: AchievementStats) {
+  const p = achievement.getProgress(stats);
+  const eligible = p.eligible ?? true;
+  if (eligible) return null;
+
+  if (achievement.id.startsWith('daily-perfect')) {
+    return 'Add more tasks today to unlock';
+  }
+
+  return 'Not available yet';
+}
+
+function clampPct(current: number, target: number) {
+  const safeTarget = Math.max(1, target);
+  const safeCurrent = Math.max(0, Math.min(current, safeTarget));
+  return Math.round((safeCurrent / safeTarget) * 100);
+}
+
+function getTierProgress(tier: AchievementTier, stats: AchievementStats) {
+  const unlockedCount = tier.achievements.filter((a) => computeUnlocked(a, stats)).length;
+  return { unlockedCount, total: tier.achievements.length };
+}
 
 type AchievementsSectionProps = {
   currentStreak: number;
@@ -313,83 +600,48 @@ const AchievementsSection = memo(function AchievementsSection({
   todayCompleted,
   todayTotal,
   monthCompleted,
-  monthTarget,
+  monthTarget: _monthTarget,
   totalCompletedTasks,
 }: AchievementsSectionProps) {
-  const achievements = useMemo<AchievementDefinition[]>(() => {
-    return [
-      {
-        id: 'daily-5',
-        title: 'Daily Finisher',
-        description: 'Complete 5 tasks in a day',
-        icon: CheckCircle2,
-        accent: theme.colors.success,
-        getProgress: (s) => ({ current: s.todayCompleted, target: 5 }),
-      },
-      {
-        id: 'daily-perfect',
-        title: 'No Loose Ends',
-        description: 'Finish 100% of your tasks today',
-        icon: Target,
-        accent: theme.colors.primary,
-        getProgress: (s) => ({ current: s.todayTotal > 0 ? s.todayCompleted : 0, target: s.todayTotal > 0 ? s.todayTotal : 1 }),
-      },
-      {
-        id: 'streak-7',
-        title: 'Streak Starter',
-        description: 'Reach a 7‑day streak',
-        icon: Flame,
-        accent: theme.colors.warning,
-        getProgress: (s) => ({ current: s.currentStreak, target: 7 }),
-      },
-      {
-        id: 'month-50',
-        title: 'Momentum Month',
-        description: 'Complete 50 tasks this month',
-        icon: Trophy,
-        accent: theme.colors.primaryDark,
-        getProgress: (s) => ({ current: s.monthCompleted, target: s.monthTarget }),
-      },
-      {
-        id: 'total-250',
-        title: 'Crafted Discipline',
-        description: 'Complete 250 tasks overall',
-        icon: Sparkles,
-        accent: '#E8C060',
-        getProgress: (s) => ({ current: s.totalCompletedTasks, target: 250 }),
-      },
-      {
-        id: 'streak-30',
-        title: 'Unbreakable',
-        description: 'Hold a 30‑day streak',
-        icon: Crown,
-        accent: theme.colors.primary,
-        getProgress: (s) => ({ current: s.currentStreak, target: 30 }),
-      },
-    ];
-  }, []);
+  const stats = useMemo<AchievementStats>(
+    () => ({
+      todayCompleted,
+      todayTotal,
+      currentStreak,
+      monthCompleted,
+      totalCompletedTasks,
+    }),
+    [todayCompleted, todayTotal, currentStreak, monthCompleted, totalCompletedTasks],
+  );
+
+  const tier = useMemo(() => selectTier(stats), [stats]);
+  const tierProgress = useMemo(() => getTierProgress(tier, stats), [tier, stats]);
 
   return (
     <View style={styles.achievementsCard} testID="rewards-card">
-      <Text style={styles.achievementsTitle} testID="rewards-title">
-        Rewards
-      </Text>
+      <View style={styles.achievementsHeader}>
+        <View>
+          <Text style={styles.achievementsTitle} testID="rewards-title">
+            Rewards
+          </Text>
+          <Text style={styles.achievementsSubtitle} testID="rewards-tier">
+            {tier.label} · {tierProgress.unlockedCount}/{tierProgress.total}
+          </Text>
+        </View>
+
+        <View style={styles.tierBadge} testID="rewards-tier-badge">
+          <Text style={styles.tierBadgeText}>{tier.id.replace('tier-', '').toUpperCase()}</Text>
+        </View>
+      </View>
 
       <View style={styles.achievementsList} testID="rewards-list">
-        {achievements.map((a) => {
-          const progress = a.getProgress({
-            todayCompleted,
-            todayTotal,
-            currentStreak,
-            monthCompleted,
-            monthTarget,
-            totalCompletedTasks,
-          });
-
+        {tier.achievements.map((a) => {
+          const progress = a.getProgress(stats);
           const target = Math.max(1, progress.target);
           const current = Math.max(0, Math.min(progress.current, target));
-          const pct = Math.round((current / target) * 100);
-          const unlocked = progress.current >= progress.target;
+          const pct = clampPct(progress.current, progress.target);
+          const unlocked = computeUnlocked(a, stats);
+          const helper = getAchievementProgressLabel(a, stats);
 
           return (
             <View
@@ -432,13 +684,19 @@ const AchievementsSection = memo(function AchievementsSection({
                   {a.description}
                 </Text>
 
+                {helper ? (
+                  <Text style={styles.achievementHelper} numberOfLines={1}>
+                    {helper}
+                  </Text>
+                ) : null}
+
                 <View style={styles.achievementProgressRow}>
                   <View style={styles.achievementTrack}>
                     <View style={[styles.achievementFill, { width: `${Math.min(100, pct)}%`, backgroundColor: a.accent }]} />
                   </View>
 
                   <Text style={styles.achievementNumbers}>
-                    {progress.current}/{progress.target}
+                    {current}/{target}
                   </Text>
                 </View>
               </View>
@@ -618,12 +876,38 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  achievementsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 14,
+  },
   achievementsTitle: {
     fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text,
-    marginBottom: 14,
     letterSpacing: 0.2,
+  },
+  achievementsSubtitle: {
+    marginTop: 6,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium,
+  },
+  tierBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+  },
+  tierBadgeText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.bold,
+    letterSpacing: 0.6,
   },
   achievementsList: {
     gap: 12,
@@ -685,6 +969,12 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
     lineHeight: 18,
+  },
+  achievementHelper: {
+    marginTop: 8,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textLight,
+    fontWeight: theme.fontWeight.medium,
   },
   achievementProgressRow: {
     flexDirection: 'row',
