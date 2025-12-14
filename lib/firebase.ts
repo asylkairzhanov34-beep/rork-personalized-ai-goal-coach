@@ -1,13 +1,17 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInWithCredential, 
-  OAuthProvider, 
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as firebaseAuth from 'firebase/auth';
+import {
+  getAuth,
+  signInWithCredential,
+  OAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   Auth,
   User as FirebaseUser,
-  deleteUser
+  deleteUser,
+  initializeAuth,
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -53,7 +57,21 @@ export function initializeFirebase(): { app: FirebaseApp; auth: Auth; db: Firest
     app = getApps()[0];
   }
   
-  auth = getAuth(app);
+  try {
+    if (Platform.OS !== 'web') {
+      console.log('[Firebase] Initializing Auth with React Native persistence (AsyncStorage)');
+      const getReactNativePersistence = (firebaseAuth as unknown as { getReactNativePersistence: (storage: typeof AsyncStorage) => unknown }).getReactNativePersistence;
+      auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage) as any,
+      });
+    } else {
+      auth = getAuth(app);
+    }
+  } catch (error) {
+    console.warn('[Firebase] Auth init fallback to getAuth:', error);
+    auth = getAuth(app);
+  }
+
   db = getFirestore(app);
   console.log('[Firebase] Initialized successfully (Auth + Firestore)');
   

@@ -43,33 +43,40 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     if (!firebaseInitialized) return;
 
     console.log('[Auth] Setting up auth state listener...');
-    
+
     const unsubscribe = subscribeToAuthState(async (firebaseUser) => {
       console.log('[Auth] Auth state changed:', firebaseUser ? firebaseUser.uid : 'null');
-      
+
       if (firebaseUser) {
-        const user = firebaseUserToUser(firebaseUser);
+        const user = normalizeUser(firebaseUserToUser(firebaseUser));
         await safeStorageSet(AUTH_STORAGE_KEY, user);
-        
+
         setAuthState({
           user,
           isLoading: false,
           isAuthenticated: true,
         });
-      } else {
-        const storedUser = await safeStorageGet<User | null>(AUTH_STORAGE_KEY, null);
-        
-        if (storedUser) {
-          console.log('[Auth] Found stored user, but Firebase session expired');
-          await safeStorageSet(AUTH_STORAGE_KEY, null);
-        }
-        
-        setAuthState({
-          user: null,
-          isLoading: false,
-          isAuthenticated: false,
-        });
+        return;
       }
+
+      const storedUser = await safeStorageGet<User | null>(AUTH_STORAGE_KEY, null);
+      const normalizedStoredUser = storedUser ? normalizeUser(storedUser) : null;
+
+      if (normalizedStoredUser) {
+        console.log('[Auth] No Firebase user yet, using stored user session');
+        setAuthState({
+          user: normalizedStoredUser,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+        return;
+      }
+
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
     });
 
     return () => {
@@ -77,6 +84,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       unsubscribe();
     };
   }, [firebaseInitialized]);
+
+  const normalizeUser = (user: User): User => {
+    const createdAt = user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt);
+    return {
+      ...user,
+      createdAt,
+    };
+  };
 
   const firebaseUserToUser = (firebaseUser: FirebaseUser): User => {
     return {
