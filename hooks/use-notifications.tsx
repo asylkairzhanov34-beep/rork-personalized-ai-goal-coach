@@ -155,8 +155,8 @@ export function useNotifications() {
   const requestPermissions = async (): Promise<boolean> => {
     if (!Notifications) {
       Alert.alert(
-        'Уведомления недоступны',
-        'Функция уведомлений не поддерживается в текущей среде.'
+        'Notifications unavailable',
+        'Notification feature is not supported in the current environment.'
       );
       return false;
     }
@@ -269,8 +269,8 @@ export function useNotifications() {
   // Вспомогательные функции для планирования уведомлений
   const scheduleTaskReminder = async (taskTitle: string, minutes: number = 30) => {
     return await scheduleNotification({
-      title: 'Напоминание о задаче',
-      body: `Время выполнить: ${taskTitle}`,
+      title: 'Task Reminder',
+      body: `Time to complete: ${taskTitle}`,
       data: { type: 'task_reminder', taskTitle },
       trigger: {
         seconds: minutes * 60,
@@ -279,26 +279,26 @@ export function useNotifications() {
   };
 
   const schedulePomodoroBreak = async (isLongBreak: boolean = false) => {
-    const breakType = isLongBreak ? 'длинный' : 'короткий';
+    const breakType = isLongBreak ? 'long' : 'short';
     return await scheduleNotification({
-      title: 'Время перерыва!',
-      body: `Возьмите ${breakType} перерыв. Вы отлично поработали!`,
+      title: 'Break Time!',
+      body: `Take a ${breakType} break. Great work!`,
       data: { type: 'pomodoro_break', isLongBreak },
     });
   };
 
   const scheduleWorkSession = async () => {
     return await scheduleNotification({
-      title: 'Время работать!',
-      body: 'Перерыв закончился. Пора приступить к следующей задаче.',
+      title: 'Time to Work!',
+      body: 'Break is over. Time to start your next task.',
       data: { type: 'work_session' },
     });
   };
 
   const scheduleDailyReminder = async (hour: number = 9, minute: number = 0) => {
     return await scheduleNotification({
-      title: 'Доброе утро!',
-      body: 'Время планировать свой день и достигать целей!',
+      title: 'Good Morning!',
+      body: 'Time to plan your day and achieve your goals!',
       data: { type: 'daily_reminder' },
       trigger: {
         hour,
@@ -325,21 +325,21 @@ export function useNotifications() {
     const { hour, minute } = getNotificationTimeForProductivity(productivityTime);
     
     const timeLabels: Record<string, string> = {
-      morning: 'утро',
-      afternoon: 'день',
-      evening: 'вечер',
+      morning: 'morning',
+      afternoon: 'afternoon',
+      evening: 'evening',
     };
     
     const timeLabel = productivityTime ? timeLabels[productivityTime] || '' : '';
-    const goalText = goalTitle ? `«${goalTitle}»` : 'свою цель';
+    const goalText = goalTitle ? `"${goalTitle}"` : 'your goal';
     
     console.log(`[Notifications] Scheduling goal reminder at ${hour}:${minute} for ${productivityTime}`);
     
     await cancelAllNotifications();
     
     return await scheduleNotification({
-      title: '🎯 Время для цели!',
-      body: `Пора поработать над ${goalText}. Твой пик продуктивности — ${timeLabel}!`,
+      title: '🎯 Time for Your Goal!',
+      body: `Time to work on ${goalText}. Your peak productivity is in the ${timeLabel}!`,
       data: { type: 'goal_reminder', productivityTime },
       trigger: {
         hour,
@@ -357,8 +357,8 @@ export function useNotifications() {
     console.log(`[Notifications] Scheduling productivity reminder at ${hour}:${minute}`);
     
     return await scheduleNotification({
-      title: '⚡ Твой пик энергии!',
-      body: 'Сейчас лучшее время для важных задач. Начни прямо сейчас!',
+      title: '⚡ Peak Energy Time!',
+      body: 'Now is the best time for important tasks. Start right now!',
       data: { type: 'productivity_reminder', productivityTime },
       trigger: {
         hour,
