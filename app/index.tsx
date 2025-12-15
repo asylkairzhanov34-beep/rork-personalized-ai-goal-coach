@@ -13,7 +13,7 @@ export default function Index() {
   const [error, setError] = useState<string | null>(null);
 
   const { profile, isLoading: setupLoading } = useFirstTimeSetup();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, needsLoginGate } = useAuth();
   const { isInitialized: subInitialized } = useSubscription();
   const { 
     checking: subscriptionStatusChecking, 
@@ -56,7 +56,7 @@ export default function Index() {
     return <AppLoadingScreen testID="app-loading" />;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || needsLoginGate) {
     return <Redirect href="/auth" />;
   }
 

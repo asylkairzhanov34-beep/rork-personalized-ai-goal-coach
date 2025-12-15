@@ -33,7 +33,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const buttonSlide = useRef(new Animated.Value(50)).current;
   const glowAnim = useRef(new Animated.Value(0.95)).current;
 
-  const { loginWithApple, firebaseInitialized, initError } = useAuth();
+  const { loginWithApple, firebaseInitialized, initError, isAuthenticated, user, markLoginGateSeen } = useAuth();
 
   useEffect(() => {
     Animated.parallel([
@@ -90,6 +90,17 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     }
 
     setIsTestingBackend(false);
+  };
+
+  const handleContinue = async () => {
+    try {
+      console.log('[AuthScreen] Continuing with existing session:', user?.id);
+      await markLoginGateSeen();
+      onAuthSuccess?.();
+    } catch (error) {
+      console.error('[AuthScreen] Continue error:', error);
+      Alert.alert('Error', 'Failed to continue. Please try again.');
+    }
   };
 
   const handleAppleAuth = async () => {
@@ -212,7 +223,29 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               </View>
             )}
 
-            {isAppleSignInAvailable ? (
+            {isAuthenticated ? (
+              <TouchableOpacity
+                style={[styles.appleButton, isLoading && styles.buttonDisabled]}
+                onPress={handleContinue}
+                disabled={isLoading}
+                activeOpacity={0.9}
+                testID="continue-auth-button"
+              >
+                <LinearGradient
+                  colors={['#000000', '#1A1A1A']}
+                  style={styles.buttonGradient}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
+                  )}
+                  <Text style={styles.appleButtonText}>
+                    {isLoading ? 'Loading...' : 'Continue'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : isAppleSignInAvailable ? (
               <TouchableOpacity
                 style={[styles.appleButton, isLoading && styles.buttonDisabled]}
                 onPress={handleAppleAuth}

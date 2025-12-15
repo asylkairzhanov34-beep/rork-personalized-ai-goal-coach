@@ -180,7 +180,11 @@ Your tasks:
 
 Respond in a friendly manner in English, ask one question at a time. Be concise but helpful.`;
 
-      const response = await fetch('https://toolkit.rork.com/text/llm/', {
+      const toolkitBaseUrl = (process.env.EXPO_PUBLIC_TOOLKIT_URL || 'https://toolkit.rork.com').replace(/\/$/, '');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+
+      const response = await fetch(`${toolkitBaseUrl}/text/llm/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -188,15 +192,24 @@ Respond in a friendly manner in English, ask one question at a time. Be concise 
             { role: 'system', content: systemPrompt },
             ...conversationHistory
           ]
-        })
-      });
+        }),
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeout));
 
-      const data = await response.json();
+      const rawText = await response.text();
+      console.log('[GoalCreationModal] AI chat response status:', response.status);
+      console.log('[GoalCreationModal] AI chat response preview:', rawText.substring(0, 200));
+
+      if (!response.ok) {
+        throw new Error(`AI request failed (${response.status})`);
+      }
+
+      const data = JSON.parse(rawText) as { completion?: string };
       
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.completion,
+        content: data.completion ?? 'Sorry, I could not generate a response. Please try again.',
         timestamp: new Date()
       };
 
@@ -299,7 +312,11 @@ Respond in a friendly manner in English, ask one question at a time. Be concise 
         Format: { "goal": {...}, "dailyPlans": [...] }
       `;
 
-      const response = await fetch('https://toolkit.rork.com/text/llm/', {
+      const toolkitBaseUrl = (process.env.EXPO_PUBLIC_TOOLKIT_URL || 'https://toolkit.rork.com').replace(/\/$/, '');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+
+      const response = await fetch(`${toolkitBaseUrl}/text/llm/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -307,14 +324,28 @@ Respond in a friendly manner in English, ask one question at a time. Be concise 
             { role: 'system', content: 'You are an expert goal achievement coach. Create VERY DETAILED, practical plans. In subtasks ALWAYS specify concrete actions with numbers (number of repetitions, specific exercises, specific words to learn). DO NOT use generic formulations. Respond only with valid JSON without additional text. All texts in English.' },
             { role: 'user', content: prompt }
           ]
-        })
-      });
+        }),
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeout));
 
-      const data = await response.json();
+      const rawText = await response.text();
+      console.log('[GoalCreationModal] Raw AI response status:', response.status);
+      console.log('[GoalCreationModal] Raw AI response preview:', rawText.substring(0, 300));
+
+      if (!response.ok) {
+        throw new Error(`AI request failed (${response.status})`);
+      }
+
+      const data = JSON.parse(rawText) as { completion?: string };
       console.log('Raw AI response:', data.completion);
       
       // Extract JSON from the response
-      let jsonString = data.completion.trim();
+      const completion = data.completion ?? '';
+      if (!completion.trim()) {
+        throw new Error('AI returned an empty response');
+      }
+
+      let jsonString = completion.trim();
       
       // Remove markdown code blocks if present
       if (jsonString.startsWith('```json')) {
@@ -408,10 +439,18 @@ Respond in a friendly manner in English, ask one question at a time. Be concise 
       }
     } catch (error) {
       console.error('Error generating plan:', error);
-      if (error instanceof Error) {
-        console.error('Error message:', error.message);
-      }
-      alert('Failed to create goal plan. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error message:', errorMessage);
+
+      const debugId = `goal_create_${Date.now()}`;
+      console.error('[GoalCreationModal] Debug ID:', debugId);
+
+      const AlertModule = await import('react-native');
+      AlertModule.Alert.alert(
+        'Failed to create goal',
+        `Please try again.\n\nError: ${errorMessage}\n\nDebug ID: ${debugId}`,
+        [{ text: 'OK' }]
+      );
       throw error;
     } finally {
       setIsGenerating(false);

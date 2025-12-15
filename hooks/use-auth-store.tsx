@@ -15,6 +15,7 @@ import {
 } from '@/lib/firebase';
 
 const AUTH_STORAGE_KEY = 'auth_user_firebase';
+const AUTH_LOGIN_GATE_KEY = 'auth_login_gate_v1';
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const [authState, setAuthState] = useState<AuthState>({
@@ -24,6 +25,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   });
   const [firebaseInitialized, setFirebaseInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [needsLoginGate, setNeedsLoginGate] = useState<boolean>(false);
 
   useEffect(() => {
     console.log('[Auth] Initializing Firebase...');
@@ -51,6 +53,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         const user = normalizeUser(firebaseUserToUser(firebaseUser));
         await safeStorageSet(AUTH_STORAGE_KEY, user);
 
+        const gateSeen = await safeStorageGet<boolean>(AUTH_LOGIN_GATE_KEY, false);
+        setNeedsLoginGate(!gateSeen);
+
         setAuthState({
           user,
           isLoading: false,
@@ -59,18 +64,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         return;
       }
 
-      const storedUser = await safeStorageGet<User | null>(AUTH_STORAGE_KEY, null);
-      const normalizedStoredUser = storedUser ? normalizeUser(storedUser) : null;
-
-      if (normalizedStoredUser) {
-        console.log('[Auth] No Firebase user yet, using stored user session');
-        setAuthState({
-          user: normalizedStoredUser,
-          isLoading: false,
-          isAuthenticated: true,
-        });
-        return;
-      }
+      setNeedsLoginGate(false);
+      await safeStorageSet(AUTH_STORAGE_KEY, null);
 
       setAuthState({
         user: null,
@@ -109,6 +104,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
   };
+
+  const markLoginGateSeen = useCallback(async (): Promise<void> => {
+    console.log('[Auth] Marking login gate as seen');
+    await safeStorageSet(AUTH_LOGIN_GATE_KEY, true);
+    setNeedsLoginGate(false);
+  }, []);
 
   const loginWithApple = useCallback(async (): Promise<'success' | 'canceled'> => {
     console.log('[Auth] ========== Apple Login Started ==========');
@@ -157,6 +158,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[Auth] - Firebase UID:', firebaseUser.uid);
       console.log('[Auth] - Email:', firebaseUser.email);
 
+      await markLoginGateSeen();
+
       console.log('[Auth] ========== Login Success ==========');
       return 'success';
 
@@ -188,17 +191,21 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       
       throw new Error('Неизвестная ошибка авторизации');
     }
-  }, [firebaseInitialized, initError]);
+  }, [firebaseInitialized, initError, markLoginGateSeen]);
 
   const logout = useCallback(async (): Promise<void> => {
     console.log('[Auth] Logging out...');
     try {
       await firebaseSignOut();
       await safeStorageSet(AUTH_STORAGE_KEY, null);
+      await safeStorageSet(AUTH_LOGIN_GATE_KEY, false);
+      setNeedsLoginGate(false);
       console.log('[Auth] Logout complete');
     } catch (error) {
       console.error('[Auth] Logout error:', error);
       await safeStorageSet(AUTH_STORAGE_KEY, null);
+      await safeStorageSet(AUTH_LOGIN_GATE_KEY, false);
+      setNeedsLoginGate(false);
       setAuthState({
         user: null,
         isLoading: false,
@@ -213,6 +220,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       await deleteCurrentUser();
       await safeStorageSet(AUTH_STORAGE_KEY, null);
+      await safeStorageSet(AUTH_LOGIN_GATE_KEY, false);
+      setNeedsLoginGate(false);
       console.log('[Auth] Account deleted');
       return true;
     } catch (error) {
@@ -233,8 +242,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     ...authState,
     firebaseInitialized,
     initError,
+    needsLoginGate,
+    markLoginGateSeen,
     loginWithApple,
     logout,
     deleteAccount,
-  }), [authState, firebaseInitialized, initError, loginWithApple, logout, deleteAccount]);
+  }), [authState, firebaseInitialized, initError, needsLoginGate, markLoginGateSeen, loginWithApple, logout, deleteAccount]);
 });
