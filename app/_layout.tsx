@@ -121,7 +121,7 @@ function RootLayoutNav() {
         name="goal-creation" 
         options={{ 
           headerShown: false, 
-          presentation: 'modal',
+          presentation: 'fullScreenModal',
           animation: 'slide_from_bottom'
         }} 
       />
@@ -137,7 +137,7 @@ function RootLayoutNav() {
         name="chat" 
         options={{ 
           headerShown: false,
-          presentation: 'modal',
+          presentation: 'fullScreenModal',
           animation: 'slide_from_bottom'
         }} 
       />
