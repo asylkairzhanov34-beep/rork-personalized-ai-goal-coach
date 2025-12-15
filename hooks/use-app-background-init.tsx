@@ -1,22 +1,16 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { safeStorageGet } from '@/utils/storage-helper';
 import { FirstTimeProfile } from '@/types/first-time-setup';
-
-let Notifications: any = null;
-try {
-  Notifications = require('expo-notifications');
-} catch {
-  console.log('[BackgroundInit] expo-notifications not available');
-}
 
 export function useAppBackgroundInit() {
   const isInitialized = useRef(false);
   const notificationsScheduled = useRef(false);
 
   const requestNotificationPermissions = useCallback(async () => {
-    if (!Notifications || Platform.OS === 'web') {
-      console.log('[BackgroundInit] Notifications not supported on this platform');
+    if (Platform.OS === 'web') {
+      console.log('[BackgroundInit] Notifications not supported on web');
       return false;
     }
 
@@ -35,10 +29,6 @@ export function useAppBackgroundInit() {
           allowAlert: true,
           allowBadge: true,
           allowSound: true,
-          allowAnnouncements: true,
-          allowCriticalAlerts: true,
-          provideAppNotificationSettings: true,
-          allowProvisional: false,
         },
         android: {},
       });
@@ -52,7 +42,7 @@ export function useAppBackgroundInit() {
   }, []);
 
   const setupNotificationChannels = useCallback(async () => {
-    if (!Notifications || Platform.OS !== 'android') {
+    if (Platform.OS !== 'android') {
       return;
     }
 
@@ -93,9 +83,6 @@ export function useAppBackgroundInit() {
   }, []);
 
   const configureNotificationHandler = useCallback(() => {
-    if (!Notifications) {
-      return;
-    }
 
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -124,7 +111,7 @@ export function useAppBackgroundInit() {
   };
 
   const scheduleGoalReminderForUser = useCallback(async () => {
-    if (!Notifications || Platform.OS === 'web' || notificationsScheduled.current) {
+    if (Platform.OS === 'web' || notificationsScheduled.current) {
       return;
     }
 
@@ -153,22 +140,23 @@ export function useAppBackgroundInit() {
 
       const { hour, minute } = getNotificationTimeForProductivity(profile.productivityTime);
       const timeLabels: Record<string, string> = {
-        morning: 'утро',
-        afternoon: 'день',
-        evening: 'вечер',
+        morning: 'morning',
+        afternoon: 'afternoon',
+        evening: 'evening',
       };
-      const timeLabel = timeLabels[profile.productivityTime] || '';
+      const timeLabel = timeLabels[profile.productivityTime] || 'today';
 
       console.log(`[BackgroundInit] Scheduling goal reminder at ${hour}:${minute} (${profile.productivityTime})`);
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '🎯 Время для цели!',
-          body: `Пора поработать над своей целью. Твой пик продуктивности — ${timeLabel}!`,
+          title: 'Time for Your Goal',
+          body: `Time to work on your goal. Your peak productivity is in the ${timeLabel}.`,
           data: { type: 'goal_reminder', productivityTime: profile.productivityTime },
           sound: 'default',
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
           hour,
           minute,
           repeats: true,

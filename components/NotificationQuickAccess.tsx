@@ -23,12 +23,12 @@ export function NotificationQuickAccess() {
       </View>
       <View style={styles.content}>
         <Text style={styles.title}>
-          {permission.granted ? 'Уведомления включены' : 'Включить уведомления'}
+          {permission.granted ? 'Notifications enabled' : 'Enable notifications'}
         </Text>
         <Text style={styles.subtitle}>
           {permission.granted 
-            ? 'Настроить напоминания' 
-            : 'Получайте полезные напоминания'
+            ? 'Manage reminders'
+            : 'Get helpful reminders'
           }
         </Text>
       </View>

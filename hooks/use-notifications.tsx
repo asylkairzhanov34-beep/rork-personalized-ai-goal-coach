@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Platform, Alert } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
-// Mock notification types for when expo-notifications is not available
 type MockPermissionStatus = 'granted' | 'denied' | 'undetermined';
 
 interface MockNotification {
@@ -15,31 +16,15 @@ interface MockNotification {
   };
 }
 
-// Check if expo-notifications is available
-let Notifications: any = null;
-let Device: any = null;
-let Constants: any = null;
-
-try {
-  Notifications = require('expo-notifications');
-  Device = require('expo-device');
-  Constants = require('expo-constants');
-  
-  // Настройка поведения уведомлений только если модуль доступен
-  if (Notifications) {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-  }
-} catch (error) {
-  console.log('expo-notifications not available, using mock implementation');
-}
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 export interface NotificationPermission {
   granted: boolean;
@@ -59,47 +44,37 @@ export function useNotifications() {
   const responseListener = useRef<any>(null);
 
   useEffect(() => {
-    if (Notifications) {
-      registerForPushNotificationsAsync().then(token => {
-        if (token) {
-          setExpoPushToken(token);
-        }
-      });
-
-      // Слушатель входящих уведомлений
-      notificationListener.current = Notifications.addNotificationReceivedListener((notification: any) => {
-        if (notification) {
-          setNotification(notification);
-        }
-      });
-
-      // Слушатель ответов на уведомления
-      responseListener.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
-        if (response) {
-          console.log('Notification response:', response);
-        }
-      });
-
-      return () => {
-        if (notificationListener.current && typeof notificationListener.current.remove === 'function') {
-          notificationListener.current.remove();
-        } else if (notificationListener.current && typeof notificationListener.current === 'object') {
-          // For older versions or web compatibility
-          notificationListener.current = null;
-        }
-        if (responseListener.current && typeof responseListener.current.remove === 'function') {
-          responseListener.current.remove();
-        } else if (responseListener.current && typeof responseListener.current === 'object') {
-          // For older versions or web compatibility
-          responseListener.current = null;
-        }
-      };
+    if (Platform.OS === 'web') {
+      return;
     }
+
+    registerForPushNotificationsAsync().then(token => {
+      if (token) {
+        setExpoPushToken(token);
+      }
+    });
+
+    notificationListener.current = Notifications.addNotificationReceivedListener((incoming: any) => {
+      if (incoming) {
+        setNotification(incoming);
+      }
+    });
+
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
+      if (response) {
+        console.log('Notification response:', response);
+      }
+    });
+
+    return () => {
+      notificationListener.current?.remove?.();
+      responseListener.current?.remove?.();
+    };
   }, []);
 
   const registerForPushNotificationsAsync = async (): Promise<string | null> => {
-    if (!Notifications || !Device) {
-      console.log('Notifications not available');
+    if (Platform.OS === 'web') {
+      console.log('Notifications not available on web');
       return null;
     }
 
@@ -114,7 +89,9 @@ export function useNotifications() {
       });
     }
 
-    if (Device.isDevice) {
+    const DeviceModule = await import('expo-device');
+
+    if (DeviceModule.isDevice) {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
       
@@ -153,10 +130,10 @@ export function useNotifications() {
   };
 
   const requestPermissions = async (): Promise<boolean> => {
-    if (!Notifications) {
+    if (Platform.OS === 'web') {
       Alert.alert(
         'Notifications unavailable',
-        'Notification feature is not supported in the current environment.'
+        'Notification feature is not supported on web.'
       );
       return false;
     }
@@ -173,6 +150,17 @@ export function useNotifications() {
     return granted;
   };
 
+  const sanitizeEnglish = (input: string): string => {
+    const trimmed = input.trim();
+    if (!trimmed) return 'Notification';
+
+    const hasCyrillic = /[\u0400-\u04FF]/.test(trimmed);
+    if (!hasCyrillic) return trimmed;
+
+    const stripped = trimmed.replace(/[\u0400-\u04FF]/g, '').replace(/\s+/g, ' ').trim();
+    return stripped || 'Notification';
+  };
+
   const scheduleNotification = async ({
     title,
     body,
@@ -186,9 +174,12 @@ export function useNotifications() {
     trigger?: any;
     sound?: 'default' | 'bell' | 'chime' | 'ding';
   }) => {
-    if (!Notifications) {
-      console.log('Notifications not available, showing alert instead');
-      Alert.alert(title, body);
+    const safeTitle = sanitizeEnglish(title);
+    const safeBody = sanitizeEnglish(body);
+
+    if (Platform.OS === 'web') {
+      console.log('Notifications not available on web, showing alert instead');
+      Alert.alert(safeTitle, safeBody);
       return 'mock-id-' + Date.now();
     }
 
@@ -222,8 +213,8 @@ export function useNotifications() {
     try {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
-          title,
-          body,
+          title: safeTitle,
+          body: safeBody,
           data,
           sound: notificationSound,
         },
@@ -239,8 +230,8 @@ export function useNotifications() {
   };
 
   const cancelNotification = async (notificationId: string) => {
-    if (!Notifications) {
-      console.log('Notifications not available, mock cancel:', notificationId);
+    if (Platform.OS === 'web') {
+      console.log('Notifications not available on web, mock cancel:', notificationId);
       return;
     }
 
@@ -253,8 +244,8 @@ export function useNotifications() {
   };
 
   const cancelAllNotifications = async () => {
-    if (!Notifications) {
-      console.log('Notifications not available, mock cancel all');
+    if (Platform.OS === 'web') {
+      console.log('Notifications not available on web, mock cancel all');
       return;
     }
 
@@ -338,7 +329,7 @@ export function useNotifications() {
     await cancelAllNotifications();
     
     return await scheduleNotification({
-      title: '🎯 Time for Your Goal!',
+      title: 'Time for Your Goal',
       body: `Time to work on ${goalText}. Your peak productivity is in the ${timeLabel}!`,
       data: { type: 'goal_reminder', productivityTime },
       trigger: {
@@ -357,7 +348,7 @@ export function useNotifications() {
     console.log(`[Notifications] Scheduling productivity reminder at ${hour}:${minute}`);
     
     return await scheduleNotification({
-      title: '⚡ Peak Energy Time!',
+      title: 'Peak Energy Time',
       body: 'Now is the best time for important tasks. Start right now!',
       data: { type: 'productivity_reminder', productivityTime },
       trigger: {

@@ -8,12 +8,12 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Sparkles, Lock, Crown, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useSubscription } from '@/hooks/use-subscription-store';
-import { Alert } from 'react-native';
 
 const FEATURES = [
   'Daily AI Coach — AI analyzes your day and selects optimal steps.',
@@ -61,7 +61,7 @@ export default function PaywallModal({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
   const ctaScale = useRef(new Animated.Value(1)).current;
-  const { restorePurchases } = useSubscription();
+  const { restorePurchases, isRestoring } = useSubscription();
 
   useEffect(() => {
     if (visible) {
@@ -139,10 +139,10 @@ export default function PaywallModal({
   const handleRestore = async () => {
     const success = await restorePurchases();
     if (success) {
-      Alert.alert('Success', 'Subscription restored');
+      Alert.alert('Restored', 'Your subscription is active.');
       onRequestClose?.();
     } else {
-      Alert.alert('Error', 'No active subscription found');
+      Alert.alert('Not found', 'No active subscription was found for this Apple ID / Google account.');
     }
   };
 
@@ -245,8 +245,13 @@ export default function PaywallModal({
               onPress={handleRestore}
               style={styles.restoreButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              disabled={isRestoring}
+              accessibilityLabel="Restore purchases"
+              testID="paywall-restore-purchases"
             >
-              <Text style={styles.restoreText}>Restore Purchases</Text>
+              <Text style={[styles.restoreText, isRestoring && styles.restoreTextDisabled]}>
+                {isRestoring ? 'Restoring…' : 'Restore Purchases'}
+              </Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -387,5 +392,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255,255,255,0.4)',
     textDecorationLine: 'underline',
+  },
+  restoreTextDisabled: {
+    opacity: 0.7,
+    textDecorationLine: 'none',
   },
 });

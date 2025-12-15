@@ -10,7 +10,7 @@ export default function NotificationSettingsScreen() {
     <GradientBackground>
       <Stack.Screen 
         options={{ 
-          title: 'Уведомления',
+          title: 'Notifications',
           headerStyle: {
             backgroundColor: 'transparent',
           },

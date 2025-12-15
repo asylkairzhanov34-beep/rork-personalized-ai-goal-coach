@@ -660,7 +660,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           };
         } catch (error) {
           console.error('[SubscriptionProvider] Mock purchase failed', error);
-          Alert.alert('Ошибка', 'Не удалось оформить подписку. Попробуйте снова.');
+          Alert.alert('Purchase failed', 'We could not complete the purchase. Please try again.');
           return null;
         } finally {
           setIsPurchasing(false);
@@ -674,7 +674,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         console.log('[SubscriptionProvider] Initiating purchase for:', packageIdentifier);
         const purchase = await purchasePackageByIdentifier(packageIdentifier);
         if (!purchase) {
-          Alert.alert('Ошибка', 'Выбранный пакет недоступен.');
+          Alert.alert('Not available', 'The selected package is not available.');
           return null;
         }
 
@@ -695,7 +695,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           return null;
         }
         console.error('[SubscriptionProvider] Purchase failed', error);
-        Alert.alert('Ошибка', 'Не удалось оформить подписку. Попробуйте снова.');
+        Alert.alert('Purchase failed', 'We could not complete the purchase. Please try again.');
         return null;
       } finally {
         setIsPurchasing(false);
@@ -728,15 +728,35 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     setIsRestoring(true);
     try {
       console.log('[SubscriptionProvider] Restoring purchases...');
-      const info = await restorePurchasesRC();
-      if (info) {
-        await persistCustomerInfo(info);
-        return Object.keys(info.entitlements?.active ?? {}).length > 0;
+      console.log('[SubscriptionProvider] isMockMode:', isMockMode);
+      console.log('[SubscriptionProvider] Platform:', Platform.OS);
+
+      await invalidateCustomerInfoCache().catch((err: unknown) => {
+        console.warn('[SubscriptionProvider] invalidateCustomerInfoCache failed (non-fatal)', err);
+      });
+
+      const restoredInfo = await restorePurchasesRC();
+      console.log('[SubscriptionProvider] restorePurchasesRC result:', {
+        hasInfo: !!restoredInfo,
+        activeEntitlements: Object.keys(restoredInfo?.entitlements?.active ?? {}).length,
+      });
+
+      const syncedInfo = await syncWithRevenueCat();
+      console.log('[SubscriptionProvider] syncWithRevenueCat result:', {
+        hasInfo: !!syncedInfo,
+        activeEntitlements: Object.keys(syncedInfo?.entitlements?.active ?? {}).length,
+      });
+
+      const finalInfo = syncedInfo ?? restoredInfo;
+      if (finalInfo) {
+        await persistCustomerInfo(finalInfo);
+        return Object.keys(finalInfo.entitlements?.active ?? {}).length > 0;
       }
+
       return false;
     } catch (error) {
       console.error('[SubscriptionProvider] Restore failed', error);
-      Alert.alert('Ошибка', 'Не удалось восстановить покупки. Попробуйте позже.');
+      Alert.alert('Restore failed', 'We could not restore purchases. Please try again later.');
       return false;
     } finally {
       setIsRestoring(false);

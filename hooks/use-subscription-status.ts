@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSubscription } from './use-subscription-store';
 
-const HAS_SEEN_SUB_OFFER = 'hasSeenPaywall';
-const TRIAL_START_ISO = 'trialStartedAt';
+const HAS_SEEN_SUB_OFFER_KEYS = ['hasSeenSubscriptionOffer', 'hasSeenPaywall'] as const;
+const TRIAL_START_ISO_KEYS = ['trialStartISO', 'trialStartedAt'] as const;
 const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 type TrialSnapshot = {
@@ -77,14 +77,17 @@ export function useSubscriptionStatus(): SubscriptionStatusHook {
 
     const hydrate = async () => {
       try {
-        const entries = await AsyncStorage.multiGet([HAS_SEEN_SUB_OFFER, TRIAL_START_ISO]);
+        const entries = await AsyncStorage.multiGet([
+          ...HAS_SEEN_SUB_OFFER_KEYS,
+          ...TRIAL_START_ISO_KEYS,
+        ]);
         if (!mounted) {
           return;
         }
-        const seen = entries.find(([key]) => key === HAS_SEEN_SUB_OFFER)?.[1];
-        const trial = entries.find(([key]) => key === TRIAL_START_ISO)?.[1];
-        setHasSeenOffer(seen === 'true');
-        setTrialStartIso(trial ?? null);
+        const seenRaw = entries.find(([key]) => HAS_SEEN_SUB_OFFER_KEYS.includes(key as any))?.[1];
+        const trialRaw = entries.find(([key]) => TRIAL_START_ISO_KEYS.includes(key as any))?.[1];
+        setHasSeenOffer(seenRaw === 'true');
+        setTrialStartIso(trialRaw ?? null);
       } catch (error) {
         console.error('[useSubscriptionStatus] hydrate failed', error);
       } finally {
@@ -105,13 +108,15 @@ export function useSubscriptionStatus(): SubscriptionStatusHook {
     if (!trialState.startedAt || trialStartIso) {
       return;
     }
-    AsyncStorage.setItem(TRIAL_START_ISO, trialState.startedAt).catch(() => undefined);
+    AsyncStorage.multiSet(
+      TRIAL_START_ISO_KEYS.map((key) => [key, trialState.startedAt ?? '']),
+    ).catch(() => undefined);
     setTrialStartIso(trialState.startedAt);
   }, [trialStartIso, trialState.startedAt]);
 
   useEffect(() => {
     if (status === 'premium' && !hasSeenOffer) {
-      AsyncStorage.setItem(HAS_SEEN_SUB_OFFER, 'true').catch(() => undefined);
+      AsyncStorage.multiSet(HAS_SEEN_SUB_OFFER_KEYS.map((key) => [key, 'true'])).catch(() => undefined);
       setHasSeenOffer(true);
     }
   }, [hasSeenOffer, status]);
@@ -144,8 +149,8 @@ export function useSubscriptionStatus(): SubscriptionStatusHook {
         const now = new Date().toISOString();
         // Both primary and skip give 24h free access
         await AsyncStorage.multiSet([
-          [TRIAL_START_ISO, now],
-          [HAS_SEEN_SUB_OFFER, 'true'],
+          ...TRIAL_START_ISO_KEYS.map((key) => [key, now] as [string, string]),
+          ...HAS_SEEN_SUB_OFFER_KEYS.map((key) => [key, 'true'] as [string, string]),
         ]);
         setTrialStartIso(now);
         setHasSeenOffer(true);
@@ -170,7 +175,7 @@ export function useSubscriptionStatus(): SubscriptionStatusHook {
     try {
       await checkSubscriptionStatus();
       if (!trialSnapshot.startedAt) {
-        const stored = await AsyncStorage.getItem(TRIAL_START_ISO);
+        const stored = (await AsyncStorage.getItem(TRIAL_START_ISO_KEYS[0])) ?? (await AsyncStorage.getItem(TRIAL_START_ISO_KEYS[1]));
         setTrialStartIso(stored ?? null);
       }
     } finally {
