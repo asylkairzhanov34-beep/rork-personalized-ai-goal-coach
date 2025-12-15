@@ -33,7 +33,6 @@ export default function TodayScreen() {
   const todayProgress = store?.getProgressForPeriod ? store.getProgressForPeriod('day') : { completed: 0, total: 0, percentage: 0 };
   const progress = todayProgress.percentage;
   const todayFocusMinutes = 0; // TODO: implement timer integration
-  const manifestationStats = manifestationStore?.getStats() || { currentStreak: 0 };
   const todayManifestationSessions = manifestationStore?.getTodaySessions() || [];
 
   const onRefresh = React.useCallback(() => {

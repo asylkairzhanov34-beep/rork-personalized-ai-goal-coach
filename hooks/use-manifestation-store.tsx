@@ -189,8 +189,14 @@ export const [ManifestationProvider, useManifestationStore] = createContextHook(
   };
 
   const getTodaySessions = () => {
-    const today = new Date().toDateString();
-    return sessions.filter(s => s.completedAt.toDateString() === today);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    
+    return sessions.filter(s => {
+      const sessionDate = new Date(s.completedAt);
+      return sessionDate >= todayStart && sessionDate < todayEnd;
+    });
   };
 
   return {
