@@ -268,7 +268,7 @@ const ChatScreen: React.FC = () => {
             <View style={styles.emptyState}>
               <View style={styles.emptyIconGlow} />
               <View style={styles.emptyIcon}>
-                <Bot size={48} color={theme.colors.primary} />
+                <Bot size={36} color={theme.colors.primary} />
               </View>
               <Text style={styles.emptyTitle}>Hi! I’m GoalForge</Text>
               <Text style={styles.emptyText}>
@@ -525,48 +525,42 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 40,
+    marginTop: 20,
     paddingHorizontal: 24,
   },
   emptyIconGlow: {
     position: 'absolute',
-    top: -20,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    top: -10,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: theme.colors.primary,
-    opacity: 0.1,
-    transform: [{ scale: 1.5 }],
+    opacity: 0.15,
   },
   emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: theme.colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    borderWidth: 1,
+    marginBottom: 16,
+    borderWidth: 2,
     borderColor: theme.colors.primary,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
   },
   emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
     color: theme.colors.text,
-    marginBottom: 12,
+    marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
-    fontSize: 15,
+    fontSize: 14,
     color: theme.colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 32,
+    lineHeight: 20,
+    marginBottom: 24,
   },
   suggestionsContainer: {
     width: '100%',
