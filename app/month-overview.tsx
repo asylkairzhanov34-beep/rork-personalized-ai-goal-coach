@@ -305,25 +305,7 @@ export default function MonthOverviewScreen() {
     return days;
   }, [store?.dailyTasks]);
 
-  const monthStats = useMemo(() => {
-    const tasks = monthDays.flatMap((d) => d.tasks);
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter((t) => t.completed).length;
-    const completionRate = totalTasks === 0 ? 0 : completedTasks / totalTasks;
 
-    const daysWithTasks = monthDays.filter((d) => d.tasks.length > 0).length;
-    const daysFullyDone = monthDays.filter(
-      (d) => d.tasks.length > 0 && d.tasks.every((t) => t.completed)
-    ).length;
-
-    return {
-      totalTasks,
-      completedTasks,
-      completionRate,
-      daysWithTasks,
-      daysFullyDone,
-    };
-  }, [monthDays]);
 
   const handleDayPress = useCallback((day: MonthDay) => {
     setSelectedDay(day);
@@ -405,45 +387,6 @@ export default function MonthOverviewScreen() {
           showsVerticalScrollIndicator={false}
           testID="monthOverview.scroll"
         >
-          <View style={styles.hero} testID="monthOverview.hero">
-            <View style={styles.heroTopRow}>
-              <View style={styles.heroChip}>
-                <Text style={styles.heroChipText}>Progress</Text>
-              </View>
-              <Text style={styles.heroRate}>
-                {Math.round(monthStats.completionRate * 100)}%
-              </Text>
-            </View>
-
-            <View style={styles.heroBar}>
-              <View
-                style={[
-                  styles.heroBarFill,
-                  {
-                    width: `${Math.min(100, Math.max(0, monthStats.completionRate * 100))}%`,
-                  },
-                ]}
-              />
-            </View>
-
-            <View style={styles.heroStatsRow}>
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatValue}>{monthStats.completedTasks}</Text>
-                <Text style={styles.heroStatLabel}>Done</Text>
-              </View>
-              <View style={styles.heroDivider} />
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatValue}>{monthStats.totalTasks}</Text>
-                <Text style={styles.heroStatLabel}>Total tasks</Text>
-              </View>
-              <View style={styles.heroDivider} />
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatValue}>{monthStats.daysFullyDone}</Text>
-                <Text style={styles.heroStatLabel}>Perfect days</Text>
-              </View>
-            </View>
-          </View>
-
           <View style={styles.legend} testID="monthOverview.legend">
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: theme.colors.success }]} />
@@ -464,8 +407,6 @@ export default function MonthOverviewScreen() {
               const progressColor = getProgressColor(day.tasks);
               const completedTasks = day.tasks.filter((task) => task.completed).length;
               const totalTasks = day.tasks.length;
-
-              const progressPct = totalTasks === 0 ? 0 : (completedTasks / totalTasks) * 100;
 
               return (
                 <TouchableOpacity
@@ -499,17 +440,6 @@ export default function MonthOverviewScreen() {
                             ? 'No tasks'
                             : `${completedTasks}/${totalTasks} completed`}
                         </Text>
-
-                        {totalTasks > 0 && (
-                          <View style={styles.progressTrack}>
-                            <View
-                              style={[
-                                styles.progressFill,
-                                { width: `${progressPct}%`, backgroundColor: progressColor },
-                              ]}
-                            />
-                          </View>
-                        )}
                       </View>
                     </View>
 
@@ -604,75 +534,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     paddingBottom: theme.spacing.xxl,
   },
-  hero: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    padding: theme.spacing.lg,
-    ...theme.shadows.medium,
-  },
-  heroTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  heroChip: {
-    backgroundColor: theme.colors.surfaceGlass,
-    borderWidth: 1,
-    borderColor: theme.colors.glassBorder,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  heroChipText: {
-    fontSize: 12,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.text,
-  },
-  heroRate: {
-    fontSize: 28,
-    fontWeight: theme.fontWeight.extrabold,
-    color: theme.colors.text,
-    letterSpacing: -0.5,
-  },
-  heroBar: {
-    marginTop: theme.spacing.md,
-    height: 10,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  heroBarFill: {
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: theme.colors.primary,
-  },
-  heroStatsRow: {
-    marginTop: theme.spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  heroStat: {
-    flex: 1,
-  },
-  heroStatValue: {
-    fontSize: 18,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text,
-  },
-  heroStatLabel: {
-    marginTop: 4,
-    fontSize: 12,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textSecondary,
-  },
-  heroDivider: {
-    width: 1,
-    height: 34,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginHorizontal: theme.spacing.md,
-  },
+
   legend: {
     marginTop: theme.spacing.lg,
     flexDirection: 'row',
@@ -767,17 +629,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: theme.fontWeight.medium,
     color: theme.colors.textSecondary,
-  },
-  progressTrack: {
-    marginTop: 10,
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 999,
   },
   dayListRight: {
     alignItems: 'flex-end',
