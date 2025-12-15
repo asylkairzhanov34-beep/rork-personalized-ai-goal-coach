@@ -33,7 +33,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const buttonSlide = useRef(new Animated.Value(50)).current;
   const glowAnim = useRef(new Animated.Value(0.95)).current;
 
-  const { loginWithApple, firebaseInitialized, initError, isAuthenticated, user, markLoginGateSeen } = useAuth();
+  const { loginWithApple, firebaseInitialized, initError, isAuthenticated, user, markLoginGateSeen, requiresFirstLogin } = useAuth();
 
   useEffect(() => {
     Animated.parallel([
@@ -223,7 +223,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               </View>
             )}
 
-            {isAuthenticated ? (
+            {isAuthenticated && !requiresFirstLogin ? (
               <TouchableOpacity
                 style={[styles.appleButton, isLoading && styles.buttonDisabled]}
                 onPress={handleContinue}

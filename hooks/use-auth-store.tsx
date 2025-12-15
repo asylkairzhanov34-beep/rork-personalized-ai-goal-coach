@@ -16,6 +16,7 @@ import {
 
 const AUTH_STORAGE_KEY = 'auth_user_firebase';
 const AUTH_LOGIN_GATE_KEY = 'auth_login_gate_v1';
+const FIRST_LAUNCH_KEY = 'app_first_launch_v1';
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const [authState, setAuthState] = useState<AuthState>({
@@ -26,6 +27,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [firebaseInitialized, setFirebaseInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [needsLoginGate, setNeedsLoginGate] = useState<boolean>(false);
+  const [requiresFirstLogin, setRequiresFirstLogin] = useState<boolean>(false);
 
   useEffect(() => {
     console.log('[Auth] Initializing Firebase...');
@@ -39,6 +41,33 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setInitError(errorMsg);
       setAuthState(prev => ({ ...prev, isLoading: false }));
     }
+  }, []);
+
+  useEffect(() => {
+    const checkFirstLaunch = async () => {
+      try {
+        if (Platform.OS !== 'ios') {
+          setRequiresFirstLogin(false);
+          return;
+        }
+
+        const hasLaunchedBefore = await safeStorageGet<boolean>(FIRST_LAUNCH_KEY, false);
+        console.log('[Auth] First launch check:', { hasLaunchedBefore });
+
+        if (!hasLaunchedBefore) {
+          await safeStorageSet(FIRST_LAUNCH_KEY, true);
+          setRequiresFirstLogin(true);
+          console.log('[Auth] First install detected -> forcing Apple login');
+        } else {
+          setRequiresFirstLogin(false);
+        }
+      } catch (error) {
+        console.error('[Auth] First launch check error:', error);
+        setRequiresFirstLogin(false);
+      }
+    };
+
+    checkFirstLaunch();
   }, []);
 
   useEffect(() => {
@@ -109,6 +138,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     console.log('[Auth] Marking login gate as seen');
     await safeStorageSet(AUTH_LOGIN_GATE_KEY, true);
     setNeedsLoginGate(false);
+    setRequiresFirstLogin(false);
   }, []);
 
   const loginWithApple = useCallback(async (): Promise<'success' | 'canceled'> => {
@@ -200,12 +230,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       await safeStorageSet(AUTH_STORAGE_KEY, null);
       await safeStorageSet(AUTH_LOGIN_GATE_KEY, false);
       setNeedsLoginGate(false);
+      setRequiresFirstLogin(false);
       console.log('[Auth] Logout complete');
     } catch (error) {
       console.error('[Auth] Logout error:', error);
       await safeStorageSet(AUTH_STORAGE_KEY, null);
       await safeStorageSet(AUTH_LOGIN_GATE_KEY, false);
       setNeedsLoginGate(false);
+      setRequiresFirstLogin(false);
       setAuthState({
         user: null,
         isLoading: false,
@@ -222,6 +254,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       await safeStorageSet(AUTH_STORAGE_KEY, null);
       await safeStorageSet(AUTH_LOGIN_GATE_KEY, false);
       setNeedsLoginGate(false);
+      setRequiresFirstLogin(false);
       console.log('[Auth] Account deleted');
       return true;
     } catch (error) {
@@ -243,9 +276,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     firebaseInitialized,
     initError,
     needsLoginGate,
+    requiresFirstLogin,
     markLoginGateSeen,
     loginWithApple,
     logout,
     deleteAccount,
-  }), [authState, firebaseInitialized, initError, needsLoginGate, markLoginGateSeen, loginWithApple, logout, deleteAccount]);
+  }), [authState, firebaseInitialized, initError, needsLoginGate, requiresFirstLogin, markLoginGateSeen, loginWithApple, logout, deleteAccount]);
 });
