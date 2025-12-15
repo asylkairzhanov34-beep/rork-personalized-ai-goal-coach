@@ -97,7 +97,7 @@ export function getTRPCErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
-  return 'Неизвестная ошибка';
+  return 'Unknown error';
 }
 
 console.log('[tRPC] Module initialized');

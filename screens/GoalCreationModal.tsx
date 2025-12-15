@@ -410,7 +410,7 @@ Respond in a friendly manner in English, ask one question at a time. Be concise 
           dayTasks.forEach((task: any, taskIndex: number) => {
             const subtasks = Array.isArray(task?.subtasks) ? task.subtasks.map((st: any, stIndex: number) => ({
               id: `subtask_${Date.now()}_${dayIndex}_${taskIndex}_${stIndex}`,
-              title: st?.title || `Подзадача ${stIndex + 1}`,
+              title: st?.title || `Subtask ${stIndex + 1}`,
               completed: false,
               estimatedTime: st?.estimatedTime || 10,
             })) : undefined;
