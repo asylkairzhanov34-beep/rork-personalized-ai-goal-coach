@@ -64,17 +64,6 @@ function priorityLabel(priority: DailyTask['priority']) {
   return 'Low';
 }
 
-function getProgressColor(tasks: DailyTask[]) {
-  if (tasks.length === 0) return theme.colors.textMuted;
-
-  const completedTasks = tasks.filter((t) => t.completed).length;
-  const completionRate = completedTasks / tasks.length;
-
-  if (completionRate === 1) return theme.colors.success;
-  if (completionRate > 0) return theme.colors.primary;
-  return theme.colors.error;
-}
-
 function DayTasksModal({ visible, day, onClose, onToggleTask, onAddTask }: DayTasksModalProps) {
   const [newTaskTitle, setNewTaskTitle] = useState<string>('');
   const [newTaskDescription, setNewTaskDescription] = useState<string>('');
@@ -387,24 +376,8 @@ export default function MonthOverviewScreen() {
           showsVerticalScrollIndicator={false}
           testID="monthOverview.scroll"
         >
-          <View style={styles.legend} testID="monthOverview.legend">
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: theme.colors.success }]} />
-              <Text style={styles.legendText}>All done</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: theme.colors.primary }]} />
-              <Text style={styles.legendText}>In progress</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: theme.colors.textMuted }]} />
-              <Text style={styles.legendText}>No tasks</Text>
-            </View>
-          </View>
-
           <View style={styles.daysListContainer} testID="monthOverview.list">
             {monthDays.map((day) => {
-              const progressColor = getProgressColor(day.tasks);
               const completedTasks = day.tasks.filter((task) => task.completed).length;
               const totalTasks = day.tasks.length;
 
@@ -418,8 +391,6 @@ export default function MonthOverviewScreen() {
                 >
                   <View style={styles.dayListContent}>
                     <View style={styles.dayListLeft}>
-                      <View style={[styles.dayIndicator, { backgroundColor: progressColor }]} />
-
                       <View style={styles.dayInfo}>
                         <View style={styles.dayTitleRow}>
                           <Text
@@ -535,32 +506,6 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xxl,
   },
 
-  legend: {
-    marginTop: theme.spacing.lg,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.surfaceGlass,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: theme.borderRadius.md,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  legendText: {
-    fontSize: 12,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.text,
-  },
   daysListContainer: {
     marginTop: theme.spacing.lg,
   },
@@ -587,12 +532,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     minWidth: 0,
-  },
-  dayIndicator: {
-    width: 4,
-    height: 54,
-    borderRadius: 3,
-    marginRight: 14,
   },
   dayInfo: {
     flex: 1,
