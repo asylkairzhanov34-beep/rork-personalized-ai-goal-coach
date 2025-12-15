@@ -146,15 +146,22 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
       return null;
     }
 
-    // Don't schedule notification for very short timers
-    if (seconds < 5) {
-      console.log('[TimerStore] Timer too short, skipping notification');
+    const safeSeconds = Number.isFinite(seconds) ? seconds : 0;
+
+    if (safeSeconds < 5) {
+      console.log('[TimerStore] Timer too short/invalid, skipping notification:', seconds);
       return null;
     }
 
     try {
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      console.log('[TimerStore] Cancelled previous notifications');
+      if (backgroundNotificationId.current) {
+        try {
+          await Notifications.cancelScheduledNotificationAsync(backgroundNotificationId.current);
+          console.log('[TimerStore] Cancelled previous timer notification:', backgroundNotificationId.current);
+        } catch (error) {
+          console.log('[TimerStore] Failed to cancel previous timer notification:', error);
+        }
+      }
 
       if (Platform.OS === 'android') {
         try {
@@ -171,6 +178,9 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
         }
       }
 
+      const fireDate = new Date(Date.now() + safeSeconds * 1000);
+      console.log('[TimerStore] Scheduling timer notification at:', fireDate.toISOString());
+
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title,
@@ -180,15 +190,14 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
             channelId: 'timer',
           }),
         },
-        trigger: {
-          seconds: seconds,
-        },
+        trigger: fireDate,
       });
 
-      console.log('[TimerStore] Scheduled notification:', notificationId, 'in', seconds, 'sec');
+      backgroundNotificationId.current = notificationId;
+      console.log('[TimerStore] Scheduled timer notification:', notificationId, 'in', safeSeconds, 'sec');
       return notificationId;
     } catch (error) {
-      console.error('[TimerStore] Failed to schedule notification:', error);
+      console.error('[TimerStore] Failed to schedule timer notification:', error);
       return null;
     }
   }, []);
@@ -197,11 +206,15 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
     if (!Notifications || Platform.OS === 'web') return;
 
     try {
-      await Notifications.cancelAllScheduledNotificationsAsync();
+      if (backgroundNotificationId.current) {
+        await Notifications.cancelScheduledNotificationAsync(backgroundNotificationId.current);
+        console.log('[TimerStore] Cancelled timer notification:', backgroundNotificationId.current);
+      } else {
+        console.log('[TimerStore] No timer notification to cancel');
+      }
       backgroundNotificationId.current = null;
-      console.log('[TimerStore] Cancelled all scheduled notifications');
     } catch (error) {
-      console.error('[TimerStore] Failed to cancel notification:', error);
+      console.error('[TimerStore] Failed to cancel timer notification:', error);
     }
   }, []);
 
@@ -350,8 +363,8 @@ export const [TimerProvider, useTimer] = createContextHook(() => {
           if (state.currentTime > 5) {
             const modeText = state.mode === 'focus' ? 'Focus' : state.mode === 'shortBreak' ? 'Short Break' : 'Long Break';
             const notifId = await scheduleBackgroundNotification(
-              `${modeText} Complete! 🎯`,
-              state.mode === 'focus' 
+              `${modeText} Complete`,
+              state.mode === 'focus'
                 ? 'Great work! Time for a break.'
                 : 'Break is over. Ready to continue?',
               state.currentTime
