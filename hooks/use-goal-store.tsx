@@ -368,25 +368,41 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
     }
 
-    updateStreak();
+    updateStreak(updatedTasks);
   };
 
-  const updateStreak = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayISO = today.toISOString().split('T')[0];
-    
-    const todayTasks = dailyTasks.filter(t => {
+  const toISODateUTC = (date: Date): string => {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+      .toISOString()
+      .split('T')[0];
+  };
+
+  const parseISODateToUtcMs = (isoDate: string): number => {
+    const [y, m, d] = isoDate.split('-').map((v) => Number(v));
+    if (!y || !m || !d) {
+      return NaN;
+    }
+    return Date.UTC(y, m - 1, d);
+  };
+
+  const updateStreak = (tasksSnapshot: DailyTask[]) => {
+    const todayISO = toISODateUTC(new Date());
+
+    const todayTasks = tasksSnapshot.filter((t) => {
       const taskDate = new Date(t.date);
-      taskDate.setHours(0, 0, 0, 0);
-      const taskISO = taskDate.toISOString().split('T')[0];
+      const taskISO = toISODateUTC(taskDate);
       return t.goalId === currentGoal?.id && taskISO === todayISO;
     });
-    
-    const todayAllCompleted = todayTasks.length > 0 && todayTasks.every(t => t.completed);
-    
+
+    const todayAllCompleted = todayTasks.length > 0 && todayTasks.every((t) => t.completed);
+
     const lastStreakDate = profile.lastStreakDate;
-    const lastStreakISO = lastStreakDate ? (lastStreakDate.includes('T') ? lastStreakDate.split('T')[0] : new Date(lastStreakDate).toISOString().split('T')[0]) : null;
+    const lastStreakISO = lastStreakDate
+      ? lastStreakDate.includes('T')
+        ? lastStreakDate.split('T')[0]
+        : toISODateUTC(new Date(lastStreakDate))
+      : null;
+
     const todayAlreadyCounted = lastStreakISO === todayISO;
     
     console.log('[Streak] Update check:', {
@@ -402,12 +418,12 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       let newStreak = 1;
       
       if (profile.currentStreak > 0 && lastStreakISO) {
-        const lastDate = new Date(lastStreakISO);
-        lastDate.setHours(0, 0, 0, 0);
-        const daysDiff = Math.round((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-        
+        const todayMs = parseISODateToUtcMs(todayISO);
+        const lastMs = parseISODateToUtcMs(lastStreakISO);
+        const daysDiff = Number.isFinite(todayMs) && Number.isFinite(lastMs) ? Math.round((todayMs - lastMs) / (1000 * 60 * 60 * 24)) : NaN;
+
         console.log('[Streak] Days diff:', daysDiff);
-        
+
         if (daysDiff === 1) {
           newStreak = profile.currentStreak + 1;
         } else if (daysDiff === 0) {
@@ -425,15 +441,15 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       });
     }
     else if (lastStreakISO && !todayAlreadyCounted) {
-      const lastDate = new Date(lastStreakISO);
-      lastDate.setHours(0, 0, 0, 0);
-      const daysDiff = Math.round((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (daysDiff > 1) {
+      const todayMs = parseISODateToUtcMs(todayISO);
+      const lastMs = parseISODateToUtcMs(lastStreakISO);
+      const daysDiff = Number.isFinite(todayMs) && Number.isFinite(lastMs) ? Math.round((todayMs - lastMs) / (1000 * 60 * 60 * 24)) : NaN;
+
+      if (Number.isFinite(daysDiff) && daysDiff > 1) {
         console.log('[Streak] Resetting streak due to gap:', daysDiff, 'days');
-        updateProfile({ 
+        updateProfile({
           currentStreak: 0,
-          lastStreakDate: undefined
+          lastStreakDate: undefined,
         });
       }
     }
@@ -680,7 +696,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
           });
           queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
        }
-       updateStreak();
+       updateStreak(updatedTasks);
     }
   };
 

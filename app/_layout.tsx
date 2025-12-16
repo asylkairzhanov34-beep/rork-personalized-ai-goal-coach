@@ -269,8 +269,8 @@ export default function RootLayout() {
       <GestureHandlerRootView style={styles.container}>
         <trpc.Provider client={trpcReactClient} queryClient={queryClient}>
           <QueryClientProvider client={queryClient}>
-            <SubscriptionProvider>
-              <AuthProvider>
+            <AuthProvider>
+              <SubscriptionProvider>
                 <FirstTimeSetupProvider>
                   <GoalProvider>
                     <TimerProvider>
@@ -283,8 +283,8 @@ export default function RootLayout() {
                     </TimerProvider>
                   </GoalProvider>
                 </FirstTimeSetupProvider>
-              </AuthProvider>
-            </SubscriptionProvider>
+              </SubscriptionProvider>
+            </AuthProvider>
           </QueryClientProvider>
         </trpc.Provider>
       </GestureHandlerRootView>
