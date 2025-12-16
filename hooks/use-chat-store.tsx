@@ -8,6 +8,15 @@ import { useMemo, useEffect, useCallback, useState } from 'react';
 export const [ChatProvider, useChat] = createContextHook(() => {
   const goalStore = useGoalStore();
 
+  useEffect(() => {
+    console.log('[ChatStore] ========== Environment Check ==========');
+    console.log('[ChatStore] Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL || 'NOT SET');
+    console.log('[ChatStore] Project ID:', process.env.EXPO_PUBLIC_PROJECT_ID || 'NOT SET');
+    console.log('[ChatStore] Team ID:', process.env.EXPO_PUBLIC_TEAM_ID || 'NOT SET');
+    console.log('[ChatStore] API Base URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL || 'NOT SET');
+    console.log('[ChatStore] ============================================');
+  }, []);
+
   const { messages, error, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
       getTasks: createRorkTool({
@@ -201,11 +210,16 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const errorText = useMemo(() => {
     if (!error) return null;
+    
+    console.log('[ChatStore] Error object:', error);
+    console.log('[ChatStore] Error type:', typeof error);
+    
     const message = typeof error === 'string' ? error : (error as any)?.message;
     const errorStr = message ? String(message) : 'Unknown chat error';
     
-    // Translate common error messages to English
-    if (errorStr.includes('Не удалось подключиться') || errorStr.includes('fetch failed') || errorStr.includes('network')) {
+    console.log('[ChatStore] Error string:', errorStr);
+    
+    if (errorStr.includes('Не удалось подключиться') || errorStr.includes('fetch failed') || errorStr.includes('network') || errorStr.includes('Failed to fetch')) {
       return 'Connection error. Please check your internet and try again.';
     }
     if (errorStr.includes('timeout') || errorStr.includes('timed out')) {
@@ -213,6 +227,9 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     }
     if (errorStr.includes('server') || errorStr.includes('500') || errorStr.includes('502') || errorStr.includes('503')) {
       return 'Server error. Please try again later.';
+    }
+    if (errorStr.includes('TOOLKIT_URL') || errorStr.includes('PROJECT_ID')) {
+      return 'Configuration error. Please restart the app.';
     }
     
     return errorStr;
