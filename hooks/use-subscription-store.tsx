@@ -545,7 +545,6 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   const getFeatureAccess = useCallback(() => {
     const hasPremiumOrTrial = canAccessPremiumFeatures();
-    const hasPremiumOnly = status === 'premium';
 
     return {
       addTasks: true,
@@ -555,12 +554,12 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       oneDayHistory: true,
       basicThemes: true,
 
-      // AI ассистент — только после покупки Premium
-      aiAdviceLimit: hasPremiumOnly ? Infinity : 0,
-      aiChatAssistant: hasPremiumOnly,
-      dailyAICoach: hasPremiumOnly,
-      weeklyAIReport: hasPremiumOnly,
-      unlimitedAIAdvice: hasPremiumOnly,
+      // AI ассистент — всегда бесплатно
+      aiAdviceLimit: Infinity,
+      aiChatAssistant: true,
+      dailyAICoach: true,
+      weeklyAIReport: true,
+      unlimitedAIAdvice: true,
 
       // Остальные Premium/Trial функции
       smartTasksLimit: hasPremiumOrTrial ? Infinity : 1,
@@ -572,7 +571,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       smartPomodoroAnalytics: hasPremiumOrTrial,
       allFutureFeatures: hasPremiumOrTrial,
     };
-  }, [canAccessPremiumFeatures, status]);
+  }, [canAccessPremiumFeatures]);
 
   const markPaywallSeen = useCallback(async () => {
     setHasSeenPaywall(true);
