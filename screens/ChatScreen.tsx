@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Send, Bot, MessageSquarePlus, Sparkles } from 'lucide-react-native';
+import { Send, Bot, MessageSquarePlus, Sparkles, X } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
 import { ChatMessage } from '@/types/chat';
 import { theme } from '@/constants/theme';
@@ -225,17 +225,26 @@ const ChatScreen: React.FC = () => {
       <View style={styles.container}>
       <SafeAreaView style={styles.headerContainer} edges={['top']}>
         <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatarGradient}>
-                <Sparkles size={20} color={theme.colors.background} />
+          <View style={styles.headerLeft}>
+            <TouchableOpacity 
+              onPress={() => router.back()} 
+              style={styles.backButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={24} color={theme.colors.text} />
+            </TouchableOpacity>
+            <View style={styles.headerContent}>
+              <View style={styles.avatarContainer}>
+                <View style={styles.avatarGradient}>
+                  <Sparkles size={20} color={theme.colors.background} />
+                </View>
               </View>
-            </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>GoalForge</Text>
-              <View style={styles.statusContainer}>
-                <View style={styles.statusDot} />
-                <Text style={styles.headerSubtitle}>Online</Text>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.headerTitle}>GoalForge</Text>
+                <View style={styles.statusContainer}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.headerSubtitle}>Online</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -402,7 +411,12 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    display: 'none', // Hide old styles
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: theme.colors.surfaceElevated,
   },
   headerIconContainer: {
     width: 40,

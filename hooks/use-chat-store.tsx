@@ -8,6 +8,9 @@ import { useMemo, useEffect, useCallback, useState } from 'react';
 export const [ChatProvider, useChat] = createContextHook(() => {
   const goalStore = useGoalStore();
 
+  console.log('[ChatStore] Initializing chat store');
+  console.log('[ChatStore] Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
+
   const { messages, error, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
       addTask: createRorkTool({
@@ -133,14 +136,17 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setIsSending(true);
     try {
       console.log('[ChatStore] Sending message to agent:', text);
-      await rorkSendMessage(text);
+      console.log('[ChatStore] Current messages count:', messages.length);
+      const result = await rorkSendMessage(text);
+      console.log('[ChatStore] Message sent successfully, result:', result);
     } catch (e) {
       console.error('[ChatStore] sendMessage failed:', e);
+      console.error('[ChatStore] Error details:', JSON.stringify(e, null, 2));
       throw e;
     } finally {
       setIsSending(false);
     }
-  }, [rorkSendMessage]);
+  }, [rorkSendMessage, messages.length]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
@@ -188,12 +194,12 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const errorText = useMemo(() => {
     if (!error) return null;
+    console.log('[ChatStore] Error detected:', error);
     const message = typeof error === 'string' ? error : (error as any)?.message;
     const errorStr = message ? String(message) : 'Unknown chat error';
     
-    // Translate common Russian error messages to English
     if (errorStr.includes('Не удалось подключиться') || errorStr.includes('fetch failed')) {
-      return 'fetch failed: Could not connect to server. Please check your internet connection.';
+      return 'Could not connect to AI server. Please check your internet connection.';
     }
     if (errorStr.includes('Ошибка сети') || errorStr.includes('Network')) {
       return 'Network error. Please try again.';
@@ -201,9 +207,24 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     if (errorStr.includes('Время ожидания') || errorStr.includes('timeout')) {
       return 'Request timed out. Please try again.';
     }
+    if (errorStr.includes('unauthorized') || errorStr.includes('401')) {
+      return 'Authentication error. Please try restarting the app.';
+    }
+    if (errorStr.includes('500') || errorStr.includes('Internal Server Error')) {
+      return 'Server error. Please try again in a moment.';
+    }
     
     return errorStr;
   }, [error]);
+
+  useEffect(() => {
+    console.log('[ChatStore] State updated:', {
+      messagesCount: uiMessages.length,
+      isLoading: isSending,
+      hasError: !!errorText,
+      error: errorText,
+    });
+  }, [uiMessages.length, isSending, errorText]);
 
   return useMemo(() => ({
     messages: uiMessages,
