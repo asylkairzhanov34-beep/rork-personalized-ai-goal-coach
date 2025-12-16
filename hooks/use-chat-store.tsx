@@ -8,6 +8,10 @@ import { useMemo, useEffect, useCallback, useState } from 'react';
 export const [ChatProvider, useChat] = createContextHook(() => {
   const goalStore = useGoalStore();
 
+  console.log('[ChatStore] Initializing chat...');
+  console.log('[ChatStore] EXPO_PUBLIC_TOOLKIT_URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL ? 'SET' : 'NOT SET');
+  console.log('[ChatStore] EXPO_PUBLIC_PROJECT_ID:', process.env.EXPO_PUBLIC_PROJECT_ID ? 'SET' : 'NOT SET');
+
   const { messages, error, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
       addTask: createRorkTool({
@@ -133,14 +137,26 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setIsSending(true);
     try {
       console.log('[ChatStore] Sending message to agent:', text);
-      await rorkSendMessage(text);
+      console.log('[ChatStore] Current messages count:', messages.length);
+      console.log('[ChatStore] Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
+      
+      const systemContext = `[SYSTEM: User profile - Name: ${goalStore.profile.name}, Current Goal: ${goalStore.currentGoal?.title || 'None'}, Active Streak: ${goalStore.profile.currentStreak} days]\n\n${text}`;
+      console.log('[ChatStore] Sending with context:', systemContext.substring(0, 100));
+      
+      await rorkSendMessage(systemContext);
+      console.log('[ChatStore] Message sent successfully');
     } catch (e) {
       console.error('[ChatStore] sendMessage failed:', e);
+      console.error('[ChatStore] Error details:', JSON.stringify(e, null, 2));
+      if (e instanceof Error) {
+        console.error('[ChatStore] Error message:', e.message);
+        console.error('[ChatStore] Error stack:', e.stack);
+      }
       throw e;
     } finally {
       setIsSending(false);
     }
-  }, [rorkSendMessage]);
+  }, [rorkSendMessage, messages.length, goalStore.profile, goalStore.currentGoal]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
@@ -188,22 +204,40 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const errorText = useMemo(() => {
     if (!error) return null;
+    
+    console.log('[ChatStore] Error detected:', error);
+    console.log('[ChatStore] Error type:', typeof error);
+    
     const message = typeof error === 'string' ? error : (error as any)?.message;
     const errorStr = message ? String(message) : 'Unknown chat error';
     
-    // Translate common Russian error messages to English
-    if (errorStr.includes('Не удалось подключиться') || errorStr.includes('fetch failed')) {
-      return 'fetch failed: Could not connect to server. Please check your internet connection.';
+    console.log('[ChatStore] Processed error message:', errorStr);
+    
+    // Translate common error messages to English
+    if (errorStr.toLowerCase().includes('fetch failed') || 
+        errorStr.toLowerCase().includes('не удалось подключиться') ||
+        errorStr.toLowerCase().includes('could not connect')) {
+      return 'Could not connect to AI server. Please check your internet connection.';
     }
-    if (errorStr.includes('Ошибка сети') || errorStr.includes('Network')) {
+    if (errorStr.toLowerCase().includes('network') || errorStr.toLowerCase().includes('ошибка сети')) {
       return 'Network error. Please try again.';
     }
-    if (errorStr.includes('Время ожидания') || errorStr.includes('timeout')) {
+    if (errorStr.toLowerCase().includes('timeout') || errorStr.toLowerCase().includes('время ожидания')) {
       return 'Request timed out. Please try again.';
+    }
+    if (errorStr.toLowerCase().includes('unauthorized') || errorStr.toLowerCase().includes('401')) {
+      return 'Authentication required. Please check your subscription.';
+    }
+    if (errorStr.toLowerCase().includes('forbidden') || errorStr.toLowerCase().includes('403')) {
+      return 'Access denied. Premium subscription required.';
     }
     
     return errorStr;
   }, [error]);
+
+  useEffect(() => {
+    console.log('[ChatStore] State update - Messages:', uiMessages.length, 'Loading:', isSending, 'Error:', !!errorText);
+  }, [uiMessages.length, isSending, errorText]);
 
   return useMemo(() => ({
     messages: uiMessages,

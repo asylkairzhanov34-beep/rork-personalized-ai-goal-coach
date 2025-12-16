@@ -110,6 +110,8 @@ const ChatScreen: React.FC = () => {
     console.log('[ChatScreen] Is Premium:', isPremium);
     console.log('[ChatScreen] Trial active:', trialState.isActive);
     console.log('[ChatScreen] Has AI chat access:', featureAccess.aiChatAssistant);
+    console.log('[ChatScreen] Trial state full:', JSON.stringify(trialState));
+    console.log('[ChatScreen] Feature access full:', JSON.stringify(featureAccess));
     checkSubscriptionStatus();
   }, [checkSubscriptionStatus, status, isPremium, trialState.isActive, featureAccess.aiChatAssistant]);
 
@@ -120,18 +122,30 @@ const ChatScreen: React.FC = () => {
 
   const handleSend = async () => {
     if (inputText.trim()) {
+      console.log('[ChatScreen] handleSend called');
+      console.log('[ChatScreen] Has AI chat access:', featureAccess.aiChatAssistant);
+      console.log('[ChatScreen] Is Premium:', isPremium);
+      console.log('[ChatScreen] Trial active:', trialState.isActive);
+      
       if (!featureAccess.aiChatAssistant) {
+        console.log('[ChatScreen] No access - showing paywall');
         setShowPaywall(true);
         return;
       }
 
       const text = inputText.trim();
+      console.log('[ChatScreen] Sending message:', text);
       setInputText('');
       setIsSending(true);
       try {
         await sendMessage(text);
+        console.log('[ChatScreen] Message sent successfully');
       } catch (e) {
         console.error('[ChatScreen] sendMessage failed:', e);
+        if (e instanceof Error) {
+          console.error('[ChatScreen] Error message:', e.message);
+          console.error('[ChatScreen] Error stack:', e.stack);
+        }
       } finally {
         setIsSending(false);
       }
