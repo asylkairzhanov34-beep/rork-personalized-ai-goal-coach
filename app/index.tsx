@@ -3,6 +3,8 @@ import { Redirect } from 'expo-router';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
 import { useAuth } from '@/hooks/use-auth-store';
 import { useSubscription } from '@/hooks/use-subscription-store';
+import { useSubscriptionStatus } from '@/hooks/use-subscription-status';
+import SubscriptionOfferModal from '@/src/components/SubscriptionOfferModal';
 import { AppLoadingScreen } from '@/components/AppLoadingScreen';
 
 export default function Index() {
@@ -13,6 +15,11 @@ export default function Index() {
   const { profile, isLoading: setupLoading } = useFirstTimeSetup();
   const { isAuthenticated, isLoading: authLoading, needsLoginGate, requiresFirstLogin } = useAuth();
   const { isInitialized: subInitialized } = useSubscription();
+  const { 
+    checking: subscriptionStatusChecking, 
+    shouldShowOffer, 
+    startTrial: startTrialFlow
+  } = useSubscriptionStatus();
 
   useEffect(() => {
     setIsClient(true);
@@ -43,7 +50,8 @@ export default function Index() {
     !isReady ||
     authLoading ||
     setupLoading ||
-    !subInitialized
+    !subInitialized ||
+    subscriptionStatusChecking
   ) {
     return <AppLoadingScreen testID="app-loading" />;
   }
@@ -59,6 +67,18 @@ export default function Index() {
       isCompleted: profile?.isCompleted
     });
     return <Redirect href="/first-time-setup" />;
+  }
+
+  if (shouldShowOffer) {
+    return (
+      <SubscriptionOfferModal
+        visible
+        loading={subscriptionStatusChecking}
+        onPrimary={() => startTrialFlow('primary')}
+        onSkip={() => startTrialFlow('skip')}
+        testID="subscription-offer"
+      />
+    );
   }
 
   return <Redirect href="/(tabs)/home" />;

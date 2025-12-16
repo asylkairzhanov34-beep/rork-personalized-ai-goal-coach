@@ -270,13 +270,13 @@ export default function RootLayout() {
         <trpc.Provider client={trpcReactClient} queryClient={queryClient}>
           <QueryClientProvider client={queryClient}>
             <SubscriptionProvider>
+              <GlobalSubscriptionGate />
               <AuthProvider>
                 <FirstTimeSetupProvider>
                   <GoalProvider>
                     <TimerProvider>
                       <ChatProvider>
                         <ManifestationProvider>
-                          <GlobalSubscriptionGate />
                           <RootLayoutNav />
                         </ManifestationProvider>
                       </ChatProvider>
