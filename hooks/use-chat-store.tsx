@@ -137,23 +137,11 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     try {
       console.log('[ChatStore] Sending message to agent:', text);
       console.log('[ChatStore] Current messages count:', messages.length);
-      console.log('[ChatStore] Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
-      
       const result = await rorkSendMessage(text);
       console.log('[ChatStore] Message sent successfully, result:', result);
-    } catch (e: any) {
+    } catch (e) {
       console.error('[ChatStore] sendMessage failed:', e);
-      console.error('[ChatStore] Error name:', e?.name);
-      console.error('[ChatStore] Error message:', e?.message);
-      console.error('[ChatStore] Error stack:', e?.stack);
-      
-      if (e?.message && typeof e.message === 'string') {
-        if (e.message.includes('SyntaxError')) {
-          console.error('[ChatStore] SYNTAX ERROR DETECTED - Response parsing failed');
-          throw new Error('Failed to process AI response. Please try again.');
-        }
-      }
-      
+      console.error('[ChatStore] Error details:', JSON.stringify(e, null, 2));
       throw e;
     } finally {
       setIsSending(false);
@@ -210,9 +198,6 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     const message = typeof error === 'string' ? error : (error as any)?.message;
     const errorStr = message ? String(message) : 'Unknown chat error';
     
-    if (errorStr.includes('SyntaxError') || errorStr.includes('parsing') || errorStr.includes('expected')) {
-      return 'Failed to process AI response. Please try again.';
-    }
     if (errorStr.includes('Не удалось подключиться') || errorStr.includes('fetch failed')) {
       return 'Could not connect to AI server. Please check your internet connection.';
     }
@@ -229,7 +214,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       return 'Server error. Please try again in a moment.';
     }
     
-    return 'An error occurred. Please try again.';
+    return errorStr;
   }, [error]);
 
   useEffect(() => {
