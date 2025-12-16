@@ -279,41 +279,41 @@ const ChatScreen: React.FC = () => {
                   </View>
                   <Text style={styles.emptyTitle}>GoalForge AI</Text>
                   <Text style={styles.emptyText}>
-                    Помогу проанализировать прогресс{'\n'}и добавить новые задачи
+                    I can help analyze your progress{'\n'}and edit your existing tasks
                   </Text>
                   
                   <View style={styles.suggestionsGrid}>
                     <TouchableOpacity 
                       style={styles.suggestionCard}
-                      onPress={() => setInputText("Проанализируй мой прогресс")}
+                      onPress={() => setInputText("Analyze my progress")}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.suggestionIcon}>📊</Text>
-                      <Text style={styles.suggestionText}>Анализ прогресса</Text>
+                      <Text style={styles.suggestionText}>Analyze Progress</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={styles.suggestionCard}
-                      onPress={() => setInputText("Добавь задачу на сегодня")}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.suggestionIcon}>➕</Text>
-                      <Text style={styles.suggestionText}>Добавить задачу</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.suggestionCard}
-                      onPress={() => setInputText("Покажи мои задачи")}
+                      onPress={() => setInputText("Show my tasks")}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.suggestionIcon}>📋</Text>
-                      <Text style={styles.suggestionText}>Мои задачи</Text>
+                      <Text style={styles.suggestionText}>My Tasks</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={styles.suggestionCard}
-                      onPress={() => setInputText("Советы по продуктивности")}
+                      onPress={() => setInputText("Mark my first task as complete")}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.suggestionIcon}>✅</Text>
+                      <Text style={styles.suggestionText}>Complete Task</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.suggestionCard}
+                      onPress={() => setInputText("Productivity tips")}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.suggestionIcon}>💡</Text>
-                      <Text style={styles.suggestionText}>Советы</Text>
+                      <Text style={styles.suggestionText}>Tips</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -353,7 +353,7 @@ const ChatScreen: React.FC = () => {
                 style={styles.input}
                 value={inputText}
                 onChangeText={setInputText}
-                placeholder="Напишите сообщение..."
+                placeholder="Type a message..."
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 multiline
                 maxLength={1000}

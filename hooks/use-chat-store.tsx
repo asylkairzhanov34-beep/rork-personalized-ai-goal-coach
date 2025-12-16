@@ -10,36 +10,8 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const { messages, error, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
-      addTask: createRorkTool({
-        description: 'Добавить ОДНУ новую задачу в план. Эта функция ТОЛЬКО добавляет новую задачу к существующим, НЕ удаляет и НЕ заменяет другие задачи. Используй когда пользователь просит добавить задачу.',
-        zodSchema: z.object({
-          title: z.string().describe('Title of the task'),
-          description: z.string().describe('Detailed description'),
-          date: z.string().describe('Date for the task (ISO format, YYYY-MM-DD)'),
-          priority: z.enum(['high', 'medium', 'low']).optional().describe('Priority level'),
-          duration: z.string().optional().describe('Estimated duration (e.g., "30 min")'),
-          difficulty: z.enum(['easy', 'medium', 'hard']).optional().describe('Difficulty level'),
-          estimatedTime: z.number().optional().describe('Estimated time in minutes'),
-        }),
-        execute: async (input) => {
-          const currentTaskCount = goalStore.dailyTasks.length;
-          await goalStore.addTask({
-            title: input.title,
-            description: input.description,
-            date: input.date,
-            priority: (input.priority || 'medium') as any,
-            duration: input.duration || '30 min',
-            difficulty: (input.difficulty || 'medium') as any,
-            estimatedTime: input.estimatedTime || 30,
-            day: 0,
-            tips: [],
-          });
-          const newTaskCount = goalStore.dailyTasks.length;
-          return `✅ Задача "${input.title}" добавлена в план на ${new Date(input.date).toLocaleDateString('ru-RU')}. Всего задач: ${currentTaskCount} → ${newTaskCount}`;
-        },
-      }),
       updateTask: createRorkTool({
-        description: 'Обновить существующую задачу. Используй для изменения статуса, названия или других параметров.',
+        description: 'Update an existing task. Use to change status, title, description, priority, difficulty, or mark as completed.',
         zodSchema: z.object({
           taskId: z.string().describe('ID of the task to update'),
           title: z.string().optional(),
@@ -62,21 +34,11 @@ export const [ChatProvider, useChat] = createContextHook(() => {
              ...(input.duration && { duration: input.duration }),
              ...(input.estimatedTime && { estimatedTime: input.estimatedTime }),
            });
-           return `Задача обновлена успешно.`;
-        },
-      }),
-      deleteTask: createRorkTool({
-        description: 'Удалить задачу из расписания',
-        zodSchema: z.object({
-          taskId: z.string().describe('ID of the task to delete'),
-        }),
-        execute: async (input) => {
-          goalStore.deleteTask(input.taskId);
-          return `Задача удалена успешно.`;
+           return `Task updated successfully.`;
         },
       }),
       getTasks: createRorkTool({
-        description: 'Получить список всех задач пользователя. ВАЖНО: Эта функция только показывает задачи, НЕ изменяет их.',
+        description: 'Get list of all user tasks. This function only retrieves tasks, does NOT modify them.',
         zodSchema: z.object({
           startDate: z.string().optional().describe('Start date (ISO)'),
           endDate: z.string().optional().describe('End date (ISO)'),
@@ -89,7 +51,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           if (input.endDate) {
              tasks = tasks.filter(t => new Date(t.date) <= new Date(input.endDate!));
           }
-          const summary = `Найдено задач: ${tasks.length}\n`;
+          const summary = `Found ${tasks.length} tasks:\n`;
           return summary + JSON.stringify(tasks.map(t => ({
             id: t.id,
             title: t.title,
@@ -103,7 +65,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
         },
       }),
       getHistory: createRorkTool({
-        description: 'Получить историю выполнения за последние 90 дней для анализа продуктивности и персонализированных рекомендаций',
+        description: 'Get execution history for the last 90 days for productivity analysis and personalized recommendations',
         zodSchema: z.object({}),
         execute: async () => {
           const now = new Date();
@@ -152,59 +114,52 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     const completedTasks = tasks.filter(t => t.completed);
     const pendingTasks = tasks.filter(t => !t.completed);
     
-    let context = `[SYSTEM: Ты GoalForge AI - умный помощник для достижения целей. Текущая дата: ${todayStr}.\n`;
+    let context = `[SYSTEM: You are GoalForge AI - a smart assistant for achieving goals. Current date: ${todayStr}.\n`;
+    context += `You can ONLY help users VIEW and EDIT existing tasks. You CANNOT add new tasks or delete tasks.\n`;
+    context += `Always respond in English.\n`;
     
     if (currentGoal) {
-      context += `\nТекущая цель пользователя: "${currentGoal.title}"\n`;
+      context += `\nUser's current goal: "${currentGoal.title}"\n`;
       if (currentGoal.description) {
-        context += `Описание цели: ${currentGoal.description}\n`;
+        context += `Goal description: ${currentGoal.description}\n`;
       }
     }
     
     if (profile) {
-      context += `\nПрофиль: Streak ${profile.currentStreak} дней\n`;
+      context += `\nProfile: ${profile.currentStreak} day streak\n`;
     }
     
-    context += `\n📊 СТАТИСТИКА ЗАДАЧ:\n`;
-    context += `- Всего задач в системе: ${tasks.length}\n`;
-    context += `- Выполнено: ${completedTasks.length}\n`;
-    context += `- В процессе: ${pendingTasks.length}\n`;
+    context += `\n📊 TASK STATISTICS:\n`;
+    context += `- Total tasks: ${tasks.length}\n`;
+    context += `- Completed: ${completedTasks.length}\n`;
+    context += `- Pending: ${pendingTasks.length}\n`;
     
     if (todayTasks.length > 0) {
-      context += `\n📋 Задачи на сегодня (${todayTasks.length}):\n`;
+      context += `\n📋 Today's tasks (${todayTasks.length}):\n`;
       todayTasks.forEach((t, i) => {
-        context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" (ID: ${t.id}, приоритет: ${t.priority || 'medium'})\n`;
+        context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" (ID: ${t.id}, priority: ${t.priority || 'medium'})\n`;
       });
     } else {
-      context += `\nНа сегодня задач нет.\n`;
+      context += `\nNo tasks for today.\n`;
     }
     
     if (upcomingTasks.length > 0 && upcomingTasks.length <= 10) {
-      context += `\n🗓 Ближайшие задачи на неделю (${upcomingTasks.length}):\n`;
+      context += `\n🗓 Upcoming tasks this week (${upcomingTasks.length}):\n`;
       upcomingTasks.slice(0, 10).forEach((t, i) => {
-        const taskDate = new Date(t.date).toLocaleDateString('ru-RU');
+        const taskDate = new Date(t.date).toLocaleDateString('en-US');
         context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" - ${taskDate} (ID: ${t.id})\n`;
       });
     }
     
-    context += `\n⚠️ КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:\n`;
-    context += `\n🚫 ЗАПРЕЩЕНО:\n`;
-    context += `- Удалять существующие задачи без явной просьбы пользователя\n`;
-    context += `- Заменять или перезаписывать задачи при добавлении новых\n`;
-    context += `- Вызывать deleteTask когда пользователь просит "добавить" задачу\n`;
-    context += `\n✅ ПРАВИЛЬНЫЙ ПОДХОД:\n`;
-    context += `1. Когда пользователь просит ДОБАВИТЬ задачу:\n`;
-    context += `   → Используй ТОЛЬКО addTask\n`;
-    context += `   → addTask автоматически добавляет к существующим ${tasks.length} задачам\n`;
-    context += `   → После addTask количество задач станет ${tasks.length + 1}\n`;
-    context += `\n2. Когда пользователь просит УДАЛИТЬ конкретную задачу:\n`;
-    context += `   → Сначала спроси какую именно задачу удалить\n`;
-    context += `   → Используй deleteTask только с конкретным taskId\n`;
-    context += `\n3. Когда пользователь просит ИЗМЕНИТЬ задачу:\n`;
-    context += `   → Используй updateTask с нужным taskId\n`;
-    context += `\n4. Формат даты: YYYY-MM-DD (например: ${todayStr})\n`;
-    context += `5. Отвечай кратко и дружелюбно на русском языке\n`;
-    context += `\n💡 Помни: У пользователя сейчас ${tasks.length} задач. При добавлении новой их станет ${tasks.length + 1}.\n`;
+    context += `\n⚠️ IMPORTANT RULES:\n`;
+    context += `- You can ONLY edit existing tasks using updateTask\n`;
+    context += `- You can view tasks using getTasks\n`;
+    context += `- You can analyze progress using getHistory\n`;
+    context += `- You CANNOT add new tasks - politely explain this if asked\n`;
+    context += `- You CANNOT delete tasks - politely explain this if asked\n`;
+    context += `- When user asks to edit a task, use updateTask with the correct taskId\n`;
+    context += `- Date format: YYYY-MM-DD (example: ${todayStr})\n`;
+    context += `- Be helpful, friendly, and concise\n`;
     context += `[/END_SYSTEM]\n\n`;
     
     return context;
@@ -242,7 +197,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
              
              const toolCalls = m.parts.filter((p: any) => p.type === 'tool');
              if (text === '' && toolCalls.length > 0) {
-                 text = 'Выполняю...'; 
+                 text = 'Processing...'; 
              }
         } else {
              text = (m as any).content || '';
