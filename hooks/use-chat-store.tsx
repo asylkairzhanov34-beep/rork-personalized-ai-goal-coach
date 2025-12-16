@@ -129,18 +129,88 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const [isSending, setIsSending] = useState<boolean>(false);
 
+  const buildSystemContext = useCallback(() => {
+    const tasks = goalStore.dailyTasks || [];
+    const profile = goalStore.profile;
+    const currentGoal = goalStore.currentGoal;
+    
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    // Get tasks for today and upcoming week
+    const todayTasks = tasks.filter(t => t.date?.startsWith(todayStr));
+    const upcomingTasks = tasks.filter(t => {
+      const taskDate = new Date(t.date);
+      const weekFromNow = new Date();
+      weekFromNow.setDate(weekFromNow.getDate() + 7);
+      return taskDate >= today && taskDate <= weekFromNow;
+    });
+    
+    const completedTasks = tasks.filter(t => t.completed);
+    const pendingTasks = tasks.filter(t => !t.completed);
+    
+    let context = `[SYSTEM: Ты GoalForge AI - умный помощник для достижения целей. Текущая дата: ${todayStr}.\n`;
+    
+    if (currentGoal) {
+      context += `\nТекущая цель пользователя: "${currentGoal.title}"\n`;
+      if (currentGoal.description) {
+        context += `Описание цели: ${currentGoal.description}\n`;
+      }
+    }
+    
+    if (profile) {
+      context += `\nПрофиль: Streak ${profile.currentStreak} дней\n`;
+    }
+    
+    context += `\nСтатистика задач:\n`;
+    context += `- Всего задач: ${tasks.length}\n`;
+    context += `- Выполнено: ${completedTasks.length}\n`;
+    context += `- В процессе: ${pendingTasks.length}\n`;
+    
+    if (todayTasks.length > 0) {
+      context += `\nЗадачи на сегодня (${todayTasks.length}):\n`;
+      todayTasks.forEach((t, i) => {
+        context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" (ID: ${t.id}, приоритет: ${t.priority || 'medium'})\n`;
+      });
+    } else {
+      context += `\nНа сегодня задач нет.\n`;
+    }
+    
+    if (upcomingTasks.length > 0 && upcomingTasks.length <= 10) {
+      context += `\nБлижайшие задачи на неделю:\n`;
+      upcomingTasks.slice(0, 10).forEach((t, i) => {
+        const taskDate = new Date(t.date).toLocaleDateString('ru-RU');
+        context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" - ${taskDate} (ID: ${t.id})\n`;
+      });
+    }
+    
+    context += `\nИНСТРУКЦИИ:\n`;
+    context += `- ВСЕГДА используй getTasks перед добавлением/изменением задач чтобы получить актуальный список\n`;
+    context += `- При добавлении задачи используй addTask с корректной датой в ISO формате\n`;
+    context += `- НЕ удаляй существующие задачи без явной просьбы пользователя\n`;
+    context += `- Для обновления используй updateTask с правильным taskId\n`;
+    context += `- Отвечай на русском языке\n`;
+    context += `]\n\n`;
+    
+    return context;
+  }, [goalStore.dailyTasks, goalStore.profile, goalStore.currentGoal]);
+
   const sendMessage = useCallback(async (text: string) => {
     setIsSending(true);
     try {
-      console.log('[ChatStore] Sending message to agent:', text);
-      await rorkSendMessage(text);
+      const context = buildSystemContext();
+      const messageWithContext = context + text;
+      console.log('[ChatStore] Sending message with context to agent');
+      console.log('[ChatStore] User message:', text);
+      console.log('[ChatStore] Tasks count:', goalStore.dailyTasks?.length || 0);
+      await rorkSendMessage(messageWithContext);
     } catch (e) {
       console.error('[ChatStore] sendMessage failed:', e);
       throw e;
     } finally {
       setIsSending(false);
     }
-  }, [rorkSendMessage]);
+  }, [rorkSendMessage, buildSystemContext, goalStore.dailyTasks]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
