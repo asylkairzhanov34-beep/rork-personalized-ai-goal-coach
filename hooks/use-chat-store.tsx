@@ -11,17 +11,18 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   const { messages, error, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
       addTask: createRorkTool({
-        description: 'Добавить новую задачу в план пользователя. Используй когда пользователь просит добавить задачу или создать что-то в плане.',
+        description: 'Добавить ОДНУ новую задачу в план. Эта функция ТОЛЬКО добавляет новую задачу к существующим, НЕ удаляет и НЕ заменяет другие задачи. Используй когда пользователь просит добавить задачу.',
         zodSchema: z.object({
           title: z.string().describe('Title of the task'),
           description: z.string().describe('Detailed description'),
-          date: z.string().describe('Date for the task (ISO format)'),
+          date: z.string().describe('Date for the task (ISO format, YYYY-MM-DD)'),
           priority: z.enum(['high', 'medium', 'low']).optional().describe('Priority level'),
           duration: z.string().optional().describe('Estimated duration (e.g., "30 min")'),
           difficulty: z.enum(['easy', 'medium', 'hard']).optional().describe('Difficulty level'),
           estimatedTime: z.number().optional().describe('Estimated time in minutes'),
         }),
         execute: async (input) => {
+          const currentTaskCount = goalStore.dailyTasks.length;
           await goalStore.addTask({
             title: input.title,
             description: input.description,
@@ -33,7 +34,8 @@ export const [ChatProvider, useChat] = createContextHook(() => {
             day: 0,
             tips: [],
           });
-          return `Задача "${input.title}" успешно добавлена в план на ${new Date(input.date).toLocaleDateString('ru-RU')}`;
+          const newTaskCount = goalStore.dailyTasks.length;
+          return `✅ Задача "${input.title}" добавлена в план на ${new Date(input.date).toLocaleDateString('ru-RU')}. Всего задач: ${currentTaskCount} → ${newTaskCount}`;
         },
       }),
       updateTask: createRorkTool({
@@ -74,7 +76,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
         },
       }),
       getTasks: createRorkTool({
-        description: 'Получить задачи для определенного периода или все активные задачи. Используй перед добавлением или изменением задач чтобы понять текущий план.',
+        description: 'Получить список всех задач пользователя. ВАЖНО: Эта функция только показывает задачи, НЕ изменяет их.',
         zodSchema: z.object({
           startDate: z.string().optional().describe('Start date (ISO)'),
           endDate: z.string().optional().describe('End date (ISO)'),
@@ -87,7 +89,8 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           if (input.endDate) {
              tasks = tasks.filter(t => new Date(t.date) <= new Date(input.endDate!));
           }
-          return JSON.stringify(tasks.map(t => ({
+          const summary = `Найдено задач: ${tasks.length}\n`;
+          return summary + JSON.stringify(tasks.map(t => ({
             id: t.id,
             title: t.title,
             description: t.description,
@@ -96,7 +99,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
             priority: t.priority,
             difficulty: t.difficulty,
             estimatedTime: t.estimatedTime
-          })));
+          })), null, 2);
         },
       }),
       getHistory: createRorkTool({
@@ -162,13 +165,13 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       context += `\nПрофиль: Streak ${profile.currentStreak} дней\n`;
     }
     
-    context += `\nСтатистика задач:\n`;
-    context += `- Всего задач: ${tasks.length}\n`;
+    context += `\n📊 СТАТИСТИКА ЗАДАЧ:\n`;
+    context += `- Всего задач в системе: ${tasks.length}\n`;
     context += `- Выполнено: ${completedTasks.length}\n`;
     context += `- В процессе: ${pendingTasks.length}\n`;
     
     if (todayTasks.length > 0) {
-      context += `\nЗадачи на сегодня (${todayTasks.length}):\n`;
+      context += `\n📋 Задачи на сегодня (${todayTasks.length}):\n`;
       todayTasks.forEach((t, i) => {
         context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" (ID: ${t.id}, приоритет: ${t.priority || 'medium'})\n`;
       });
@@ -177,20 +180,31 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     }
     
     if (upcomingTasks.length > 0 && upcomingTasks.length <= 10) {
-      context += `\nБлижайшие задачи на неделю:\n`;
+      context += `\n🗓 Ближайшие задачи на неделю (${upcomingTasks.length}):\n`;
       upcomingTasks.slice(0, 10).forEach((t, i) => {
         const taskDate = new Date(t.date).toLocaleDateString('ru-RU');
         context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" - ${taskDate} (ID: ${t.id})\n`;
       });
     }
     
-    context += `\nКРИТИЧЕСКИЕ ИНСТРУКЦИИ:\n`;
-    context += `1. НИКОГДА не удаляй существующие задачи - только добавляй новые через addTask\n`;
-    context += `2. При добавлении задачи используй addTask - она ДОБАВЛЯЕТ к существующим, НЕ заменяет их\n`;
-    context += `3. deleteTask используй ТОЛЬКО если пользователь ЯВНО попросил удалить конкретную задачу\n`;
-    context += `4. Дата должна быть в ISO формате (YYYY-MM-DD), например: ${todayStr}\n`;
-    context += `5. Отвечай кратко и по делу на русском языке\n`;
-    context += `6. Если нужно обновить задачу - используй updateTask с правильным taskId\n`;
+    context += `\n⚠️ КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:\n`;
+    context += `\n🚫 ЗАПРЕЩЕНО:\n`;
+    context += `- Удалять существующие задачи без явной просьбы пользователя\n`;
+    context += `- Заменять или перезаписывать задачи при добавлении новых\n`;
+    context += `- Вызывать deleteTask когда пользователь просит "добавить" задачу\n`;
+    context += `\n✅ ПРАВИЛЬНЫЙ ПОДХОД:\n`;
+    context += `1. Когда пользователь просит ДОБАВИТЬ задачу:\n`;
+    context += `   → Используй ТОЛЬКО addTask\n`;
+    context += `   → addTask автоматически добавляет к существующим ${tasks.length} задачам\n`;
+    context += `   → После addTask количество задач станет ${tasks.length + 1}\n`;
+    context += `\n2. Когда пользователь просит УДАЛИТЬ конкретную задачу:\n`;
+    context += `   → Сначала спроси какую именно задачу удалить\n`;
+    context += `   → Используй deleteTask только с конкретным taskId\n`;
+    context += `\n3. Когда пользователь просит ИЗМЕНИТЬ задачу:\n`;
+    context += `   → Используй updateTask с нужным taskId\n`;
+    context += `\n4. Формат даты: YYYY-MM-DD (например: ${todayStr})\n`;
+    context += `5. Отвечай кратко и дружелюбно на русском языке\n`;
+    context += `\n💡 Помни: У пользователя сейчас ${tasks.length} задач. При добавлении новой их станет ${tasks.length + 1}.\n`;
     context += `[/END_SYSTEM]\n\n`;
     
     return context;
