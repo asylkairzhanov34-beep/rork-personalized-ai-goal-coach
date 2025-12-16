@@ -3,14 +3,16 @@ import { useRorkAgent, createRorkTool } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { ChatMessage } from '@/types/chat';
-import { useMemo, useEffect, useCallback, useState } from 'react';
+import { useMemo, useEffect, useCallback, useState, useRef } from 'react';
 
 export const [ChatProvider, useChat] = createContextHook(() => {
   const goalStore = useGoalStore();
+  const retryCountRef = useRef(0);
+  const maxRetries = 3;
 
   console.log('[ChatStore] Initializing chat...');
-  console.log('[ChatStore] EXPO_PUBLIC_TOOLKIT_URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL ? 'SET' : 'NOT SET');
-  console.log('[ChatStore] EXPO_PUBLIC_PROJECT_ID:', process.env.EXPO_PUBLIC_PROJECT_ID ? 'SET' : 'NOT SET');
+  console.log('[ChatStore] EXPO_PUBLIC_TOOLKIT_URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
+  console.log('[ChatStore] EXPO_PUBLIC_PROJECT_ID:', process.env.EXPO_PUBLIC_PROJECT_ID);
 
   const { messages, error, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
@@ -132,27 +134,47 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   });
 
   const [isSending, setIsSending] = useState<boolean>(false);
+  const lastMessageRef = useRef<string | null>(null);
 
   const sendMessage = useCallback(async (text: string) => {
     setIsSending(true);
-    try {
-      console.log('[ChatStore] Sending message to agent:', text);
-      console.log('[ChatStore] Current messages count:', messages.length);
-      console.log('[ChatStore] Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
-      
-      const systemContext = `[SYSTEM: User profile - Name: ${goalStore.profile.name}, Current Goal: ${goalStore.currentGoal?.title || 'None'}, Active Streak: ${goalStore.profile.currentStreak} days]\n\n${text}`;
-      console.log('[ChatStore] Sending with context:', systemContext.substring(0, 100));
-      
-      await rorkSendMessage(systemContext);
-      console.log('[ChatStore] Message sent successfully');
-    } catch (e) {
-      console.error('[ChatStore] sendMessage failed:', e);
-      console.error('[ChatStore] Error details:', JSON.stringify(e, null, 2));
-      if (e instanceof Error) {
-        console.error('[ChatStore] Error message:', e.message);
-        console.error('[ChatStore] Error stack:', e.stack);
+    retryCountRef.current = 0;
+    lastMessageRef.current = text;
+    
+    const attemptSend = async (): Promise<void> => {
+      try {
+        console.log('[ChatStore] Sending message to agent:', text);
+        console.log('[ChatStore] Current messages count:', messages.length);
+        console.log('[ChatStore] Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
+        console.log('[ChatStore] Attempt:', retryCountRef.current + 1);
+        
+        const systemContext = `[SYSTEM: User profile - Name: ${goalStore.profile.name}, Current Goal: ${goalStore.currentGoal?.title || 'None'}, Active Streak: ${goalStore.profile.currentStreak} days]\n\n${text}`;
+        console.log('[ChatStore] Sending with context:', systemContext.substring(0, 100));
+        
+        await rorkSendMessage(systemContext);
+        console.log('[ChatStore] Message sent successfully');
+        retryCountRef.current = 0;
+      } catch (e) {
+        console.error('[ChatStore] sendMessage failed:', e);
+        console.error('[ChatStore] Error details:', JSON.stringify(e, null, 2));
+        if (e instanceof Error) {
+          console.error('[ChatStore] Error message:', e.message);
+          console.error('[ChatStore] Error stack:', e.stack);
+        }
+        
+        retryCountRef.current++;
+        if (retryCountRef.current < maxRetries) {
+          console.log(`[ChatStore] Retrying... Attempt ${retryCountRef.current + 1}/${maxRetries}`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCountRef.current));
+          return attemptSend();
+        }
+        
+        throw e;
       }
-      throw e;
+    };
+    
+    try {
+      await attemptSend();
     } finally {
       setIsSending(false);
     }
@@ -202,21 +224,36 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     }
   }, [uiMessages.length, goalStore.isReady]);
 
+  const retryLastMessage = useCallback(async () => {
+    if (lastMessageRef.current) {
+      console.log('[ChatStore] Retrying last message:', lastMessageRef.current);
+      await sendMessage(lastMessageRef.current);
+    }
+  }, [sendMessage]);
+
+  useEffect(() => {
+    if (error) {
+      console.log('[ChatStore] useRorkAgent error detected:', error);
+      console.log('[ChatStore] Error type:', typeof error);
+      console.log('[ChatStore] Error details:', JSON.stringify(error, null, 2));
+    }
+  }, [error]);
+
   const errorText = useMemo(() => {
     if (!error) return null;
     
-    console.log('[ChatStore] Error detected:', error);
-    console.log('[ChatStore] Error type:', typeof error);
+    console.log('[ChatStore] Processing error:', error);
     
     const message = typeof error === 'string' ? error : (error as any)?.message;
-    const errorStr = message ? String(message) : 'Unknown chat error';
+    const errorStr = message ? String(message) : 'Unknown error';
     
     console.log('[ChatStore] Processed error message:', errorStr);
     
-    // Translate common error messages to English
     if (errorStr.toLowerCase().includes('fetch failed') || 
+        errorStr.toLowerCase().includes('failed to fetch') ||
         errorStr.toLowerCase().includes('не удалось подключиться') ||
-        errorStr.toLowerCase().includes('could not connect')) {
+        errorStr.toLowerCase().includes('could not connect') ||
+        errorStr.toLowerCase().includes('networkerror')) {
       return 'Could not connect to AI server. Please check your internet connection.';
     }
     if (errorStr.toLowerCase().includes('network') || errorStr.toLowerCase().includes('ошибка сети')) {
@@ -231,8 +268,11 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     if (errorStr.toLowerCase().includes('forbidden') || errorStr.toLowerCase().includes('403')) {
       return 'Access denied. Premium subscription required.';
     }
+    if (errorStr.toLowerCase().includes('500') || errorStr.toLowerCase().includes('server error')) {
+      return 'Server error. Please try again later.';
+    }
     
-    return errorStr;
+    return 'Something went wrong. Please try again.';
   }, [error]);
 
   useEffect(() => {
@@ -245,9 +285,10 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     error: errorText,
     sendMessage,
     clearChat,
+    retryLastMessage: lastMessageRef.current ? retryLastMessage : undefined,
     userContext: {
         profile: goalStore.profile,
         currentGoal: goalStore.currentGoal,
     }
-  }), [uiMessages, isSending, errorText, sendMessage, clearChat, goalStore.profile, goalStore.currentGoal]);
+  }), [uiMessages, isSending, errorText, sendMessage, clearChat, retryLastMessage, goalStore.profile, goalStore.currentGoal]);
 });
