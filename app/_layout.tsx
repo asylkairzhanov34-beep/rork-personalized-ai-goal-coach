@@ -15,6 +15,7 @@ import { SubscriptionProvider } from '@/hooks/use-subscription-store';
 import { trpc, trpcReactClient } from '@/lib/trpc';
 
 import { GlobalSubscriptionGate } from '@/components/GlobalSubscriptionGate';
+import { GlobalNotificationsGate } from '@/components/GlobalNotificationsGate';
 import { useAppBackgroundInit } from '@/hooks/use-app-background-init';
 
 // Error Boundary to catch inspector and other development errors
@@ -271,6 +272,7 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <SubscriptionProvider>
               <GlobalSubscriptionGate />
+              <GlobalNotificationsGate />
               <AuthProvider>
                 <FirstTimeSetupProvider>
                   <GoalProvider>
