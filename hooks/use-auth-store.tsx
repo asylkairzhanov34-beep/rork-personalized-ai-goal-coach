@@ -252,15 +252,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       const userId = authState.user?.id;
       
-      // Delete Firebase user and all data
       await deleteCurrentUser();
       
-      // Clear all local storage
       await safeStorageSet(AUTH_STORAGE_KEY, null);
       await safeStorageSet(AUTH_LOGIN_GATE_KEY, false);
       await safeStorageSet(FIRST_LAUNCH_KEY, false);
       
-      // Clear subscription data from local storage
       const subscriptionKeys = [
         '@subscription_status',
         'hasSeenSubscriptionOffer',
@@ -274,7 +271,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         await safeStorageSet(key, null);
       }
       
-      // Clear goal and task data from local storage
       if (userId) {
         const goalKeys = [
           `user_profile_${userId}`,
@@ -291,6 +287,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       
       setNeedsLoginGate(false);
       setRequiresFirstLogin(true);
+      
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
+      
       console.log('[Auth] Account and all data deleted successfully');
       return true;
     } catch (error) {

@@ -305,25 +305,7 @@ export default function MonthOverviewScreen() {
     return days;
   }, [store?.dailyTasks]);
 
-  const monthStats = useMemo(() => {
-    const tasks = monthDays.flatMap((d) => d.tasks);
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter((t) => t.completed).length;
-    const completionRate = totalTasks === 0 ? 0 : completedTasks / totalTasks;
 
-    const daysWithTasks = monthDays.filter((d) => d.tasks.length > 0).length;
-    const daysFullyDone = monthDays.filter(
-      (d) => d.tasks.length > 0 && d.tasks.every((t) => t.completed)
-    ).length;
-
-    return {
-      totalTasks,
-      completedTasks,
-      completionRate,
-      daysWithTasks,
-      daysFullyDone,
-    };
-  }, [monthDays]);
 
   const handleDayPress = useCallback((day: MonthDay) => {
     setSelectedDay(day);
@@ -405,45 +387,6 @@ export default function MonthOverviewScreen() {
           showsVerticalScrollIndicator={false}
           testID="monthOverview.scroll"
         >
-          <View style={styles.hero} testID="monthOverview.hero">
-            <View style={styles.heroTopRow}>
-              <View style={styles.heroChip}>
-                <Text style={styles.heroChipText}>Progress</Text>
-              </View>
-              <Text style={styles.heroRate}>
-                {Math.round(monthStats.completionRate * 100)}%
-              </Text>
-            </View>
-
-            <View style={styles.heroBar}>
-              <View
-                style={[
-                  styles.heroBarFill,
-                  {
-                    width: `${Math.min(100, Math.max(0, monthStats.completionRate * 100))}%`,
-                  },
-                ]}
-              />
-            </View>
-
-            <View style={styles.heroStatsRow}>
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatValue}>{monthStats.completedTasks}</Text>
-                <Text style={styles.heroStatLabel}>Done</Text>
-              </View>
-              <View style={styles.heroDivider} />
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatValue}>{monthStats.totalTasks}</Text>
-                <Text style={styles.heroStatLabel}>Total tasks</Text>
-              </View>
-              <View style={styles.heroDivider} />
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatValue}>{monthStats.daysFullyDone}</Text>
-                <Text style={styles.heroStatLabel}>Perfect days</Text>
-              </View>
-            </View>
-          </View>
-
           <View style={styles.legend} testID="monthOverview.legend">
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: theme.colors.success }]} />
