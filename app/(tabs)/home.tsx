@@ -11,6 +11,8 @@ import { useGoalStore } from '@/hooks/use-goal-store';
 import { useAuth } from '@/hooks/use-auth-store';
 import { useFirstTimeSetup } from '@/hooks/use-first-time-setup';
 import { useManifestationStore } from '@/hooks/use-manifestation-store';
+import { useSubscriptionStatus } from '@/hooks/use-subscription-status';
+import SubscriptionOfferModal from '@/src/components/SubscriptionOfferModal';
 
 
 export default function TodayScreen() {
@@ -18,6 +20,7 @@ export default function TodayScreen() {
   const { user } = useAuth();
   const { profile: setupProfile } = useFirstTimeSetup();
   const manifestationStore = useManifestationStore();
+  const { shouldShowOffer, startTrial, checking: subscriptionChecking } = useSubscriptionStatus();
   const [refreshing, setRefreshing] = useState(false);
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(() => 
     Math.floor(Math.random() * getQuotes().length)
@@ -88,6 +91,13 @@ export default function TodayScreen() {
 
   return (
     <GradientBackground>
+      <SubscriptionOfferModal
+        visible={shouldShowOffer}
+        loading={subscriptionChecking}
+        onPrimary={() => startTrial('primary')}
+        onSkip={() => startTrial('skip')}
+        testID="subscription-offer"
+      />
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
