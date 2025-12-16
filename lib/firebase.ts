@@ -132,8 +132,17 @@ export async function deleteCurrentUser(): Promise<void> {
   const user = firebaseAuth.currentUser;
   
   if (user) {
+    // Delete user document from Firestore
+    try {
+      await deleteUserProfile(user.uid);
+      console.log('[Firebase] User profile deleted from Firestore');
+    } catch (error) {
+      console.error('[Firebase] Failed to delete user profile:', error);
+    }
+    
+    // Delete Firebase Auth user
     await deleteUser(user);
-    console.log('[Firebase] User deleted');
+    console.log('[Firebase] User deleted from Firebase Auth');
   } else {
     console.log('[Firebase] No user to delete');
   }

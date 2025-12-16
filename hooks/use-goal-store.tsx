@@ -373,19 +373,28 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
 
   const updateStreak = () => {
     const today = new Date();
-    const todayStr = today.toDateString();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString();
     
-    const todayTasks = dailyTasks.filter(t => 
-      t.goalId === currentGoal?.id && 
-      new Date(t.date).toDateString() === todayStr
-    );
+    const todayTasks = dailyTasks.filter(t => {
+      if (t.goalId !== currentGoal?.id) return false;
+      const taskDate = new Date(t.date);
+      taskDate.setHours(0, 0, 0, 0);
+      return taskDate.getTime() === today.getTime();
+    });
     
     const todayAllCompleted = todayTasks.length > 0 && todayTasks.every(t => t.completed);
     
     const lastStreakDate = profile.lastStreakDate;
-    const todayAlreadyCounted = lastStreakDate === todayStr;
+    let todayAlreadyCounted = false;
     
-    console.log('Streak update:', {
+    if (lastStreakDate) {
+      const lastDate = new Date(lastStreakDate);
+      lastDate.setHours(0, 0, 0, 0);
+      todayAlreadyCounted = lastDate.getTime() === today.getTime();
+    }
+    
+    console.log('[Streak] Update check:', {
       todayStr,
       todayTasks: todayTasks.length,
       todayAllCompleted,
@@ -398,18 +407,28 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       let newStreak = 1;
       
       if (profile.currentStreak > 0 && profile.lastStreakDate) {
-        const lastStreakDateObj = new Date(profile.lastStreakDate);
-        const daysDiff = Math.floor((today.getTime() - lastStreakDateObj.getTime()) / (1000 * 60 * 60 * 24));
+        const lastDate = new Date(profile.lastStreakDate);
+        lastDate.setHours(0, 0, 0, 0);
         
-        console.log('Days diff:', daysDiff);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
         
-        if (daysDiff === 1) {
+        const isConsecutive = lastDate.getTime() === yesterday.getTime();
+        
+        console.log('[Streak] Consecutive check:', {
+          lastDate: lastDate.toISOString(),
+          yesterday: yesterday.toISOString(),
+          isConsecutive
+        });
+        
+        if (isConsecutive) {
           newStreak = profile.currentStreak + 1;
         }
       }
       
-      const bestStreak = Math.max(newStreak, profile.bestStreak);
-      console.log('New streak:', newStreak);
+      const bestStreak = Math.max(newStreak, profile.bestStreak || 0);
+      console.log('[Streak] New streak:', newStreak);
       
       updateProfile({ 
         currentStreak: newStreak, 
@@ -418,11 +437,17 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       });
     }
     else if (profile.lastStreakDate && !todayAlreadyCounted && !todayAllCompleted) {
-      const lastStreakDateObj = new Date(profile.lastStreakDate);
-      const daysDiff = Math.floor((today.getTime() - lastStreakDateObj.getTime()) / (1000 * 60 * 60 * 24));
+      const lastDate = new Date(profile.lastStreakDate);
+      lastDate.setHours(0, 0, 0, 0);
       
-      if (daysDiff > 1) {
-        console.log('Resetting streak due to gap:', daysDiff, 'days');
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      
+      const isStreakBroken = lastDate.getTime() < yesterday.getTime();
+      
+      if (isStreakBroken) {
+        console.log('[Streak] Resetting due to gap');
         updateProfile({ 
           currentStreak: 0,
           lastStreakDate: undefined

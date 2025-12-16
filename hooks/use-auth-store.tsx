@@ -250,12 +250,48 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     console.log('[Auth] Deleting account...');
     
     try {
+      const userId = authState.user?.id;
+      
+      // Delete Firebase user and all data
       await deleteCurrentUser();
+      
+      // Clear all local storage
       await safeStorageSet(AUTH_STORAGE_KEY, null);
       await safeStorageSet(AUTH_LOGIN_GATE_KEY, false);
+      await safeStorageSet(FIRST_LAUNCH_KEY, false);
+      
+      // Clear subscription data from local storage
+      const subscriptionKeys = [
+        '@subscription_status',
+        'hasSeenSubscriptionOffer',
+        'trialStartISO',
+        'hasSeenPaywall',
+        'trialStartedAt',
+        '@first_launch'
+      ];
+      
+      for (const key of subscriptionKeys) {
+        await safeStorageSet(key, null);
+      }
+      
+      // Clear goal and task data from local storage
+      if (userId) {
+        const goalKeys = [
+          `user_profile_${userId}`,
+          `goals_${userId}`,
+          `daily_tasks_${userId}`,
+          `onboarding_answers_${userId}`,
+          `pomodoro_sessions_${userId}`
+        ];
+        
+        for (const key of goalKeys) {
+          await safeStorageSet(key, null);
+        }
+      }
+      
       setNeedsLoginGate(false);
-      setRequiresFirstLogin(false);
-      console.log('[Auth] Account deleted');
+      setRequiresFirstLogin(true);
+      console.log('[Auth] Account and all data deleted successfully');
       return true;
     } catch (error) {
       console.error('[Auth] Delete error:', error);
@@ -263,13 +299,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       if (error && typeof error === 'object' && 'code' in error) {
         const errorCode = (error as { code: string }).code;
         if (errorCode === 'auth/requires-recent-login') {
-          throw new Error('Для удаления аккаунта нужно заново войти');
+          throw new Error('For account deletion, please sign in again');
         }
       }
       
       return false;
     }
-  }, []);
+  }, [authState.user?.id]);
 
   return useMemo(() => ({
     ...authState,
