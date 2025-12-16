@@ -191,7 +191,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     context += `4. Дата должна быть в ISO формате (YYYY-MM-DD), например: ${todayStr}\n`;
     context += `5. Отвечай кратко и по делу на русском языке\n`;
     context += `6. Если нужно обновить задачу - используй updateTask с правильным taskId\n`;
-    context += `]\n\n`;
+    context += `[/END_SYSTEM]\n\n`;
     
     return context;
   }, [goalStore.dailyTasks, goalStore.profile, goalStore.currentGoal]);
@@ -235,7 +235,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
         }
         
         if (m.role === 'user') {
-            text = text.replace(/^\[SYSTEM:.*?\]\s*/s, '');
+            text = text.replace(/^\[SYSTEM:.*?\[\/END_SYSTEM\]\s*/s, '');
         }
 
         return {
