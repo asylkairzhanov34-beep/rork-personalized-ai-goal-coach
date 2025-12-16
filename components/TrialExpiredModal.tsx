@@ -75,7 +75,13 @@ function TrialExpiredModal({
   }
 
   return (
-    <Modal transparent visible animationType="fade" statusBarTranslucent>
+    <Modal 
+      transparent 
+      visible 
+      animationType="fade" 
+      statusBarTranslucent
+      onRequestClose={() => {}}
+    >
       <View style={styles.overlay} testID={testID}>
         <LinearGradient
           colors={['rgba(0,0,0,0.95)', 'rgba(0,0,0,0.98)']}

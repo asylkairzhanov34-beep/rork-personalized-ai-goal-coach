@@ -10,33 +10,6 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const { messages, error, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
-      updateTask: createRorkTool({
-        description: 'Update an existing task. Use to change status, title, description, priority, difficulty, or mark as completed.',
-        zodSchema: z.object({
-          taskId: z.string().describe('ID of the task to update'),
-          title: z.string().optional(),
-          description: z.string().optional(),
-          date: z.string().optional(),
-          completed: z.boolean().optional(),
-          priority: z.enum(['high', 'medium', 'low']).optional(),
-          difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
-          duration: z.string().optional(),
-          estimatedTime: z.number().optional(),
-        }),
-        execute: async (input) => {
-           goalStore.updateTask(input.taskId, {
-             ...(input.title && { title: input.title }),
-             ...(input.description && { description: input.description }),
-             ...(input.date && { date: input.date }),
-             ...(input.completed !== undefined && { completed: input.completed }),
-             ...(input.priority && { priority: input.priority as any }),
-             ...(input.difficulty && { difficulty: input.difficulty as any }),
-             ...(input.duration && { duration: input.duration }),
-             ...(input.estimatedTime && { estimatedTime: input.estimatedTime }),
-           });
-           return `Task updated successfully.`;
-        },
-      }),
       getTasks: createRorkTool({
         description: 'Get list of all user tasks. This function only retrieves tasks, does NOT modify them.',
         zodSchema: z.object({
@@ -114,8 +87,9 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     const completedTasks = tasks.filter(t => t.completed);
     const pendingTasks = tasks.filter(t => !t.completed);
     
-    let context = `[SYSTEM: You are GoalForge AI - a smart assistant for achieving goals. Current date: ${todayStr}.\n`;
-    context += `You can ONLY help users VIEW and EDIT existing tasks. You CANNOT add new tasks or delete tasks.\n`;
+    let context = `[SYSTEM: You are GoalForge AI - a smart productivity coach. Current date: ${todayStr}.\n`;
+    context += `You are an ADVISOR ONLY. You CANNOT modify, add, edit, or delete any tasks.\n`;
+    context += `Your role is to: give advice, analyze progress, suggest strategies, motivate, and answer questions.\n`;
     context += `Always respond in English.\n`;
     
     if (currentGoal) {
@@ -152,13 +126,12 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     }
     
     context += `\n⚠️ IMPORTANT RULES:\n`;
-    context += `- You can ONLY edit existing tasks using updateTask\n`;
-    context += `- You can view tasks using getTasks\n`;
+    context += `- You are ONLY an advisor - you CANNOT modify any tasks\n`;
+    context += `- You can view tasks using getTasks (read-only)\n`;
     context += `- You can analyze progress using getHistory\n`;
-    context += `- You CANNOT add new tasks - politely explain this if asked\n`;
-    context += `- You CANNOT delete tasks - politely explain this if asked\n`;
-    context += `- When user asks to edit a task, use updateTask with the correct taskId\n`;
-    context += `- Date format: YYYY-MM-DD (example: ${todayStr})\n`;
+    context += `- If user asks to add/edit/delete/complete tasks, politely explain that you can only give advice\n`;
+    context += `- Tell them to use the app interface to manage tasks\n`;
+    context += `- Focus on: motivation, productivity tips, time management advice, goal strategies\n`;
     context += `- Be helpful, friendly, and concise\n`;
     context += `[/END_SYSTEM]\n\n`;
     

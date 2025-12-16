@@ -279,7 +279,7 @@ const ChatScreen: React.FC = () => {
                   </View>
                   <Text style={styles.emptyTitle}>GoalForge AI</Text>
                   <Text style={styles.emptyText}>
-                    I can help analyze your progress{'\n'}and edit your existing tasks
+                    I can help analyze your progress{'\n'}and give you productivity advice
                   </Text>
                   
                   <View style={styles.suggestionsGrid}>
@@ -301,11 +301,11 @@ const ChatScreen: React.FC = () => {
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={styles.suggestionCard}
-                      onPress={() => setInputText("Mark my first task as complete")}
+                      onPress={() => setInputText("How can I be more productive?")}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.suggestionIcon}>✅</Text>
-                      <Text style={styles.suggestionText}>Complete Task</Text>
+                      <Text style={styles.suggestionIcon}>🚀</Text>
+                      <Text style={styles.suggestionText}>Productivity</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={styles.suggestionCard}
