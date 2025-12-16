@@ -156,10 +156,28 @@ export const [ChatProvider, useChat] = createContextHook(() => {
         retryCountRef.current = 0;
       } catch (e) {
         console.error('[ChatStore] sendMessage failed:', e);
-        console.error('[ChatStore] Error details:', JSON.stringify(e, null, 2));
+        
+        let errorMessage = 'Unknown error';
+        try {
+          errorMessage = JSON.stringify(e, null, 2);
+        } catch {
+          errorMessage = String(e);
+        }
+        console.error('[ChatStore] Error details:', errorMessage);
+        
         if (e instanceof Error) {
           console.error('[ChatStore] Error message:', e.message);
           console.error('[ChatStore] Error stack:', e.stack);
+          
+          // Don't retry on parsing errors - they won't fix themselves
+          const isSyntaxError = e.message.includes('SyntaxError') || 
+                               e.message.includes("';' expected") ||
+                               e.message.includes('Unexpected token') ||
+                               e.name === 'SyntaxError';
+          if (isSyntaxError) {
+            console.log('[ChatStore] Syntax/parsing error detected, not retrying');
+            throw e;
+          }
         }
         
         retryCountRef.current++;
@@ -248,6 +266,15 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     const errorStr = message ? String(message) : 'Unknown error';
     
     console.log('[ChatStore] Processed error message:', errorStr);
+    
+    // SyntaxError / JSON parsing errors
+    if (errorStr.toLowerCase().includes('syntaxerror') || 
+        errorStr.includes("';' expected") ||
+        errorStr.toLowerCase().includes('unexpected token') ||
+        errorStr.toLowerCase().includes('json parse') ||
+        errorStr.toLowerCase().includes('json.parse')) {
+      return 'AI service temporarily unavailable. Please try again.';
+    }
     
     if (errorStr.toLowerCase().includes('fetch failed') || 
         errorStr.toLowerCase().includes('failed to fetch') ||
