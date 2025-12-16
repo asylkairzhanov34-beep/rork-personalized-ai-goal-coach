@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Send, Bot, MessageSquarePlus, Sparkles, X, RefreshCw } from 'lucide-react-native';
+import { Send, Bot, MessageSquarePlus, Sparkles } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
 import { ChatMessage } from '@/types/chat';
 import { theme } from '@/constants/theme';
@@ -90,7 +90,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, showAvatar }) =>
 
 
 const ChatScreen: React.FC = () => {
-  const { messages, sendMessage, clearChat, isLoading, error, clearError } = useChat();
+  const { messages, sendMessage, clearChat, isLoading, error } = useChat();
   const params = useLocalSearchParams<{ initialMessage?: string }>();
   const router = useRouter();
   const [inputText, setInputText] = useState<string>(params.initialMessage || '');
@@ -225,26 +225,17 @@ const ChatScreen: React.FC = () => {
       <View style={styles.container}>
       <SafeAreaView style={styles.headerContainer} edges={['top']}>
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity 
-              onPress={() => router.back()} 
-              style={styles.backButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <X size={24} color={theme.colors.text} />
-            </TouchableOpacity>
-            <View style={styles.headerContent}>
-              <View style={styles.avatarContainer}>
-                <View style={styles.avatarGradient}>
-                  <Sparkles size={20} color={theme.colors.background} />
-                </View>
+          <View style={styles.headerContent}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarGradient}>
+                <Sparkles size={20} color={theme.colors.background} />
               </View>
-              <View style={styles.headerTextContainer}>
-                <Text style={styles.headerTitle}>GoalForge</Text>
-                <View style={styles.statusContainer}>
-                  <View style={styles.statusDot} />
-                  <Text style={styles.headerSubtitle}>Online</Text>
-                </View>
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>GoalForge</Text>
+              <View style={styles.statusContainer}>
+                <View style={styles.statusDot} />
+                <Text style={styles.headerSubtitle}>Online</Text>
               </View>
             </View>
           </View>
@@ -262,16 +253,6 @@ const ChatScreen: React.FC = () => {
         {!!error && (
           <View style={styles.errorBanner} testID="chat-error-banner">
             <Text style={styles.errorBannerText}>{error}</Text>
-            <TouchableOpacity 
-              style={styles.retryButton} 
-              onPress={() => {
-                clearError?.();
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <RefreshCw size={14} color="rgba(255, 59, 48, 0.95)" />
-              <Text style={styles.retryButtonText}>Dismiss</Text>
-            </TouchableOpacity>
           </View>
         )}
         <ScrollView
@@ -421,12 +402,7 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: theme.colors.surfaceElevated,
+    display: 'none', // Hide old styles
   },
   headerIconContainer: {
     width: 40,
@@ -468,30 +444,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 59, 48, 0.12)',
     borderWidth: 1,
     borderColor: 'rgba(255, 59, 48, 0.25)',
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   errorBannerText: {
     color: 'rgba(255, 59, 48, 0.95)',
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '600',
-    flex: 1,
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginLeft: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 59, 48, 0.1)',
-  },
-  retryButtonText: {
-    color: 'rgba(255, 59, 48, 0.95)',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
   },
   scrollView: {
     flex: 1,
