@@ -9,10 +9,11 @@ import {
   Platform,
   Animated,
   ActivityIndicator,
-  Keyboard,
+  KeyboardAvoidingView,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Send, Bot, MessageSquarePlus, Sparkles, X } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
 import { ChatMessage } from '@/types/chat';
@@ -20,50 +21,75 @@ import { theme } from '@/constants/theme';
 import { useSubscription } from '@/hooks/use-subscription-store';
 import PaywallModal from '@/components/PaywallModal';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 interface MessageBubbleProps {
   message: ChatMessage;
-  showAvatar: boolean;
+  isFirstInGroup: boolean;
+  isLastInGroup: boolean;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, showAvatar }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isFirstInGroup, isLastInGroup }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const translateY = useRef(new Animated.Value(10)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 300,
+        duration: 250,
         useNativeDriver: true,
       }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 250,
         useNativeDriver: true,
       })
     ]).start();
-  }, [fadeAnim, scaleAnim]);
+  }, [fadeAnim, translateY]);
+
+  const getBubbleStyle = () => {
+    if (message.isBot) {
+      return {
+        borderTopLeftRadius: isFirstInGroup ? 20 : 6,
+        borderTopRightRadius: 20,
+        borderBottomLeftRadius: isLastInGroup ? 20 : 6,
+        borderBottomRightRadius: 20,
+      };
+    }
+    return {
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: isFirstInGroup ? 20 : 6,
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: isLastInGroup ? 20 : 6,
+    };
+  };
 
   return (
     <Animated.View 
       style={[
-        styles.messageContainer, 
-        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-        message.isBot ? styles.botContainer : styles.userContainer
+        styles.messageRow, 
+        { 
+          opacity: fadeAnim, 
+          transform: [{ translateY }],
+          marginBottom: isLastInGroup ? 16 : 3,
+        },
+        message.isBot ? styles.botRow : styles.userRow
       ]}
     >
-      {message.isBot && (
-        <View style={[styles.avatarContainer, !showAvatar && styles.hiddenAvatar]}>
+      {message.isBot && isLastInGroup && (
+        <View style={styles.avatarWrapper}>
           <View style={styles.botAvatar}>
-            <Bot size={14} color={theme.colors.background} />
+            <Sparkles size={14} color="#000" />
           </View>
         </View>
       )}
+      {message.isBot && !isLastInGroup && <View style={styles.avatarPlaceholder} />}
       
       <View style={[
         styles.messageBubble,
-        message.isBot ? styles.botBubble : styles.userBubble
+        message.isBot ? styles.botBubble : styles.userBubble,
+        getBubbleStyle()
       ]}>
         <Text style={[
           styles.messageText,
@@ -71,31 +97,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, showAvatar }) =>
         ]}>
           {message.text}
         </Text>
-        <Text style={[
-          styles.timestamp,
-          message.isBot ? styles.botTimestamp : styles.userTimestamp
-        ]}>
-          {message.timestamp ? new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-        </Text>
       </View>
-
-      {!message.isBot && (
-         <View style={[styles.avatarContainer, !showAvatar && styles.hiddenAvatar]}>
-          {/* Placeholder for user avatar if needed, or just empty space for alignment */}
-         </View>
-      )}
     </Animated.View>
   );
 };
 
-
 const ChatScreen: React.FC = () => {
   const { messages, sendMessage, clearChat, isLoading, error } = useChat();
-  const params = useLocalSearchParams<{ initialMessage?: string }>();
   const router = useRouter();
-  const [inputText, setInputText] = useState<string>(params.initialMessage || '');
+  const [inputText, setInputText] = useState<string>('');
   const scrollViewRef = useRef<ScrollView>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
   const insets = useSafeAreaInsets();
 
   const [isSending, setIsSending] = useState(false);
@@ -106,17 +117,8 @@ const ChatScreen: React.FC = () => {
 
   useEffect(() => {
     console.log('[ChatScreen] Mounted - checking subscription status');
-    console.log('[ChatScreen] Current status:', status);
-    console.log('[ChatScreen] Is Premium:', isPremium);
-    console.log('[ChatScreen] Trial active:', trialState.isActive);
-    console.log('[ChatScreen] Has AI chat access:', featureAccess.aiChatAssistant);
     checkSubscriptionStatus();
-  }, [checkSubscriptionStatus, status, isPremium, trialState.isActive, featureAccess.aiChatAssistant]);
-
-  useEffect(() => {
-    console.log('[ChatScreen] Status changed:', status);
-    console.log('[ChatScreen] AI chat access:', featureAccess.aiChatAssistant);
-  }, [status, featureAccess.aiChatAssistant]);
+  }, [checkSubscriptionStatus]);
 
   const handleSend = async () => {
     if (inputText.trim()) {
@@ -138,38 +140,13 @@ const ChatScreen: React.FC = () => {
     }
   };
 
-  // Scroll to bottom when messages change
   useEffect(() => {
-    // Small timeout to ensure layout is updated
     setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 150);
   }, [messages]);
 
-  // Keyboard listeners
-  useEffect(() => {
-    const keyboardWillShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (event) => {
-        setKeyboardHeight(event.endCoordinates.height);
-      }
-    );
-
-    const keyboardWillHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0);
-      }
-    );
-
-    return () => {
-      keyboardWillShowListener.remove();
-      keyboardWillHideListener.remove();
-    };
-  }, []);
-
-  // Always allow access to chat screen, check inside handleSend instead
-  const shouldBlockChat = false; // Removed blocking at screen level
+  const shouldBlockChat = false;
   
   if (shouldBlockChat && !featureAccess.aiChatAssistant) {
     return (
@@ -207,6 +184,22 @@ const ChatScreen: React.FC = () => {
     );
   }
 
+  const getMessageGroups = () => {
+    const groups: { message: ChatMessage; isFirstInGroup: boolean; isLastInGroup: boolean }[] = [];
+    
+    messages.forEach((message, index) => {
+      const prevMessage = index > 0 ? messages[index - 1] : null;
+      const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+      
+      const isFirstInGroup = !prevMessage || prevMessage.isBot !== message.isBot;
+      const isLastInGroup = !nextMessage || nextMessage.isBot !== message.isBot;
+      
+      groups.push({ message, isFirstInGroup, isLastInGroup });
+    });
+    
+    return groups;
+  };
+
   return (
     <>
       <PaywallModal
@@ -223,168 +216,168 @@ const ChatScreen: React.FC = () => {
         secondaryLabel="Not Now"
       />
       <View style={styles.container}>
-      <SafeAreaView style={styles.headerContainer} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => router.back()} 
-            style={styles.closeButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            testID="chat-close-button"
-          >
-            <X size={24} color={theme.colors.text} />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatarGradient}>
-                <Sparkles size={20} color={theme.colors.background} />
-              </View>
-            </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>GoalForge</Text>
-              <View style={styles.statusContainer}>
-                <View style={styles.statusDot} />
-                <Text style={styles.headerSubtitle}>Online</Text>
-              </View>
-            </View>
-          </View>
-          <TouchableOpacity 
-            onPress={clearChat} 
-            style={styles.clearButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <MessageSquarePlus size={24} color={theme.colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-
-      <View style={styles.chatContainer}>
-        {!!error && (
-          <View style={styles.errorBanner} testID="chat-error-banner">
-            <Text style={styles.errorBannerText}>{error}</Text>
-          </View>
-        )}
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent, 
-            { paddingBottom: Platform.OS === 'android' ? 20 : 10 }
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {messages.length === 0 && (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIconGlow} />
-              <View style={styles.emptyIcon}>
-                <Bot size={36} color={theme.colors.primary} />
-              </View>
-              <Text style={styles.emptyTitle}>Hi! I’m GoalForge</Text>
-              <Text style={styles.emptyText}>
-                I’ll help analyze your progress and give you advice.{"\n"}
-                Ask me about productivity or your goals analysis.
-              </Text>
-              
-              <View style={styles.suggestionsContainer}>
-                <TouchableOpacity 
-                  style={styles.suggestionChip}
-                  onPress={() => setInputText("Give me productivity tips")}
-                >
-                  <Text style={styles.suggestionText}>📝 Productivity Tips</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.suggestionChip}
-                  onPress={() => setInputText("Analyze my progress")}
-                >
-                  <Text style={styles.suggestionText}>📊 Analyze Progress</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.suggestionChip}
-                  onPress={() => setInputText("Add a task for tomorrow")}
-                >
-                  <Text style={styles.suggestionText}>➕ Add Task</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.suggestionChip}
-                  onPress={() => setInputText("Show my tasks")}
-                >
-                  <Text style={styles.suggestionText}>📋 Show Tasks</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-          
-          {messages.map((message, index) => {
-            const isLast = index === messages.length - 1;
-            const isNextSame = !isLast && messages[index + 1].isBot === message.isBot;
-            // Show avatar only if it's the last message of a sequence from the same user
-            const showAvatar = !isNextSame; 
+        <SafeAreaView style={styles.headerContainer} edges={['top']}>
+          <View style={styles.header}>
+            <TouchableOpacity 
+              onPress={() => router.back()} 
+              style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              testID="chat-close-button"
+            >
+              <X size={22} color={theme.colors.text} />
+            </TouchableOpacity>
             
-            return (
-              <MessageBubble 
-                key={message.id || index} 
-                message={message} 
-                showAvatar={showAvatar}
-              />
-            );
-          })}
-          
-          {(isLoading || isSending) && (
-            <View style={styles.typingContainer}>
-               <View style={styles.botAvatar}>
-                 <Bot size={14} color={theme.colors.background} />
-               </View>
-               <View style={styles.typingBubble}>
-                 <ActivityIndicator size="small" color={theme.colors.textSecondary} />
-               </View>
+            <View style={styles.headerCenter}>
+              <View style={styles.headerAvatarSmall}>
+                <Sparkles size={16} color="#000" />
+              </View>
+              <View>
+                <Text style={styles.headerTitle}>GoalForge</Text>
+                <View style={styles.statusContainer}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.headerSubtitle}>Online</Text>
+                </View>
+              </View>
             </View>
-          )}
-        </ScrollView>
-      </View>
-      
-      <View style={[
-        styles.inputContainer,
-        {
-          paddingBottom: keyboardHeight > 0 ? 0 : Math.max(insets.bottom, 16),
-          position: keyboardHeight > 0 ? 'absolute' : 'relative',
-          bottom: keyboardHeight > 0 ? keyboardHeight : 0,
-          left: 0,
-          right: 0,
-        }
-      ]}>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Type a message..."
-            placeholderTextColor="rgba(255,255,255,0.5)"
-            multiline
-            maxLength={1000}
-            returnKeyType="send"
-            blurOnSubmit={false}
-            onSubmitEditing={() => {
-              if (inputText.trim()) {
-                handleSend();
-              }
-            }}
-          />
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={!inputText.trim()}
-            style={[
-              styles.sendButton,
-              !inputText.trim() && styles.sendButtonDisabled
-            ]}
-          >
-            {isSending ? (
-                <ActivityIndicator size="small" color="#000000" />
-            ) : (
-                <Send size={20} color="#000000" />
+            
+            <TouchableOpacity 
+              onPress={clearChat} 
+              style={styles.clearButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MessageSquarePlus size={22} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <View style={styles.chatContainer}>
+            {!!error && (
+              <View style={styles.errorBanner} testID="chat-error-banner">
+                <Text style={styles.errorBannerText}>{error}</Text>
+              </View>
             )}
-          </TouchableOpacity>
-        </View>
+            
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {messages.length === 0 && (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyIconContainer}>
+                    <View style={styles.emptyIconGlow} />
+                    <View style={styles.emptyIcon}>
+                      <Bot size={32} color="#FFD600" />
+                    </View>
+                  </View>
+                  <Text style={styles.emptyTitle}>GoalForge AI</Text>
+                  <Text style={styles.emptyText}>
+                    Помогу проанализировать прогресс{'\n'}и добавить новые задачи
+                  </Text>
+                  
+                  <View style={styles.suggestionsGrid}>
+                    <TouchableOpacity 
+                      style={styles.suggestionCard}
+                      onPress={() => setInputText("Проанализируй мой прогресс")}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.suggestionIcon}>📊</Text>
+                      <Text style={styles.suggestionText}>Анализ прогресса</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.suggestionCard}
+                      onPress={() => setInputText("Добавь задачу на сегодня")}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.suggestionIcon}>➕</Text>
+                      <Text style={styles.suggestionText}>Добавить задачу</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.suggestionCard}
+                      onPress={() => setInputText("Покажи мои задачи")}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.suggestionIcon}>📋</Text>
+                      <Text style={styles.suggestionText}>Мои задачи</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.suggestionCard}
+                      onPress={() => setInputText("Советы по продуктивности")}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.suggestionIcon}>💡</Text>
+                      <Text style={styles.suggestionText}>Советы</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              
+              {getMessageGroups().map(({ message, isFirstInGroup, isLastInGroup }, index) => (
+                <MessageBubble 
+                  key={message.id || index} 
+                  message={message}
+                  isFirstInGroup={isFirstInGroup}
+                  isLastInGroup={isLastInGroup}
+                />
+              ))}
+              
+              {(isLoading || isSending) && (
+                <View style={styles.typingRow}>
+                  <View style={styles.avatarWrapper}>
+                    <View style={styles.botAvatar}>
+                      <Sparkles size={14} color="#000" />
+                    </View>
+                  </View>
+                  <View style={styles.typingBubble}>
+                    <View style={styles.typingDots}>
+                      <Animated.View style={[styles.typingDot, { opacity: 0.4 }]} />
+                      <Animated.View style={[styles.typingDot, { opacity: 0.7 }]} />
+                      <Animated.View style={[styles.typingDot, { opacity: 1 }]} />
+                    </View>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+          
+          <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder="Напишите сообщение..."
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                multiline
+                maxLength={1000}
+                returnKeyType="default"
+              />
+              <TouchableOpacity
+                onPress={handleSend}
+                disabled={!inputText.trim() || isSending}
+                style={[
+                  styles.sendButton,
+                  (!inputText.trim() || isSending) && styles.sendButtonDisabled
+                ]}
+                activeOpacity={0.7}
+              >
+                {isSending ? (
+                  <ActivityIndicator size="small" color="#000" />
+                ) : (
+                  <Send size={18} color="#000" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </View>
-    </View>
     </>
   );
 };
@@ -392,218 +385,32 @@ const ChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#0A0A0A',
   },
   headerContainer: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#0A0A0A',
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    display: 'none', // Hide old styles
-  },
-  headerIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.surfaceElevated,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    display: 'none', // Hide old styles
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.colors.text,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: theme.colors.textSecondary, // Changed color
-    fontWeight: '500',
-  },
-  closeButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: theme.colors.surfaceElevated,
-  },
-  clearButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: theme.colors.surfaceElevated,
-  },
-  chatContainer: {
-    flex: 1,
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 59, 48, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 59, 48, 0.25)',
-  },
-  errorBannerText: {
-    color: 'rgba(255, 59, 48, 0.95)',
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '600',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 20,
-  },
-  messageContainer: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    alignItems: 'flex-end',
-  },
-  botContainer: {
-    justifyContent: 'flex-start',
-  },
-  userContainer: {
-    justifyContent: 'flex-end',
-  },
-  // Removed old avatarContainer
-  hiddenAvatar: {
-    opacity: 0,
-  },
-  botAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.colors.surfaceElevated,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  messageBubble: {
-    maxWidth: '80%',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 20,
   },
-  botBubble: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderTopLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  userBubble: {
-    backgroundColor: theme.colors.primary,
-    borderBottomRightRadius: 4,
-  },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  botText: {
-    color: theme.colors.text,
-  },
-  userText: {
-    color: theme.colors.background,
-    fontWeight: '600',
-  },
-  timestamp: {
-    fontSize: 10,
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
-  botTimestamp: {
-    color: theme.colors.textSecondary,
-  },
-  userTimestamp: {
-    color: 'rgba(0,0,0,0.6)',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    paddingHorizontal: 24,
-  },
-  emptyIconGlow: {
-    position: 'absolute',
-    top: -10,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: theme.colors.primary,
-    opacity: 0.15,
-  },
-  emptyIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: theme.colors.surfaceElevated,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.text,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  suggestionsContainer: {
-    width: '100%',
-    gap: 12,
-  },
-  suggestionChip: {
-    backgroundColor: theme.colors.surfaceElevated,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+  headerCenter: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+  },
+  headerAvatarSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFD600',
     justifyContent: 'center',
-  },
-  suggestionText: {
-    color: theme.colors.text,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  inputContainer: {
-    backgroundColor: '#000000',
-    paddingTop: 16,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    alignItems: 'center',
   },
   headerContent: {
     flexDirection: 'row',
@@ -619,13 +426,14 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   headerTextContainer: {
     justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   statusContainer: {
     flexDirection: 'row',
@@ -636,49 +444,232 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.colors.success,
-    marginRight: 4,
+    backgroundColor: '#4ADE80',
+    marginRight: 5,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clearButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  chatContainer: {
+    flex: 1,
+  },
+  errorBanner: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  errorBannerText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  botRow: {
+    justifyContent: 'flex-start',
+  },
+  userRow: {
+    justifyContent: 'flex-end',
+  },
+  avatarWrapper: {
+    marginRight: 8,
+  },
+  avatarPlaceholder: {
+    width: 28,
+    marginRight: 8,
+  },
+  botAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFD600',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messageBubble: {
+    maxWidth: SCREEN_WIDTH * 0.75,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  botBubble: {
+    backgroundColor: '#1A1A1A',
+  },
+  userBubble: {
+    backgroundColor: '#FFD600',
+  },
+  messageText: {
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  botText: {
+    color: '#FFFFFF',
+  },
+  userText: {
+    color: '#000000',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 40,
+    paddingHorizontal: 24,
+  },
+  emptyIconContainer: {
+    position: 'relative',
+    marginBottom: 20,
+  },
+  emptyIconGlow: {
+    position: 'absolute',
+    top: -15,
+    left: -15,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#FFD600',
+    opacity: 0.15,
+  },
+  emptyIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFD600',
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 32,
+  },
+  suggestionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  suggestionCard: {
+    width: (SCREEN_WIDTH - 62) / 2,
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  suggestionIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  suggestionText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  typingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 16,
+  },
+  typingBubble: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopLeftRadius: 4,
+  },
+  typingDots: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  typingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFD600',
+  },
+  inputContainer: {
+    backgroundColor: '#0A0A0A',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 24,
+    paddingLeft: 16,
+    paddingRight: 6,
+    paddingVertical: 6,
+    minHeight: 48,
   },
   input: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
-    borderRadius: 25,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     maxHeight: 100,
-    marginRight: 12,
+    paddingVertical: 8,
+    paddingRight: 8,
   },
   sendButton: {
     backgroundColor: '#FFD600',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FFD600',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 8,
   },
   sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  typingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  typingBubble: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginLeft: 0,
+    opacity: 0.4,
   },
 });
 
