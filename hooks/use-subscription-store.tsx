@@ -8,8 +8,6 @@ import createContextHook from '@nkzw/create-context-hook';
 import { CustomerInfo, SubscriptionPackage, SubscriptionStatus } from '@/types/subscription';
 import {
   initializeRevenueCat,
-  setRevenueCatAppUserId,
-  clearRevenueCatAppUserId,
   getCustomerInfo,
   purchasePackageByIdentifier,
   restorePurchases as restorePurchasesRC,
@@ -451,7 +449,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         }
         
         // Real devices (iOS/Android) MUST use RevenueCat
-        const initialized = await initializeRevenueCat(user?.id);
+        const initialized = await initializeRevenueCat();
         if (!initialized) {
           console.error('[SubscriptionProvider] ❌ RevenueCat initialization failed');
           if (isRealDevice) {
@@ -471,10 +469,6 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         // RevenueCat initialized successfully - NEVER use mock mode
         console.log('[SubscriptionProvider] ✅ RevenueCat initialized');
         setIsMockMode(false);
-
-        if (user?.id) {
-          await setRevenueCatAppUserId(user.id);
-        }
         
         const info = await getCustomerInfo();
         if (info) {
@@ -508,30 +502,6 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
     bootstrap();
   }, [checkFirstLaunch, hydratePaywallSeen, hydrateSecurePremiumFlag, hydrateTrialState, loadOfferingsFromRevenueCat, persistCustomerInfo, user?.id]);
-
-  useEffect(() => {
-    const syncUserToRevenueCat = async () => {
-      if (isMockMode || Platform.OS === 'web') {
-        return;
-      }
-
-      if (!user?.id) {
-        await clearRevenueCatAppUserId();
-        return;
-      }
-
-      await setRevenueCatAppUserId(user.id);
-
-      const info = await getCustomerInfo();
-      if (info) {
-        await persistCustomerInfo(info);
-      }
-    };
-
-    syncUserToRevenueCat().catch((err: unknown) => {
-      console.error('[SubscriptionProvider] syncUserToRevenueCat failed', err);
-    });
-  }, [isMockMode, persistCustomerInfo, user?.id]);
 
   useEffect(() => {
     if (!trialState.startedAt || trialState.isExpired) {

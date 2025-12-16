@@ -11,7 +11,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   const { messages, error, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
     tools: {
       addTask: createRorkTool({
-        description: 'Add a new task to the user plan. Use when the user asks to add a task or create something in the plan.',
+        description: 'Добавить новую задачу в план пользователя. Используй когда пользователь просит добавить задачу или создать что-то в плане.',
         zodSchema: z.object({
           title: z.string().describe('Title of the task'),
           description: z.string().describe('Detailed description'),
@@ -33,11 +33,11 @@ export const [ChatProvider, useChat] = createContextHook(() => {
             day: 0,
             tips: [],
           });
-          return `Task "${input.title}" successfully added to plan for ${new Date(input.date).toLocaleDateString('en-US')}`;
+          return `Задача "${input.title}" успешно добавлена в план на ${new Date(input.date).toLocaleDateString('ru-RU')}`;
         },
       }),
       updateTask: createRorkTool({
-        description: 'Update an existing task. Use for changing status, title, or other parameters.',
+        description: 'Обновить существующую задачу. Используй для изменения статуса, названия или других параметров.',
         zodSchema: z.object({
           taskId: z.string().describe('ID of the task to update'),
           title: z.string().optional(),
@@ -60,21 +60,21 @@ export const [ChatProvider, useChat] = createContextHook(() => {
              ...(input.duration && { duration: input.duration }),
              ...(input.estimatedTime && { estimatedTime: input.estimatedTime }),
            });
-           return `Task updated successfully.`;
+           return `Задача обновлена успешно.`;
         },
       }),
       deleteTask: createRorkTool({
-        description: 'Delete a task from the schedule',
+        description: 'Удалить задачу из расписания',
         zodSchema: z.object({
           taskId: z.string().describe('ID of the task to delete'),
         }),
         execute: async (input) => {
           goalStore.deleteTask(input.taskId);
-          return `Task deleted successfully.`;
+          return `Задача удалена успешно.`;
         },
       }),
       getTasks: createRorkTool({
-        description: 'Get tasks for a specific period or all active tasks. Use before adding or modifying tasks to understand the current plan.',
+        description: 'Получить задачи для определенного периода или все активные задачи. Используй перед добавлением или изменением задач чтобы понять текущий план.',
         zodSchema: z.object({
           startDate: z.string().optional().describe('Start date (ISO)'),
           endDate: z.string().optional().describe('End date (ISO)'),
@@ -100,7 +100,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
         },
       }),
       getHistory: createRorkTool({
-        description: 'Get completion history for the last 90 days for productivity analysis and personalized recommendations',
+        description: 'Получить историю выполнения за последние 90 дней для анализа продуктивности и персонализированных рекомендаций',
         zodSchema: z.object({}),
         execute: async () => {
           const now = new Date();
@@ -157,7 +157,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
              
              const toolCalls = m.parts.filter((p: any) => p.type === 'tool');
              if (text === '' && toolCalls.length > 0) {
-                 text = 'Processing...'; 
+                 text = 'Выполняю...'; 
              }
         } else {
              text = (m as any).content || '';
@@ -189,20 +189,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   const errorText = useMemo(() => {
     if (!error) return null;
     const message = typeof error === 'string' ? error : (error as any)?.message;
-    const errorStr = message ? String(message) : 'Unknown chat error';
-    
-    // Translate common Russian error messages to English
-    if (errorStr.includes('Не удалось подключиться') || errorStr.includes('fetch failed')) {
-      return 'fetch failed: Could not connect to server. Please check your internet connection.';
-    }
-    if (errorStr.includes('Ошибка сети') || errorStr.includes('Network')) {
-      return 'Network error. Please try again.';
-    }
-    if (errorStr.includes('Время ожидания') || errorStr.includes('timeout')) {
-      return 'Request timed out. Please try again.';
-    }
-    
-    return errorStr;
+    return message ? String(message) : 'Unknown chat error';
   }, [error]);
 
   return useMemo(() => ({

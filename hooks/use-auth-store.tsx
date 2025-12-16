@@ -145,11 +145,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     console.log('[Auth] ========== Apple Login Started ==========');
     
     if (!firebaseInitialized) {
-      throw new Error(initError || 'Firebase not initialized');
+      throw new Error(initError || 'Firebase не инициализирован');
     }
     
     if (Platform.OS !== 'ios') {
-      throw new Error('Apple Sign In is only available on iOS');
+      throw new Error('Apple Sign In доступен только на iOS');
     }
 
     setAuthState(prev => ({ ...prev, isLoading: true }));
@@ -178,7 +178,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[Auth] - Has token:', !!credential.identityToken);
 
       if (!credential.identityToken) {
-        throw new Error('Apple did not return an authorization token');
+        throw new Error('Apple не вернул токен авторизации');
       }
 
       console.log('[Auth] Signing in to Firebase...');
@@ -207,11 +207,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         }
         
         if (errorCode === 'auth/invalid-credential') {
-          throw new Error('Authentication error. Please try again.');
+          throw new Error('Ошибка авторизации. Попробуйте ещё раз.');
         }
         
         if (errorCode === 'auth/operation-not-allowed') {
-          throw new Error('Apple Sign-In is not enabled in Firebase. Check settings.');
+          throw new Error('Apple Sign-In не включён в Firebase. Проверьте настройки.');
         }
       }
 
@@ -219,7 +219,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw error;
       }
       
-      throw new Error('Unknown authentication error');
+      throw new Error('Неизвестная ошибка авторизации');
     }
   }, [firebaseInitialized, initError, markLoginGateSeen]);
 
@@ -263,7 +263,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       if (error && typeof error === 'object' && 'code' in error) {
         const errorCode = (error as { code: string }).code;
         if (errorCode === 'auth/requires-recent-login') {
-          throw new Error('Please sign in again to delete your account');
+          throw new Error('Для удаления аккаунта нужно заново войти');
         }
       }
       

@@ -368,88 +368,64 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
       queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
     }
 
-    updateStreak(updatedTasks);
+    updateStreak();
   };
 
-  const toISODateUTC = (date: Date): string => {
-    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
-      .toISOString()
-      .split('T')[0];
-  };
-
-  const parseISODateToUtcMs = (isoDate: string): number => {
-    const [y, m, d] = isoDate.split('-').map((v) => Number(v));
-    if (!y || !m || !d) {
-      return NaN;
-    }
-    return Date.UTC(y, m - 1, d);
-  };
-
-  const updateStreak = (tasksSnapshot: DailyTask[]) => {
-    const todayISO = toISODateUTC(new Date());
-
-    const todayTasks = tasksSnapshot.filter((t) => {
-      const taskDate = new Date(t.date);
-      const taskISO = toISODateUTC(taskDate);
-      return t.goalId === currentGoal?.id && taskISO === todayISO;
-    });
-
-    const todayAllCompleted = todayTasks.length > 0 && todayTasks.every((t) => t.completed);
-
-    const lastStreakDate = profile.lastStreakDate;
-    const lastStreakISO = lastStreakDate
-      ? lastStreakDate.includes('T')
-        ? lastStreakDate.split('T')[0]
-        : toISODateUTC(new Date(lastStreakDate))
-      : null;
-
-    const todayAlreadyCounted = lastStreakISO === todayISO;
+  const updateStreak = () => {
+    const today = new Date();
+    const todayStr = today.toDateString();
     
-    console.log('[Streak] Update check:', {
-      todayISO,
+    const todayTasks = dailyTasks.filter(t => 
+      t.goalId === currentGoal?.id && 
+      new Date(t.date).toDateString() === todayStr
+    );
+    
+    const todayAllCompleted = todayTasks.length > 0 && todayTasks.every(t => t.completed);
+    
+    const lastStreakDate = profile.lastStreakDate;
+    const todayAlreadyCounted = lastStreakDate === todayStr;
+    
+    console.log('Streak update:', {
+      todayStr,
       todayTasks: todayTasks.length,
       todayAllCompleted,
       todayAlreadyCounted,
       currentStreak: profile.currentStreak,
-      lastStreakISO
+      lastStreakDate
     });
     
     if (todayAllCompleted && !todayAlreadyCounted) {
       let newStreak = 1;
       
-      if (profile.currentStreak > 0 && lastStreakISO) {
-        const todayMs = parseISODateToUtcMs(todayISO);
-        const lastMs = parseISODateToUtcMs(lastStreakISO);
-        const daysDiff = Number.isFinite(todayMs) && Number.isFinite(lastMs) ? Math.round((todayMs - lastMs) / (1000 * 60 * 60 * 24)) : NaN;
-
-        console.log('[Streak] Days diff:', daysDiff);
-
+      if (profile.currentStreak > 0 && profile.lastStreakDate) {
+        const lastStreakDateObj = new Date(profile.lastStreakDate);
+        const daysDiff = Math.floor((today.getTime() - lastStreakDateObj.getTime()) / (1000 * 60 * 60 * 24));
+        
+        console.log('Days diff:', daysDiff);
+        
         if (daysDiff === 1) {
           newStreak = profile.currentStreak + 1;
-        } else if (daysDiff === 0) {
-          newStreak = profile.currentStreak;
         }
       }
       
       const bestStreak = Math.max(newStreak, profile.bestStreak);
-      console.log('[Streak] New streak:', newStreak);
+      console.log('New streak:', newStreak);
       
       updateProfile({ 
         currentStreak: newStreak, 
         bestStreak,
-        lastStreakDate: todayISO
+        lastStreakDate: todayStr
       });
     }
-    else if (lastStreakISO && !todayAlreadyCounted) {
-      const todayMs = parseISODateToUtcMs(todayISO);
-      const lastMs = parseISODateToUtcMs(lastStreakISO);
-      const daysDiff = Number.isFinite(todayMs) && Number.isFinite(lastMs) ? Math.round((todayMs - lastMs) / (1000 * 60 * 60 * 24)) : NaN;
-
-      if (Number.isFinite(daysDiff) && daysDiff > 1) {
-        console.log('[Streak] Resetting streak due to gap:', daysDiff, 'days');
-        updateProfile({
+    else if (profile.lastStreakDate && !todayAlreadyCounted && !todayAllCompleted) {
+      const lastStreakDateObj = new Date(profile.lastStreakDate);
+      const daysDiff = Math.floor((today.getTime() - lastStreakDateObj.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff > 1) {
+        console.log('Resetting streak due to gap:', daysDiff, 'days');
+        updateProfile({ 
           currentStreak: 0,
-          lastStreakDate: undefined,
+          lastStreakDate: undefined
         });
       }
     }
@@ -696,7 +672,7 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
           });
           queryClient.invalidateQueries({ queryKey: ['goals', user?.id] });
        }
-       updateStreak(updatedTasks);
+       updateStreak();
     }
   };
 

@@ -36,15 +36,13 @@ export interface RevenueCatOfferings {
 }
 
 type PurchasesModule = {
-  configure: (config: { apiKey: string; appUserID?: string }) => Promise<void>;
+  configure: (config: { apiKey: string }) => Promise<void>;
   setLogLevel: (level: unknown) => Promise<void>;
   LOG_LEVEL: { DEBUG: unknown; VERBOSE: unknown };
   getOfferings: () => Promise<RevenueCatOfferings>;
   getCustomerInfo: () => Promise<RevenueCatCustomerInfo>;
   purchasePackage: (pkg: RevenueCatPackage) => Promise<{ customerInfo: RevenueCatCustomerInfo }>;
   restorePurchases: () => Promise<RevenueCatCustomerInfo>;
-  logIn?: (appUserID: string) => Promise<{ customerInfo: RevenueCatCustomerInfo; created: boolean }>;
-  logOut?: () => Promise<RevenueCatCustomerInfo>;
 };
 
 const HARDCODED_IOS_KEY = 'appl_NIzzmGwASbGFsnfAddnshynSnsG';
@@ -72,7 +70,6 @@ const logStatus = (message: string) => {
 
 let moduleRef: PurchasesModule | null = null;
 let isConfigured = false;
-let currentAppUserId: string | null = null;
 
 const getApiKey = (): string => {
   if (isRorkSandbox) {
@@ -124,12 +121,9 @@ const loadPurchasesModule = (): PurchasesModule | null => {
   }
 };
 
-export const initializeRevenueCat = async (appUserId?: string): Promise<boolean> => {
+export const initializeRevenueCat = async (): Promise<boolean> => {
   if (isConfigured) {
     console.log('[RevenueCat] Already configured');
-    if (appUserId) {
-      await setRevenueCatAppUserId(appUserId);
-    }
     return true;
   }
   
@@ -162,14 +156,9 @@ export const initializeRevenueCat = async (appUserId?: string): Promise<boolean>
       console.log('[RevenueCat] Debug logging enabled');
     }
     
-    await module.configure({ apiKey, appUserID: appUserId });
+    await module.configure({ apiKey });
     isConfigured = true;
-    currentAppUserId = appUserId ?? null;
     console.log('[RevenueCat] ✅ Configuration successful');
-
-    if (appUserId) {
-      await setRevenueCatAppUserId(appUserId);
-    }
     return true;
   } catch (error) {
     console.error('[RevenueCat] ❌ Configuration failed:', error);
@@ -177,57 +166,6 @@ export const initializeRevenueCat = async (appUserId?: string): Promise<boolean>
       throw error;
     }
     return false;
-  }
-};
-
-export const setRevenueCatAppUserId = async (appUserId: string): Promise<void> => {
-  const module = loadPurchasesModule();
-  if (!module || !isConfigured) {
-    console.log('[RevenueCat] setRevenueCatAppUserId - module not ready');
-    return;
-  }
-
-  if (!appUserId) {
-    return;
-  }
-
-  if (currentAppUserId === appUserId) {
-    console.log('[RevenueCat] setRevenueCatAppUserId - already set');
-    return;
-  }
-
-  try {
-    if (typeof module.logIn === 'function') {
-      console.log('[RevenueCat] Logging in with appUserID:', appUserId);
-      const res = await module.logIn(appUserId);
-      currentAppUserId = appUserId;
-      console.log('[RevenueCat] logIn done. created:', res?.created);
-    } else {
-      console.log('[RevenueCat] logIn not available on Purchases module - relying on configure(appUserID)');
-      currentAppUserId = appUserId;
-    }
-  } catch (error) {
-    console.error('[RevenueCat] setRevenueCatAppUserId failed:', error);
-  }
-};
-
-export const clearRevenueCatAppUserId = async (): Promise<void> => {
-  const module = loadPurchasesModule();
-  if (!module || !isConfigured) {
-    console.log('[RevenueCat] clearRevenueCatAppUserId - module not ready');
-    currentAppUserId = null;
-    return;
-  }
-
-  try {
-    if (typeof module.logOut === 'function') {
-      console.log('[RevenueCat] Logging out (clearing appUserID)');
-      await module.logOut();
-    }
-  } catch (error) {
-    console.error('[RevenueCat] clearRevenueCatAppUserId failed:', error);
-  } finally {
-    currentAppUserId = null;
   }
 };
 
