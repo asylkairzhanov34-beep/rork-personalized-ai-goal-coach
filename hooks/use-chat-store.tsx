@@ -1,5 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useRorkAgent, createRorkTool } from '@rork-ai/toolkit-sdk';
+import { useRorkAgent, createRorkTool } from '@/lib/rork-toolkit';
 import { z } from 'zod';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { ChatMessage } from '@/types/chat';
