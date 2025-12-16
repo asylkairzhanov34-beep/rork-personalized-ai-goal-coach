@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Send, Bot, MessageSquarePlus, Sparkles } from 'lucide-react-native';
+import { Send, Bot, MessageSquarePlus, Sparkles, X } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
 import { ChatMessage } from '@/types/chat';
 import { theme } from '@/constants/theme';
@@ -225,6 +225,14 @@ const ChatScreen: React.FC = () => {
       <View style={styles.container}>
       <SafeAreaView style={styles.headerContainer} edges={['top']}>
         <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => router.back()} 
+            style={styles.closeButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            testID="chat-close-button"
+          >
+            <X size={24} color={theme.colors.text} />
+          </TouchableOpacity>
           <View style={styles.headerContent}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatarGradient}>
@@ -425,6 +433,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.textSecondary, // Changed color
     fontWeight: '500',
+  },
+  closeButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: theme.colors.surfaceElevated,
   },
   clearButton: {
     padding: 8,

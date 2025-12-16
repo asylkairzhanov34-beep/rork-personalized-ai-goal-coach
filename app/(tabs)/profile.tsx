@@ -147,8 +147,13 @@ export default function ProfileScreen() {
                 await logout();
               }
               
-              router.replace('/auth');
-              Alert.alert('Success', 'Account deleted');
+              // Navigate to auth screen immediately so user can log in again
+              // Use setTimeout to ensure state updates are processed
+              setTimeout(() => {
+                router.replace('/auth');
+              }, 100);
+              
+              Alert.alert('Success', 'Account deleted. Please sign in again.');
             } catch (error) {
               console.error('[Profile] Delete account error:', error);
               const errorMessage = error instanceof Error ? error.message : 'Failed to delete account';

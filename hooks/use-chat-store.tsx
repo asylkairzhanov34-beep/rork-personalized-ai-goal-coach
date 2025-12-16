@@ -189,7 +189,20 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   const errorText = useMemo(() => {
     if (!error) return null;
     const message = typeof error === 'string' ? error : (error as any)?.message;
-    return message ? String(message) : 'Unknown chat error';
+    const errorStr = message ? String(message) : 'Unknown chat error';
+    
+    // Translate common error messages to English
+    if (errorStr.includes('Не удалось подключиться') || errorStr.includes('fetch failed') || errorStr.includes('network')) {
+      return 'Connection error. Please check your internet and try again.';
+    }
+    if (errorStr.includes('timeout') || errorStr.includes('timed out')) {
+      return 'Request timed out. Please try again.';
+    }
+    if (errorStr.includes('server') || errorStr.includes('500') || errorStr.includes('502') || errorStr.includes('503')) {
+      return 'Server error. Please try again later.';
+    }
+    
+    return errorStr;
   }, [error]);
 
   return useMemo(() => ({
