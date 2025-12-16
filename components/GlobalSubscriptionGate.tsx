@@ -27,7 +27,20 @@ export function GlobalSubscriptionGate() {
     !isPremium && 
     isTrialExpired && 
     pathname !== '/subscription' && 
-    pathname !== '/subscription-success'; // Allow success screen too
+    pathname !== '/subscription-success';
+
+  useEffect(() => {
+    if (isReady) {
+      console.log('[GlobalSubscriptionGate] State:', {
+        isReady,
+        checking,
+        isPremium,
+        isTrialExpired,
+        pathname,
+        shouldBlock
+      });
+    }
+  }, [isReady, checking, isPremium, isTrialExpired, pathname, shouldBlock]);
 
   const handleGetPremium = () => {
     // We are blocked, so we need to go to subscription.

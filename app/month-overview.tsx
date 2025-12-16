@@ -436,23 +436,7 @@ export default function MonthOverviewScreen() {
                             </View>
                           )}
                         </View>
-
-                        <Text style={styles.dayListTasks}>
-                          {totalTasks === 0
-                            ? 'No tasks'
-                            : `${completedTasks}/${totalTasks} completed`}
-                        </Text>
-
-                        {totalTasks > 0 && (
-                          <View style={styles.progressTrack}>
-                            <View
-                              style={[
-                                styles.progressFill,
-                                { width: `${progressPct}%`, backgroundColor: progressColor },
-                              ]}
-                            />
-                          </View>
-                        )}
+                        {/* Progress info removed as requested */}
                       </View>
                     </View>
 

@@ -151,7 +151,15 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setIsSending(true);
     try {
       const context = buildSystemContext();
-      const messageWithContext = context + text;
+      // Enforce ONLY advisor role, no task modification
+      const systemInstruction = `
+IMPORTANT: You are GoalForge AI, a productivity advisor.
+You CANNOT create, edit, delete, or complete tasks.
+If the user asks to modify tasks, politely refuse and explain you are only an advisor.
+Focus on giving motivation, strategies, and analyzing the user's progress.
+Always answer in English.
+`;
+      const messageWithContext = systemInstruction + "\n" + context + "\nUser message: " + text;
       console.log('[ChatStore] Sending message with context to agent');
       console.log('[ChatStore] User message:', text);
       console.log('[ChatStore] Tasks count:', goalStore.dailyTasks?.length || 0);

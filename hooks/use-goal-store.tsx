@@ -145,8 +145,31 @@ export const [GoalProvider, useGoalStore] = createContextHook(() => {
   useEffect(() => {
     if (profileQuery.data) {
       setProfile(profileQuery.data);
+      checkStreakIntegrity(profileQuery.data);
     }
   }, [profileQuery.data]);
+
+  const checkStreakIntegrity = (currentProfile: UserProfile) => {
+    if (currentProfile.currentStreak > 0 && currentProfile.lastStreakDate) {
+      const lastDate = new Date(currentProfile.lastStreakDate);
+      lastDate.setHours(0, 0, 0, 0);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      // If last streak was before yesterday, it is broken
+      if (lastDate.getTime() < yesterday.getTime()) {
+        console.log('[Streak] Broken streak detected on load. Resetting.');
+        updateProfile({
+          currentStreak: 0,
+          lastStreakDate: undefined,
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     if (goalsQuery.data && Array.isArray(goalsQuery.data) && goalsQuery.data.length > 0) {
