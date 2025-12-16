@@ -3,7 +3,9 @@ import { useRorkAgent, createRorkTool } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { ChatMessage } from '@/types/chat';
-import { useMemo, useEffect, useCallback, useState } from 'react';
+import { useMemo, useEffect, useCallback, useState, useRef } from 'react';
+import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 
 export const [ChatProvider, useChat] = createContextHook(() => {
   const goalStore = useGoalStore();
@@ -131,22 +133,69 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   });
 
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const retryCountRef = useRef(0);
+  const maxRetries = 3;
+
+  const checkNetworkConnection = useCallback(async (): Promise<boolean> => {
+    try {
+      if (Platform.OS === 'web') {
+        return navigator.onLine;
+      }
+      const state = await NetInfo.fetch();
+      console.log('[ChatStore] Network state:', state.isConnected, state.isInternetReachable);
+      return state.isConnected === true && state.isInternetReachable !== false;
+    } catch (e) {
+      console.log('[ChatStore] Network check failed, assuming connected:', e);
+      return true;
+    }
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     setIsSending(true);
+    setLocalError(null);
+    
     try {
+      const isConnected = await checkNetworkConnection();
+      if (!isConnected) {
+        throw new Error('No internet connection. Please check your network.');
+      }
+
       console.log('[ChatStore] Sending message to agent:', text);
+      console.log('[ChatStore] Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
       console.log('[ChatStore] Current messages count:', messages.length);
-      const result = await rorkSendMessage(text);
-      console.log('[ChatStore] Message sent successfully, result:', result);
-    } catch (e) {
-      console.error('[ChatStore] sendMessage failed:', e);
-      console.error('[ChatStore] Error details:', JSON.stringify(e, null, 2));
+      
+      retryCountRef.current = 0;
+      
+      const sendWithRetry = async (): Promise<any> => {
+        try {
+          const result = await rorkSendMessage(text);
+          console.log('[ChatStore] Message sent successfully');
+          return result;
+        } catch (e: any) {
+          retryCountRef.current++;
+          console.log(`[ChatStore] Send attempt ${retryCountRef.current} failed:`, e?.message);
+          
+          if (retryCountRef.current < maxRetries) {
+            console.log(`[ChatStore] Retrying in ${retryCountRef.current * 1000}ms...`);
+            await new Promise(resolve => setTimeout(resolve, retryCountRef.current * 1000));
+            return sendWithRetry();
+          }
+          throw e;
+        }
+      };
+      
+      await sendWithRetry();
+    } catch (e: any) {
+      console.error('[ChatStore] sendMessage failed after retries:', e);
+      console.error('[ChatStore] Error message:', e?.message);
+      const errorMsg = e?.message || 'Failed to send message';
+      setLocalError(errorMsg);
       throw e;
     } finally {
       setIsSending(false);
     }
-  }, [rorkSendMessage, messages.length]);
+  }, [rorkSendMessage, messages.length, checkNetworkConnection]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
@@ -193,29 +242,40 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   }, [uiMessages.length, goalStore.isReady]);
 
   const errorText = useMemo(() => {
-    if (!error) return null;
-    console.log('[ChatStore] Error detected:', error);
-    const message = typeof error === 'string' ? error : (error as any)?.message;
-    const errorStr = message ? String(message) : 'Unknown chat error';
+    const activeError = localError || error;
+    if (!activeError) return null;
     
-    if (errorStr.includes('Не удалось подключиться') || errorStr.includes('fetch failed')) {
+    console.log('[ChatStore] Error detected:', activeError);
+    const message = typeof activeError === 'string' ? activeError : (activeError as any)?.message;
+    const errorStr = message ? String(message) : 'Unknown error';
+    
+    if (errorStr.includes('No internet connection')) {
+      return 'No internet connection. Please check your network.';
+    }
+    if (errorStr.includes('Не удалось подключиться') || errorStr.includes('fetch failed') || errorStr.includes('Failed to fetch')) {
       return 'Could not connect to AI server. Please check your internet connection.';
     }
-    if (errorStr.includes('Ошибка сети') || errorStr.includes('Network')) {
+    if (errorStr.includes('Ошибка сети') || errorStr.includes('Network') || errorStr.includes('network')) {
       return 'Network error. Please try again.';
     }
-    if (errorStr.includes('Время ожидания') || errorStr.includes('timeout')) {
+    if (errorStr.includes('Время ожидания') || errorStr.includes('timeout') || errorStr.includes('Timeout')) {
       return 'Request timed out. Please try again.';
     }
-    if (errorStr.includes('unauthorized') || errorStr.includes('401')) {
-      return 'Authentication error. Please try restarting the app.';
+    if (errorStr.includes('unauthorized') || errorStr.includes('401') || errorStr.includes('Unauthorized')) {
+      return 'Authentication error. Please restart the app.';
     }
-    if (errorStr.includes('500') || errorStr.includes('Internal Server Error')) {
+    if (errorStr.includes('500') || errorStr.includes('Internal Server Error') || errorStr.includes('server error')) {
       return 'Server error. Please try again in a moment.';
     }
+    if (errorStr.includes('429') || errorStr.includes('rate limit') || errorStr.includes('Too Many')) {
+      return 'Too many requests. Please wait a moment and try again.';
+    }
+    if (errorStr.includes('CORS') || errorStr.includes('cors')) {
+      return 'Connection blocked. Please try again.';
+    }
     
-    return errorStr;
-  }, [error]);
+    return 'Could not process your request. Please try again.';
+  }, [error, localError]);
 
   useEffect(() => {
     console.log('[ChatStore] State updated:', {
@@ -223,8 +283,13 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       isLoading: isSending,
       hasError: !!errorText,
       error: errorText,
+      toolkitUrl: process.env.EXPO_PUBLIC_TOOLKIT_URL,
     });
   }, [uiMessages.length, isSending, errorText]);
+
+  const clearError = useCallback(() => {
+    setLocalError(null);
+  }, []);
 
   return useMemo(() => ({
     messages: uiMessages,
@@ -232,9 +297,10 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     error: errorText,
     sendMessage,
     clearChat,
+    clearError,
     userContext: {
         profile: goalStore.profile,
         currentGoal: goalStore.currentGoal,
     }
-  }), [uiMessages, isSending, errorText, sendMessage, clearChat, goalStore.profile, goalStore.currentGoal]);
+  }), [uiMessages, isSending, errorText, sendMessage, clearChat, clearError, goalStore.profile, goalStore.currentGoal]);
 });
