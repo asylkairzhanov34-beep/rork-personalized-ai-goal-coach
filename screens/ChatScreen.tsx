@@ -103,14 +103,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isFirstInGroup, 
 };
 
 const ChatScreen: React.FC = () => {
-  const { messages, sendMessage, clearChat, isLoading, error, aiStatus, refreshAiStatus } = useChat();
+  const { messages, sendMessage, clearChat, isLoading, error } = useChat();
   const router = useRouter();
   const [inputText, setInputText] = useState<string>('');
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
 
   const [isSending, setIsSending] = useState(false);
-  const { getFeatureAccess, checkSubscriptionStatus } = useSubscription();
+  const { getFeatureAccess, checkSubscriptionStatus, status, isPremium, trialState } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
 
   const featureAccess = getFeatureAccess();
@@ -234,19 +234,8 @@ const ChatScreen: React.FC = () => {
               <View>
                 <Text style={styles.headerTitle}>GoalForge</Text>
                 <View style={styles.statusContainer}>
-                  <View
-                    style={[
-                      styles.statusDot,
-                      aiStatus === 'online'
-                        ? styles.statusDotOnline
-                        : aiStatus === 'checking'
-                          ? styles.statusDotChecking
-                          : styles.statusDotOffline,
-                    ]}
-                  />
-                  <Text style={styles.headerSubtitle}>
-                    {aiStatus === 'online' ? 'Online' : aiStatus === 'checking' ? 'Connecting…' : 'Offline'}
-                  </Text>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.headerSubtitle}>Online</Text>
                 </View>
               </View>
             </View>
@@ -267,21 +256,6 @@ const ChatScreen: React.FC = () => {
           keyboardVerticalOffset={0}
         >
           <View style={styles.chatContainer}>
-            {aiStatus === 'offline' && (
-              <View style={styles.offlineBanner} testID="chat-offline-banner">
-                <Text style={styles.offlineBannerTitle}>AI assistant is offline</Text>
-                <Text style={styles.offlineBannerText}>Check your connection or try again.</Text>
-                <TouchableOpacity
-                  onPress={refreshAiStatus}
-                  style={styles.retryButton}
-                  activeOpacity={0.8}
-                  testID="chat-retry-ai"
-                >
-                  <Text style={styles.retryButtonText}>Retry</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
             {!!error && (
               <View style={styles.errorBanner} testID="chat-error-banner">
                 <Text style={styles.errorBannerText}>{error}</Text>
@@ -354,7 +328,7 @@ const ChatScreen: React.FC = () => {
                 />
               ))}
               
-              {(isLoading || isSending) && aiStatus !== 'offline' && (
+              {(isLoading || isSending) && (
                 <View style={styles.typingRow}>
                   <View style={styles.avatarWrapper}>
                     <View style={styles.botAvatar}>
@@ -379,23 +353,20 @@ const ChatScreen: React.FC = () => {
                 style={styles.input}
                 value={inputText}
                 onChangeText={setInputText}
-                placeholder={aiStatus === 'online' ? 'Type a message…' : 'AI is offline'}
+                placeholder="Type a message..."
                 placeholderTextColor="rgba(255,255,255,0.4)"
-                editable={aiStatus === 'online'}
                 multiline
                 maxLength={1000}
                 returnKeyType="default"
-                testID="chat-input"
               />
               <TouchableOpacity
                 onPress={handleSend}
-                disabled={!inputText.trim() || isSending || aiStatus !== 'online'}
+                disabled={!inputText.trim() || isSending}
                 style={[
                   styles.sendButton,
-                  (!inputText.trim() || isSending || aiStatus !== 'online') && styles.sendButtonDisabled,
+                  (!inputText.trim() || isSending) && styles.sendButtonDisabled
                 ]}
                 activeOpacity={0.7}
-                testID="chat-send-button"
               >
                 {isSending ? (
                   <ActivityIndicator size="small" color="#000" />
@@ -473,16 +444,8 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 5,
-  },
-  statusDotOnline: {
     backgroundColor: '#4ADE80',
-  },
-  statusDotChecking: {
-    backgroundColor: '#FBBF24',
-  },
-  statusDotOffline: {
-    backgroundColor: '#EF4444',
+    marginRight: 5,
   },
   headerSubtitle: {
     fontSize: 12,
@@ -510,40 +473,6 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
-  },
-  offlineBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 214, 0, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 214, 0, 0.22)',
-  },
-  offlineBannerTitle: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  offlineBannerText: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  retryButton: {
-    alignSelf: 'flex-start',
-    marginTop: 10,
-    backgroundColor: '#FFD600',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  retryButtonText: {
-    color: '#000000',
-    fontSize: 12,
-    fontWeight: '700',
   },
   errorBanner: {
     marginHorizontal: 16,
