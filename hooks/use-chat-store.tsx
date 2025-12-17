@@ -41,7 +41,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
       console.log('[ChatStore] Testing Gemini API connection...');
 
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -193,7 +193,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       console.log('[ChatStore] Sending message to Gemini API');
       console.log('[ChatStore] Message:', text);
 
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
       
       const response = await fetch(apiUrl, {
         method: 'POST',
