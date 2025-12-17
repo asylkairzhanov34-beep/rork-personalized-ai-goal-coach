@@ -5,10 +5,26 @@ import { useGoalStore } from '@/hooks/use-goal-store';
 import { ChatMessage } from '@/types/chat';
 import { useMemo, useEffect, useCallback, useState, useRef } from 'react';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 const getToolkitConfig = () => {
-  const toolkitUrl = process.env.EXPO_PUBLIC_TOOLKIT_URL || 'https://toolkit.rork.com';
-  const projectId = process.env.EXPO_PUBLIC_PROJECT_ID || '';
+  const extra = Constants.expoConfig?.extra || {};
+  
+  const toolkitUrl = 
+    process.env.EXPO_PUBLIC_TOOLKIT_URL || 
+    extra.EXPO_PUBLIC_TOOLKIT_URL || 
+    'https://toolkit.rork.com';
+  
+  const projectId = 
+    process.env.EXPO_PUBLIC_PROJECT_ID || 
+    extra.EXPO_PUBLIC_PROJECT_ID || 
+    'z054j4yerxhk7iq0ot5f3';
+  
+  console.log('[ChatStore] getToolkitConfig:');
+  console.log('  - Toolkit URL:', toolkitUrl);
+  console.log('  - Project ID:', projectId);
+  console.log('  - From env:', !!process.env.EXPO_PUBLIC_TOOLKIT_URL);
+  console.log('  - From extra:', !!extra.EXPO_PUBLIC_TOOLKIT_URL);
   
   return { toolkitUrl, projectId };
 };
@@ -30,7 +46,10 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     console.log('[ChatStore] Toolkit URL:', cfg.toolkitUrl);
     console.log('[ChatStore] Project ID:', cfg.projectId || 'NOT SET');
     console.log('[ChatStore] Tasks loaded:', goalStore.dailyTasks?.length || 0);
-    console.log('[ChatStore] ENV EXPO_PUBLIC_TOOLKIT_URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL || 'undefined');
+    console.log('[ChatStore] ENV variables:');
+    console.log('  - EXPO_PUBLIC_TOOLKIT_URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL || 'undefined');
+    console.log('  - EXPO_PUBLIC_PROJECT_ID:', process.env.EXPO_PUBLIC_PROJECT_ID || 'undefined');
+    console.log('[ChatStore] Constants.expoConfig.extra:', Constants.expoConfig?.extra ? 'available' : 'not available');
     console.log('[ChatStore] =====================================');
   }, [goalStore.dailyTasks?.length]);
 
