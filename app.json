@@ -88,10 +88,10 @@
     "experiments": {
       "typedRoutes": true
     },
-"extra": {
-"EXPO_PUBLIC_TOOLKIT_URL": "https://toolkit.rork.com",
-"EXPO_PUBLIC_PROJECT_ID": "z054j4yerxhk7iq0ot5f3",
-"EXPO_PUBLIC_RORK_API_BASE_URL": "https://api.rork.com"
-}
+    "extra": {
+      "EXPO_PUBLIC_TOOLKIT_URL": "https://toolkit.rork.com",
+      "EXPO_PUBLIC_PROJECT_ID": "z054j4yerxhk7iq0ot5f3",
+      "EXPO_PUBLIC_RORK_API_BASE_URL": "https://api.rork.com"
+    }
   }
 }
