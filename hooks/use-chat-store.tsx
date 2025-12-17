@@ -3,25 +3,34 @@ import { useRorkAgent, createRorkTool } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { ChatMessage } from '@/types/chat';
-import { getRorkConfig } from '@/lib/rork-config';
 import { useMemo, useEffect, useCallback, useState, useRef } from 'react';
+import { Platform } from 'react-native';
+
+const getToolkitConfig = () => {
+  const toolkitUrl = process.env.EXPO_PUBLIC_TOOLKIT_URL || 'https://toolkit.rork.com';
+  const projectId = process.env.EXPO_PUBLIC_PROJECT_ID || '';
+  
+  return { toolkitUrl, projectId };
+};
 
 export const [ChatProvider, useChat] = createContextHook(() => {
   const goalStore = useGoalStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const lastUserMessageRef = useRef<string>('');
+  const configRef = useRef(getToolkitConfig());
 
   useEffect(() => {
-    const cfg = getRorkConfig();
+    const cfg = configRef.current;
     const isHermes = !!(global as any)?.HermesInternal;
 
     console.log('[ChatStore] ========== Initialization ==========');
-    console.log('[ChatStore] Platform:', typeof window === 'undefined' ? 'native' : 'web');
+    console.log('[ChatStore] Platform:', Platform.OS);
     console.log('[ChatStore] Hermes:', isHermes);
-    console.log('[ChatStore] Toolkit URL:', cfg.toolkitUrl || 'NOT SET');
+    console.log('[ChatStore] Toolkit URL:', cfg.toolkitUrl);
     console.log('[ChatStore] Project ID:', cfg.projectId || 'NOT SET');
     console.log('[ChatStore] Tasks loaded:', goalStore.dailyTasks?.length || 0);
+    console.log('[ChatStore] ENV EXPO_PUBLIC_TOOLKIT_URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL || 'undefined');
     console.log('[ChatStore] =====================================');
   }, [goalStore.dailyTasks?.length]);
 
@@ -131,13 +140,13 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     if (!text.trim()) return;
 
     const trimmed = text.trim();
-    const cfg = getRorkConfig();
+    const cfg = configRef.current;
 
-    console.log('[ChatStore] sendMessage called:', trimmed);
-    console.log('[ChatStore] Env check:', {
-      toolkitUrlSet: !!cfg.toolkitUrl,
-      projectIdSet: !!cfg.projectId,
-      baseUrlSet: !!process.env.EXPO_PUBLIC_RORK_API_BASE_URL,
+    console.log('[ChatStore] sendMessage called:', trimmed.substring(0, 50));
+    console.log('[ChatStore] Config:', {
+      toolkitUrl: cfg.toolkitUrl,
+      projectId: cfg.projectId ? 'SET' : 'NOT SET',
+      platform: Platform.OS,
     });
 
     setChatError(null);
@@ -145,36 +154,42 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     lastUserMessageRef.current = trimmed;
 
     try {
-      if (!cfg.toolkitUrl || !cfg.projectId) {
-        throw new Error('AI service is not configured');
-      }
-
       const systemPrompt = buildSystemPrompt();
       const fullMessage = `[SYSTEM]\n${systemPrompt}\n[/SYSTEM]\n\nUser: ${trimmed}`;
 
       console.log('[ChatStore] Sending to Rork agent...');
+      console.log('[ChatStore] Message length:', fullMessage.length);
 
-      const timeoutMs = 25000;
+      const timeoutMs = 30000;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      
       const timeoutPromise = new Promise<never>((_, reject) => {
-        const id = setTimeout(() => {
-          clearTimeout(id);
-          reject(new Error('timeout'));
+        timeoutId = setTimeout(() => {
+          reject(new Error('Request timed out. Please check your internet connection.'));
         }, timeoutMs);
       });
 
-      await Promise.race([rorkSendMessage(fullMessage), timeoutPromise]);
-
-      console.log('[ChatStore] Message sent successfully');
+      try {
+        await Promise.race([rorkSendMessage(fullMessage), timeoutPromise]);
+        console.log('[ChatStore] Message sent successfully');
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+      }
     } catch (e: unknown) {
       const err = e as any;
-      const message: string = err?.message || 'Failed to send message';
+      let message: string = 'Failed to send message';
+      
+      if (err?.message) {
+        message = err.message;
+      } else if (typeof err === 'string') {
+        message = err;
+      }
 
-      console.error('[ChatStore] sendMessage error (raw):', err);
-      console.error('[ChatStore] sendMessage error (message):', message);
-      console.error('[ChatStore] sendMessage error (stack):', err?.stack);
+      console.error('[ChatStore] sendMessage error:', message);
+      console.error('[ChatStore] Error type:', typeof err);
+      console.error('[ChatStore] Error details:', JSON.stringify(err, null, 2));
 
       setChatError(message);
-      throw e;
     } finally {
       setIsProcessing(false);
     }
