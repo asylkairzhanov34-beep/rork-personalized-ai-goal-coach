@@ -144,36 +144,10 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setIsProcessing(true);
     lastUserMessageRef.current = trimmed;
 
-    const probeConnectivity = async () => {
-      if (!cfg.toolkitUrl) return;
-
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 8000);
-
-      try {
-        console.log('[ChatStore] Connectivity probe ->', cfg.toolkitUrl);
-        const res = await fetch(cfg.toolkitUrl, {
-          method: 'GET',
-          signal: controller.signal,
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        });
-        console.log('[ChatStore] Connectivity probe status:', res.status);
-      } catch (e) {
-        console.error('[ChatStore] Connectivity probe failed:', e);
-        throw new Error('network');
-      } finally {
-        clearTimeout(id);
-      }
-    };
-
     try {
       if (!cfg.toolkitUrl || !cfg.projectId) {
         throw new Error('AI service is not configured');
       }
-
-      await probeConnectivity();
 
       const systemPrompt = buildSystemPrompt();
       const fullMessage = `[SYSTEM]\n${systemPrompt}\n[/SYSTEM]\n\nUser: ${trimmed}`;
@@ -182,8 +156,8 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
       const timeoutMs = 25000;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        const id2 = setTimeout(() => {
-          clearTimeout(id2);
+        const id = setTimeout(() => {
+          clearTimeout(id);
           reject(new Error('timeout'));
         }, timeoutMs);
       });
@@ -266,10 +240,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       return 'Request timed out. Please try again.';
     }
     if (message.includes('fetch') || message.includes('network') || message.includes('Network')) {
-      return 'Connection error. Please check your internet connection and try again.';
-    }
-    if (message.trim() === 'network') {
-      return 'Connection error. Please check your internet connection and try again.';
+      return 'Connection error. Please check your internet connection.';
     }
     if (message.includes('not configured')) {
       return 'AI service is not configured. Please reinstall or contact support.';
