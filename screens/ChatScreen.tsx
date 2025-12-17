@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { Send, Bot, MessageSquarePlus, Sparkles, X } from 'lucide-react-native';
 import { useChat } from '@/hooks/use-chat-store';
 import { ChatMessage } from '@/types/chat';
@@ -119,6 +120,12 @@ const ChatScreen: React.FC = () => {
     console.log('[ChatScreen] Mounted - checking subscription status');
     checkSubscriptionStatus();
   }, [checkSubscriptionStatus]);
+
+  useEffect(() => {
+    if (!error) return;
+    console.log('[ChatScreen] Error banner shown:', error);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+  }, [error]);
 
   const handleSend = async () => {
     if (inputText.trim()) {

@@ -3,6 +3,7 @@ import { useRorkAgent, createRorkTool } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { ChatMessage } from '@/types/chat';
+import { getRorkConfig } from '@/lib/rork-config';
 import { useMemo, useEffect, useCallback, useState, useRef } from 'react';
 
 export const [ChatProvider, useChat] = createContextHook(() => {
@@ -12,9 +13,14 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   const lastUserMessageRef = useRef<string>('');
 
   useEffect(() => {
+    const cfg = getRorkConfig();
+    const isHermes = !!(global as any)?.HermesInternal;
+
     console.log('[ChatStore] ========== Initialization ==========');
-    console.log('[ChatStore] Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL || 'NOT SET');
-    console.log('[ChatStore] Project ID:', process.env.EXPO_PUBLIC_PROJECT_ID || 'NOT SET');
+    console.log('[ChatStore] Platform:', typeof window === 'undefined' ? 'native' : 'web');
+    console.log('[ChatStore] Hermes:', isHermes);
+    console.log('[ChatStore] Toolkit URL:', cfg.toolkitUrl || 'NOT SET');
+    console.log('[ChatStore] Project ID:', cfg.projectId || 'NOT SET');
     console.log('[ChatStore] Tasks loaded:', goalStore.dailyTasks?.length || 0);
     console.log('[ChatStore] =====================================');
   }, [goalStore.dailyTasks?.length]);
@@ -123,23 +129,51 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
-    
-    console.log('[ChatStore] sendMessage called:', text);
+
+    const trimmed = text.trim();
+    const cfg = getRorkConfig();
+
+    console.log('[ChatStore] sendMessage called:', trimmed);
+    console.log('[ChatStore] Env check:', {
+      toolkitUrlSet: !!cfg.toolkitUrl,
+      projectIdSet: !!cfg.projectId,
+      baseUrlSet: !!process.env.EXPO_PUBLIC_RORK_API_BASE_URL,
+    });
+
     setChatError(null);
     setIsProcessing(true);
-    lastUserMessageRef.current = text.trim();
-    
+    lastUserMessageRef.current = trimmed;
+
     try {
+      if (!cfg.toolkitUrl || !cfg.projectId) {
+        throw new Error('AI service is not configured');
+      }
+
       const systemPrompt = buildSystemPrompt();
-      const fullMessage = `[SYSTEM]\n${systemPrompt}\n[/SYSTEM]\n\nUser: ${text.trim()}`;
-      
+      const fullMessage = `[SYSTEM]\n${systemPrompt}\n[/SYSTEM]\n\nUser: ${trimmed}`;
+
       console.log('[ChatStore] Sending to Rork agent...');
-      await rorkSendMessage(fullMessage);
+
+      const timeoutMs = 25000;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        const id = setTimeout(() => {
+          clearTimeout(id);
+          reject(new Error('timeout'));
+        }, timeoutMs);
+      });
+
+      await Promise.race([rorkSendMessage(fullMessage), timeoutPromise]);
+
       console.log('[ChatStore] Message sent successfully');
-    } catch (e: any) {
-      console.error('[ChatStore] sendMessage error:', e);
-      const errorMsg = e?.message || 'Failed to send message';
-      setChatError(errorMsg);
+    } catch (e: unknown) {
+      const err = e as any;
+      const message: string = err?.message || 'Failed to send message';
+
+      console.error('[ChatStore] sendMessage error (raw):', err);
+      console.error('[ChatStore] sendMessage error (message):', message);
+      console.error('[ChatStore] sendMessage error (stack):', err?.stack);
+
+      setChatError(message);
       throw e;
     } finally {
       setIsProcessing(false);
@@ -202,11 +236,14 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     const message = typeof err === 'string' ? err : (err as any)?.message || 'Unknown error';
     console.log('[ChatStore] Error:', message);
     
+    if (message.includes('timeout')) {
+      return 'Request timed out. Please try again.';
+    }
     if (message.includes('fetch') || message.includes('network') || message.includes('Network')) {
       return 'Connection error. Please check your internet connection.';
     }
-    if (message.includes('timeout')) {
-      return 'Request timed out. Please try again.';
+    if (message.includes('not configured')) {
+      return 'AI service is not configured. Please reinstall or contact support.';
     }
     if (message.includes('500') || message.includes('502') || message.includes('503')) {
       return 'Server is temporarily unavailable. Please try again later.';
