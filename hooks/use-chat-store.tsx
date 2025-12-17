@@ -6,8 +6,8 @@ import { useMemo, useEffect, useCallback, useState } from 'react';
 type AiStatus = 'checking' | 'online' | 'offline';
 
 interface Message {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
+  role: 'user' | 'model';
+  parts: { text: string }[];
 }
 
 export const [ChatProvider, useChat] = createContextHook(() => {
@@ -17,10 +17,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
   useEffect(() => {
     console.log('[ChatStore] ========== Environment Check ==========');
-    console.log('[ChatStore] Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL || 'NOT SET');
-    console.log('[ChatStore] Project ID:', process.env.EXPO_PUBLIC_PROJECT_ID || 'NOT SET');
-    console.log('[ChatStore] Team ID:', process.env.EXPO_PUBLIC_TEAM_ID || 'NOT SET');
-    console.log('[ChatStore] API Base URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL || 'NOT SET');
+    console.log('[ChatStore] Gemini API Key:', process.env.EXPO_PUBLIC_GEMINI_API_KEY ? 'SET' : 'NOT SET');
     console.log('[ChatStore] ============================================');
   }, []);
 
@@ -34,39 +31,36 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setAiStatusError(null);
 
     try {
-      const toolkitUrl = process.env.EXPO_PUBLIC_TOOLKIT_URL;
-      const projectId = process.env.EXPO_PUBLIC_PROJECT_ID;
-      const teamId = process.env.EXPO_PUBLIC_TEAM_ID;
+      const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
-      if (!toolkitUrl || !projectId) {
-        throw new Error('Missing configuration: TOOLKIT_URL or PROJECT_ID');
+      if (!apiKey) {
+        throw new Error('Missing Gemini API key');
       }
 
-      console.log('[ChatStore] Testing connection to:', toolkitUrl);
-      console.log('[ChatStore] Project ID:', projectId);
+      console.log('[ChatStore] Testing Gemini API connection...');
 
-      const apiUrl = `${toolkitUrl}/text/generate`;
-      console.log('[ChatStore] API URL:', apiUrl);
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-rork-project-id': projectId,
-          ...(teamId ? { 'x-rork-team-id': teamId } : {}),
         },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: 'Say OK' }],
+          contents: [
+            {
+              parts: [{ text: 'Say OK' }]
+            }
+          ]
         }),
       });
 
       console.log('[ChatStore] Response status:', response.status);
-      console.log('[ChatStore] Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[ChatStore] Error response body:', errorText);
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        console.error('[ChatStore] Error response:', errorText);
+        throw new Error(`API error: ${response.status}`);
       }
 
       const data = await response.json();
@@ -97,7 +91,6 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     
-    // Get tasks for today and upcoming week
     const todayTasks = tasks.filter(t => t.date?.startsWith(todayStr));
     const upcomingTasks = tasks.filter(t => {
       const taskDate = new Date(t.date);
@@ -109,10 +102,10 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     const completedTasks = tasks.filter(t => t.completed);
     const pendingTasks = tasks.filter(t => !t.completed);
     
-    let context = `[SYSTEM: You are GoalForge AI - a smart productivity coach. Current date: ${todayStr}.\n`;
+    let context = `You are GoalForge AI - a smart productivity coach. Current date: ${todayStr}.\n`;
     context += `You are an ADVISOR ONLY. You CANNOT modify, add, edit, or delete any tasks.\n`;
     context += `Your role is to: give advice, analyze progress, suggest strategies, motivate, and answer questions.\n`;
-    context += `Always respond in English.\n`;
+    context += `Always respond in English. Be concise and helpful.\n`;
     
     if (currentGoal) {
       context += `\nUser's current goal: "${currentGoal.title}"\n`;
@@ -133,7 +126,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     if (todayTasks.length > 0) {
       context += `\n📋 Today's tasks (${todayTasks.length}):\n`;
       todayTasks.forEach((t, i) => {
-        context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" (ID: ${t.id}, priority: ${t.priority || 'medium'})\n`;
+        context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" (priority: ${t.priority || 'medium'})\n`;
       });
     } else {
       context += `\nNo tasks for today.\n`;
@@ -143,19 +136,17 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       context += `\n🗓 Upcoming tasks this week (${upcomingTasks.length}):\n`;
       upcomingTasks.slice(0, 10).forEach((t, i) => {
         const taskDate = new Date(t.date).toLocaleDateString('en-US');
-        context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" - ${taskDate} (ID: ${t.id})\n`;
+        context += `${i + 1}. [${t.completed ? '✓' : '○'}] "${t.title}" - ${taskDate}\n`;
       });
     }
     
     context += `\n⚠️ IMPORTANT RULES:\n`;
     context += `- You are ONLY an advisor - you CANNOT modify any tasks\n`;
-    context += `- You can view tasks using getTasks (read-only)\n`;
-    context += `- You can analyze progress using getHistory\n`;
     context += `- If user asks to add/edit/delete/complete tasks, politely explain that you can only give advice\n`;
     context += `- Tell them to use the app interface to manage tasks\n`;
     context += `- Focus on: motivation, productivity tips, time management advice, goal strategies\n`;
-    context += `- Be helpful, friendly, and concise\n`;
-    context += `[/END_SYSTEM]\n\n`;
+    context += `- Be helpful, friendly, and concise (2-3 sentences max when possible)\n`;
+    context += `\n---\n\n`;
     
     return context;
   }, [goalStore.dailyTasks, goalStore.profile, goalStore.currentGoal]);
@@ -173,38 +164,47 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setError(null);
 
     try {
-      const toolkitUrl = process.env.EXPO_PUBLIC_TOOLKIT_URL;
-      const projectId = process.env.EXPO_PUBLIC_PROJECT_ID;
-      const teamId = process.env.EXPO_PUBLIC_TEAM_ID;
+      const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
-      if (!toolkitUrl || !projectId) {
-        throw new Error('Missing configuration');
+      if (!apiKey) {
+        throw new Error('Missing Gemini API key');
       }
 
-      const userMessage: Message = { role: 'user', content: text };
+      const userMessage: Message = { 
+        role: 'user', 
+        parts: [{ text }] 
+      };
       setMessages(prev => [...prev, userMessage]);
 
-      const context = buildSystemContext();
-      const systemInstruction = `You are GoalForge AI, a productivity advisor. You can only give advice and analyze progress. You CANNOT modify tasks. Always answer in English.`;
+      const systemContext = buildSystemContext();
 
-      const apiMessages: Message[] = [
-        { role: 'system', content: systemInstruction + '\n' + context },
-        ...messages,
-        userMessage,
-      ];
+      const apiMessages: any[] = messages.length === 0 
+        ? [
+            { role: 'user', parts: [{ text: systemContext + text }] }
+          ]
+        : [
+            { role: 'user', parts: [{ text: systemContext }] },
+            ...messages,
+            userMessage
+          ];
 
-      console.log('[ChatStore] Sending', apiMessages.length, 'messages to API');
-      console.log('[ChatStore] Latest user message:', text);
+      console.log('[ChatStore] Sending message to Gemini API');
+      console.log('[ChatStore] Message:', text);
 
-      const apiUrl = `${toolkitUrl}/text/generate`;
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-rork-project-id': projectId,
-          ...(teamId ? { 'x-rork-team-id': teamId } : {}),
         },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({
+          contents: apiMessages,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 500,
+          }
+        }),
       });
 
       if (!response.ok) {
@@ -216,8 +216,15 @@ export const [ChatProvider, useChat] = createContextHook(() => {
       const data = await response.json();
       console.log('[ChatStore] API response:', data);
 
-      const assistantText = typeof data === 'string' ? data : data.text || data.content || 'Sorry, I could not process that.';
-      const assistantMessage: Message = { role: 'assistant', content: assistantText };
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        throw new Error('Invalid response from Gemini API');
+      }
+
+      const assistantText = data.candidates[0].content.parts[0].text;
+      const assistantMessage: Message = { 
+        role: 'model', 
+        parts: [{ text: assistantText }] 
+      };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -234,14 +241,12 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   }, [setMessages]);
 
   const uiMessages: ChatMessage[] = useMemo(() => {
-    return messages
-      .filter(m => m.role !== 'system')
-      .map((m, idx) => ({
-        id: `msg-${idx}`,
-        text: m.content,
-        isBot: m.role === 'assistant',
-        timestamp: new Date(),
-      }));
+    return messages.map((m, idx) => ({
+      id: `msg-${idx}`,
+      text: m.parts[0].text,
+      isBot: m.role === 'model',
+      timestamp: new Date(),
+    }));
   }, [messages]);
 
   const errorText = useMemo(() => {
@@ -259,8 +264,11 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     if (errorStr.includes('500') || errorStr.includes('502') || errorStr.includes('503')) {
       return 'Server error. Try again later.';
     }
-    if (errorStr.includes('configuration') || errorStr.includes('Missing')) {
+    if (errorStr.includes('API key') || errorStr.includes('configuration') || errorStr.includes('Missing')) {
       return 'Configuration error. Please restart.';
+    }
+    if (errorStr.includes('429')) {
+      return 'Too many requests. Please wait a moment.';
     }
     
     return errorStr;
