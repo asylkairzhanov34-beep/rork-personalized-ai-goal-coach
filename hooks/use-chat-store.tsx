@@ -1,9 +1,16 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useRorkAgent, createRorkTool } from '@rork-ai/toolkit-sdk';
+import { useRorkAgent, createRorkTool, generateText } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { ChatMessage } from '@/types/chat';
 import { useMemo, useEffect, useCallback, useState } from 'react';
+
+type AiStatus = 'checking' | 'online' | 'offline';
+
+type ChatUserContext = {
+  profile: unknown;
+  currentGoal: unknown;
+};
 
 export const [ChatProvider, useChat] = createContextHook(() => {
   const goalStore = useGoalStore();
@@ -75,6 +82,40 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   });
 
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [aiStatus, setAiStatus] = useState<AiStatus>('checking');
+  const [aiStatusError, setAiStatusError] = useState<string | null>(null);
+
+  const refreshAiStatus = useCallback(async (): Promise<AiStatus> => {
+    console.log('[ChatStore] Checking AI connectivity...');
+    setAiStatus('checking');
+    setAiStatusError(null);
+
+    try {
+      const res = await generateText({
+        messages: [
+          {
+            role: 'user',
+            content: 'Respond with a single word: OK',
+          },
+        ],
+      });
+
+      console.log('[ChatStore] AI health-check response:', String(res).slice(0, 60));
+      setAiStatus('online');
+      setAiStatusError(null);
+      return 'online';
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('[ChatStore] AI health-check failed:', msg);
+      setAiStatus('offline');
+      setAiStatusError(msg);
+      return 'offline';
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshAiStatus();
+  }, [refreshAiStatus]);
 
   const buildSystemContext = useCallback(() => {
     const tasks = goalStore.dailyTasks || [];
@@ -148,6 +189,14 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   }, [goalStore.dailyTasks, goalStore.profile, goalStore.currentGoal]);
 
   const sendMessage = useCallback(async (text: string) => {
+    if (aiStatus !== 'online') {
+      console.warn('[ChatStore] sendMessage blocked because AI is not online:', aiStatus);
+      const latestStatus = await refreshAiStatus();
+      if (latestStatus !== 'online') {
+        throw new Error('AI is currently unreachable. Please try again.');
+      }
+    }
+
     setIsSending(true);
     try {
       const context = buildSystemContext();
@@ -170,7 +219,7 @@ Always answer in English.
     } finally {
       setIsSending(false);
     }
-  }, [rorkSendMessage, buildSystemContext, goalStore.dailyTasks]);
+  }, [aiStatus, refreshAiStatus, rorkSendMessage, buildSystemContext, goalStore.dailyTasks]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
@@ -243,15 +292,30 @@ Always answer in English.
     return errorStr;
   }, [error]);
 
+  const userContext: ChatUserContext = useMemo(() => ({
+    profile: goalStore.profile,
+    currentGoal: goalStore.currentGoal,
+  }), [goalStore.profile, goalStore.currentGoal]);
+
   return useMemo(() => ({
     messages: uiMessages,
     isLoading: isSending,
     error: errorText,
     sendMessage,
     clearChat,
-    userContext: {
-        profile: goalStore.profile,
-        currentGoal: goalStore.currentGoal,
-    }
-  }), [uiMessages, isSending, errorText, sendMessage, clearChat, goalStore.profile, goalStore.currentGoal]);
+    aiStatus,
+    aiStatusError,
+    refreshAiStatus,
+    userContext,
+  }), [
+    uiMessages,
+    isSending,
+    errorText,
+    sendMessage,
+    clearChat,
+    aiStatus,
+    aiStatusError,
+    refreshAiStatus,
+    userContext,
+  ]);
 });
