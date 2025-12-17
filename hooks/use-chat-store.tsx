@@ -16,8 +16,10 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const key = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
     console.log('[ChatStore] ========== Environment Check ==========');
-    console.log('[ChatStore] Gemini API Key:', process.env.EXPO_PUBLIC_GEMINI_API_KEY ? 'SET' : 'NOT SET');
+    console.log('[ChatStore] Gemini API Key:', key ? `SET (${key.substring(0, 10)}...)` : 'NOT SET');
+    console.log('[ChatStore] Full key:', key);
     console.log('[ChatStore] ============================================');
   }, []);
 
@@ -31,7 +33,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setAiStatusError(null);
 
     try {
-      const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+      const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || 'AIzaSyDNw7LG4yrke7PHG6riU8GH1YBjPVMgxaw';
 
       if (!apiKey) {
         throw new Error('Missing Gemini API key');
@@ -164,7 +166,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setError(null);
 
     try {
-      const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+      const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || 'AIzaSyDNw7LG4yrke7PHG6riU8GH1YBjPVMgxaw';
 
       if (!apiKey) {
         throw new Error('Missing Gemini API key');

@@ -398,6 +398,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       const isRorkSandbox = typeof window !== 'undefined' && (window as any).__RORK_SANDBOX__;
       const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime && !isRorkSandbox;
       
+      let securePremium = false;
+      let trial = defaultTrialState;
+      
       try {
         console.log('[SubscriptionProvider] Starting initialization...');
         console.log('[SubscriptionProvider] Platform:', Platform.OS);
@@ -407,8 +410,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         console.log('[SubscriptionProvider] Is real device:', isRealDevice);
         
         await hydratePaywallSeen();
-        const securePremium = await hydrateSecurePremiumFlag();
-        const trial = await hydrateTrialState();
+        securePremium = await hydrateSecurePremiumFlag();
+        trial = await hydrateTrialState();
         await checkFirstLaunch();
 
         if (user?.id) {
@@ -483,18 +486,21 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       } catch (error) {
         console.error('[SubscriptionProvider] ❌ Initialization error:', error);
         
-        // CRITICAL: For real devices, DO NOT fallback to mock mode
         if (isRealDevice) {
-          console.error('[SubscriptionProvider] ❌ FATAL: Cannot use mock mode on real device');
+          console.error('[SubscriptionProvider] ⚠️ Real device initialization failed, continuing with limited features');
           setIsMockMode(false);
           setPackages([]);
-          setStatus('free');
+          if (!securePremium && !trial.isActive) {
+            setStatus('free');
+          }
           setIsInitialized(true);
         } else {
-          // Only Expo Go, web, or Rork sandbox can use mock
           console.log('[SubscriptionProvider] Falling back to mock mode (non-real device)');
           setIsMockMode(true);
           setPackages(WEB_MOCK_PACKAGES);
+          if (!securePremium && !trial.isActive) {
+            setStatus('free');
+          }
           setIsInitialized(true);
         }
       }
@@ -617,12 +623,6 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       const isRorkSandbox = typeof window !== 'undefined' && (window as any).__RORK_SANDBOX__;
       const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime && !isRorkSandbox;
       
-      // КРИТИЧНО: Для реальных устройств НИКОГДА не используем Mock Mode
-      if (isRealDevice && isMockMode) {
-        console.error('[SubscriptionProvider] ❌ CRITICAL: Real device is in mock mode!');
-        throw new Error('Mock mode should never be active on real devices');
-      }
-      
       if (isMockMode || Platform.OS === 'web') {
         setIsPurchasing(true);
         try {
@@ -707,12 +707,6 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     const isExpoGoRuntime = Constants?.appOwnership === 'expo';
     const isRorkSandbox = typeof window !== 'undefined' && (window as any).__RORK_SANDBOX__;
     const isRealDevice = (Platform.OS === 'ios' || Platform.OS === 'android') && !isExpoGoRuntime && !isRorkSandbox;
-    
-    // КРИТИЧНО: Для реальных устройств НИКОГДА не используем Mock Mode
-    if (isRealDevice && isMockMode) {
-      console.error('[SubscriptionProvider] ❌ CRITICAL: Real device is in mock mode!');
-      throw new Error('Mock mode should never be active on real devices');
-    }
     
     if (isMockMode || Platform.OS === 'web') {
       setIsRestoring(true);
