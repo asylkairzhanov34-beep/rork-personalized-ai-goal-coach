@@ -1,19 +1,19 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useRorkAgent, createRorkTool, generateText } from '@rork-ai/toolkit-sdk';
-import { z } from 'zod';
 import { useGoalStore } from '@/hooks/use-goal-store';
 import { ChatMessage } from '@/types/chat';
 import { useMemo, useEffect, useCallback, useState } from 'react';
 
 type AiStatus = 'checking' | 'online' | 'offline';
 
-type ChatUserContext = {
-  profile: unknown;
-  currentGoal: unknown;
-};
+interface Message {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
 
 export const [ChatProvider, useChat] = createContextHook(() => {
   const goalStore = useGoalStore();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('[ChatStore] ========== Environment Check ==========');
@@ -23,63 +23,6 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     console.log('[ChatStore] API Base URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL || 'NOT SET');
     console.log('[ChatStore] ============================================');
   }, []);
-
-  const { messages, error, sendMessage: rorkSendMessage, setMessages } = useRorkAgent({
-    tools: {
-      getTasks: createRorkTool({
-        description: 'Get list of all user tasks. This function only retrieves tasks, does NOT modify them.',
-        zodSchema: z.object({
-          startDate: z.string().optional().describe('Start date (ISO)'),
-          endDate: z.string().optional().describe('End date (ISO)'),
-        }),
-        execute: async (input) => {
-          let tasks = goalStore.dailyTasks;
-          if (input.startDate) {
-            tasks = tasks.filter(t => new Date(t.date) >= new Date(input.startDate!));
-          }
-          if (input.endDate) {
-             tasks = tasks.filter(t => new Date(t.date) <= new Date(input.endDate!));
-          }
-          const summary = `Found ${tasks.length} tasks:\n`;
-          return summary + JSON.stringify(tasks.map(t => ({
-            id: t.id,
-            title: t.title,
-            description: t.description,
-            date: t.date,
-            completed: t.completed,
-            priority: t.priority,
-            difficulty: t.difficulty,
-            estimatedTime: t.estimatedTime
-          })), null, 2);
-        },
-      }),
-      getHistory: createRorkTool({
-        description: 'Get execution history for the last 90 days for productivity analysis and personalized recommendations',
-        zodSchema: z.object({}),
-        execute: async () => {
-          const now = new Date();
-          const ninetyDaysAgo = new Date();
-          ninetyDaysAgo.setDate(now.getDate() - 90);
-          
-          const relevantTasks = goalStore.dailyTasks.filter(t => 
-            new Date(t.date) >= ninetyDaysAgo && new Date(t.date) <= now
-          );
-          
-          const total = relevantTasks.length;
-          const completed = relevantTasks.filter(t => t.completed).length;
-          const rate = total > 0 ? (completed / total) * 100 : 0;
-          
-          return JSON.stringify({
-            period: 'Last 90 days',
-            totalTasks: total,
-            completedTasks: completed,
-            completionRate: rate.toFixed(1) + '%',
-            streak: goalStore.profile.currentStreak
-          });
-        },
-      }),
-    },
-  });
 
   const [isSending, setIsSending] = useState<boolean>(false);
   const [aiStatus, setAiStatus] = useState<AiStatus>('checking');
@@ -91,22 +34,51 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setAiStatusError(null);
 
     try {
-      const res = await generateText({
-        messages: [
-          {
-            role: 'user',
-            content: 'Respond with a single word: OK',
-          },
-        ],
+      const toolkitUrl = process.env.EXPO_PUBLIC_TOOLKIT_URL;
+      const projectId = process.env.EXPO_PUBLIC_PROJECT_ID;
+      const teamId = process.env.EXPO_PUBLIC_TEAM_ID;
+
+      if (!toolkitUrl || !projectId) {
+        throw new Error('Missing configuration: TOOLKIT_URL or PROJECT_ID');
+      }
+
+      console.log('[ChatStore] Testing connection to:', toolkitUrl);
+      console.log('[ChatStore] Project ID:', projectId);
+
+      const apiUrl = `${toolkitUrl}/text/generate`;
+      console.log('[ChatStore] API URL:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-rork-project-id': projectId,
+          ...(teamId ? { 'x-rork-team-id': teamId } : {}),
+        },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'Say OK' }],
+        }),
       });
 
-      console.log('[ChatStore] AI health-check response:', String(res).slice(0, 60));
+      console.log('[ChatStore] Response status:', response.status);
+      console.log('[ChatStore] Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[ChatStore] Error response body:', errorText);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('[ChatStore] Health check response:', data);
+
       setAiStatus('online');
       setAiStatusError(null);
       return 'online';
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error('[ChatStore] AI health-check failed:', msg);
+      console.error('[ChatStore] Full error:', e);
       setAiStatus('offline');
       setAiStatusError(msg);
       return 'offline';
@@ -198,113 +170,101 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     }
 
     setIsSending(true);
+    setError(null);
+
     try {
+      const toolkitUrl = process.env.EXPO_PUBLIC_TOOLKIT_URL;
+      const projectId = process.env.EXPO_PUBLIC_PROJECT_ID;
+      const teamId = process.env.EXPO_PUBLIC_TEAM_ID;
+
+      if (!toolkitUrl || !projectId) {
+        throw new Error('Missing configuration');
+      }
+
+      const userMessage: Message = { role: 'user', content: text };
+      setMessages(prev => [...prev, userMessage]);
+
       const context = buildSystemContext();
-      // Enforce ONLY advisor role, no task modification
-      const systemInstruction = `
-IMPORTANT: You are GoalForge AI, a productivity advisor.
-You CANNOT create, edit, delete, or complete tasks.
-If the user asks to modify tasks, politely refuse and explain you are only an advisor.
-Focus on giving motivation, strategies, and analyzing the user's progress.
-Always answer in English.
-`;
-      const messageWithContext = systemInstruction + "\n" + context + "\nUser message: " + text;
-      console.log('[ChatStore] Sending message with context to agent');
-      console.log('[ChatStore] User message:', text);
-      console.log('[ChatStore] Tasks count:', goalStore.dailyTasks?.length || 0);
-      await rorkSendMessage(messageWithContext);
+      const systemInstruction = `You are GoalForge AI, a productivity advisor. You can only give advice and analyze progress. You CANNOT modify tasks. Always answer in English.`;
+
+      const apiMessages: Message[] = [
+        { role: 'system', content: systemInstruction + '\n' + context },
+        ...messages,
+        userMessage,
+      ];
+
+      console.log('[ChatStore] Sending', apiMessages.length, 'messages to API');
+      console.log('[ChatStore] Latest user message:', text);
+
+      const apiUrl = `${toolkitUrl}/text/generate`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-rork-project-id': projectId,
+          ...(teamId ? { 'x-rork-team-id': teamId } : {}),
+        },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[ChatStore] API error:', response.status, errorText);
+        throw new Error(`Failed to send message: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('[ChatStore] API response:', data);
+
+      const assistantText = typeof data === 'string' ? data : data.text || data.content || 'Sorry, I could not process that.';
+      const assistantMessage: Message = { role: 'assistant', content: assistantText };
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (e) {
-      console.error('[ChatStore] sendMessage failed:', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('[ChatStore] sendMessage failed:', msg, e);
+      setError(msg);
       throw e;
     } finally {
       setIsSending(false);
     }
-  }, [aiStatus, refreshAiStatus, rorkSendMessage, buildSystemContext, goalStore.dailyTasks]);
+  }, [aiStatus, refreshAiStatus, buildSystemContext, messages]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
   }, [setMessages]);
 
   const uiMessages: ChatMessage[] = useMemo(() => {
-    return messages.map(m => {
-        let text = '';
-        if (Array.isArray(m.parts)) {
-             text = m.parts
-                .filter((p: any) => p.type === 'text')
-                .map((p: any) => p.text)
-                .join('');
-             
-             const toolCalls = m.parts.filter((p: any) => p.type === 'tool');
-             if (text === '' && toolCalls.length > 0) {
-                 text = 'Processing...'; 
-             }
-        } else {
-             text = (m as any).content || '';
-        }
-        
-        if (m.role === 'user') {
-            // We send the agent a long context + the actual user message.
-            // For UI, show only what the user actually typed.
-            const marker = 'User message:';
-            const idx = text.indexOf(marker);
-            if (idx >= 0) {
-              text = text.slice(idx + marker.length).trim();
-            }
-
-            // Legacy cleanup for older formats
-            text = text.replace(/^\[SYSTEM:.*?\[\/END_SYSTEM\]\s*/s, '').trim();
-        }
-
-        return {
-            id: m.id,
-            text: text,
-            isBot: m.role === 'assistant',
-            timestamp: new Date(),
-        };
-    });
+    return messages
+      .filter(m => m.role !== 'system')
+      .map((m, idx) => ({
+        id: `msg-${idx}`,
+        text: m.content,
+        isBot: m.role === 'assistant',
+        timestamp: new Date(),
+      }));
   }, [messages]);
-
-  useEffect(() => {
-    if (uiMessages.length === 0 && goalStore.isReady) {
-       // We can't easily inject a "fake" message into useRorkAgent state if it doesn't match its internal structure.
-       // But we can return a welcome message in uiMessages if empty.
-       // However, useRorkAgent handles state.
-       // Let's just send a system prompt as the first hidden message if possible, but useRorkAgent might not support hidden.
-       // We will just rely on the user sending the first message or add a UI placeholder in ChatScreen.
-    }
-  }, [uiMessages.length, goalStore.isReady]);
 
   const errorText = useMemo(() => {
     if (!error) return null;
     
-    console.log('[ChatStore] Error object:', error);
-    console.log('[ChatStore] Error type:', typeof error);
+    const errorStr = String(error);
+    console.log('[ChatStore] Error:', errorStr);
     
-    const message = typeof error === 'string' ? error : (error as any)?.message;
-    const errorStr = message ? String(message) : 'Unknown chat error';
-    
-    console.log('[ChatStore] Error string:', errorStr);
-    
-    if (errorStr.includes('Не удалось подключиться') || errorStr.includes('fetch failed') || errorStr.includes('network') || errorStr.includes('Failed to fetch')) {
-      return 'Connection error. Please check your internet and try again.';
+    if (errorStr.includes('fetch failed') || errorStr.includes('network') || errorStr.includes('Failed to fetch')) {
+      return 'Connection error. Check your internet.';
     }
-    if (errorStr.includes('timeout') || errorStr.includes('timed out')) {
-      return 'Request timed out. Please try again.';
+    if (errorStr.includes('timeout')) {
+      return 'Request timed out. Try again.';
     }
-    if (errorStr.includes('server') || errorStr.includes('500') || errorStr.includes('502') || errorStr.includes('503')) {
-      return 'Server error. Please try again later.';
+    if (errorStr.includes('500') || errorStr.includes('502') || errorStr.includes('503')) {
+      return 'Server error. Try again later.';
     }
-    if (errorStr.includes('TOOLKIT_URL') || errorStr.includes('PROJECT_ID')) {
-      return 'Configuration error. Please restart the app.';
+    if (errorStr.includes('configuration') || errorStr.includes('Missing')) {
+      return 'Configuration error. Please restart.';
     }
     
     return errorStr;
   }, [error]);
-
-  const userContext: ChatUserContext = useMemo(() => ({
-    profile: goalStore.profile,
-    currentGoal: goalStore.currentGoal,
-  }), [goalStore.profile, goalStore.currentGoal]);
 
   return useMemo(() => ({
     messages: uiMessages,
@@ -315,7 +275,6 @@ Always answer in English.
     aiStatus,
     aiStatusError,
     refreshAiStatus,
-    userContext,
   }), [
     uiMessages,
     isSending,
@@ -325,6 +284,5 @@ Always answer in English.
     aiStatus,
     aiStatusError,
     refreshAiStatus,
-    userContext,
   ]);
 });
