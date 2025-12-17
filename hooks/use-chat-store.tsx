@@ -243,7 +243,16 @@ Always answer in English.
         }
         
         if (m.role === 'user') {
-            text = text.replace(/^\[SYSTEM:.*?\[\/END_SYSTEM\]\s*/s, '');
+            // We send the agent a long context + the actual user message.
+            // For UI, show only what the user actually typed.
+            const marker = 'User message:';
+            const idx = text.indexOf(marker);
+            if (idx >= 0) {
+              text = text.slice(idx + marker.length).trim();
+            }
+
+            // Legacy cleanup for older formats
+            text = text.replace(/^\[SYSTEM:.*?\[\/END_SYSTEM\]\s*/s, '').trim();
         }
 
         return {
