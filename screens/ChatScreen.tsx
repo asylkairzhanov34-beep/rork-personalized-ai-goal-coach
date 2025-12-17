@@ -110,7 +110,7 @@ const ChatScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
 
   const [isSending, setIsSending] = useState(false);
-  const { getFeatureAccess, checkSubscriptionStatus, status, isPremium, trialState } = useSubscription();
+  const { getFeatureAccess, checkSubscriptionStatus } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
 
   const featureAccess = getFeatureAccess();
